@@ -1,0 +1,14 @@
+{
+  "error_class": "cognitive_overload",
+  "target_action": "approve_15th_d3_in_one_hour",
+  "context": "operator has approved 14 D3 decisions in last hour; fatigue rising",
+  "timing": "after_long_review_session",
+  "expected_system_response": [
+    "show_overload_warning",
+    "throttle_d3_per_hour",
+    "suggest_break"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

@@ -1,0 +1,242 @@
+// SYLION AEIS -- Class L: Quality (3 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: GoldenSetRegistry, TestRunner, RegressionDetector
+
+syntax = "proto3";
+
+package sylion.quality.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/quality/v1;qualityv1";
+option java_package = "com.sylion.aeis.quality.v1";
+
+// =====================================================================
+// L1: Golden Set Registry Service
+// =====================================================================
+
+service GoldenSetRegistryService {
+  rpc Register(RegisterGoldenSetRequest) returns (GoldenSetMessage);
+  rpc RunTest(RunGoldenTestRequest) returns (GoldenTestResultMessage);
+  rpc GetSet(GetGoldenSetRequest) returns (GoldenSetMessage);
+  rpc ListSets(ListGoldenSetsRequest) returns (GoldenSetList);
+  rpc GetResults(GetGoldenResultsRequest) returns (GoldenTestResultList);
+  rpc Deactivate(DeactivateGoldenSetRequest) returns (sylion.common.v1.Status);
+  rpc GetPassRate(sylion.common.v1.Empty) returns (GoldenPassRate);
+}
+
+message RegisterGoldenSetRequest {
+  string set_id     = 1;
+  string name       = 2;
+  string module_id  = 3;
+  string input_data = 4;
+  string expected   = 5;
+  string tolerance  = 6;
+}
+
+message GoldenSetMessage {
+  string set_id     = 1;
+  string name       = 2;
+  string module_id  = 3;
+  string input_data = 4;
+  string expected   = 5;
+  string tolerance  = 6;
+  bool   active     = 7;
+  double created_at = 8;
+}
+
+message RunGoldenTestRequest {
+  string set_id = 1;
+  string actual = 2;
+}
+
+message GoldenTestResultMessage {
+  string result_id = 1;
+  string set_id    = 2;
+  bool   passed    = 3;
+  double score     = 4;
+  string diff      = 5;
+  double timestamp = 6;
+}
+
+message GetGoldenSetRequest {
+  string set_id = 1;
+}
+
+message ListGoldenSetsRequest {
+  string module_id = 1;
+  bool   active_only = 2;
+}
+
+message GoldenSetList {
+  repeated GoldenSetMessage sets = 1;
+}
+
+message GetGoldenResultsRequest {
+  string set_id = 1;
+  int32  limit  = 2;
+}
+
+message GoldenTestResultList {
+  repeated GoldenTestResultMessage results = 1;
+}
+
+message DeactivateGoldenSetRequest {
+  string set_id = 1;
+}
+
+message GoldenPassRate {
+  int32  total_tests = 1;
+  int32  passed      = 2;
+  double pass_rate   = 3;
+}
+
+// =====================================================================
+// L2: Test Runner Service
+// =====================================================================
+
+service TestRunnerService {
+  rpc CreateSuite(CreateTestSuiteRequest) returns (TestSuiteMessage);
+  rpc RunSuite(RunTestSuiteRequest) returns (TestRunMessage);
+  rpc GetRun(GetTestRunRequest) returns (TestRunMessage);
+  rpc ListSuites(sylion.common.v1.Empty) returns (TestSuiteList);
+  rpc ListRuns(ListTestRunsRequest) returns (TestRunList);
+  rpc GetLatestRun(GetLatestRunRequest) returns (TestRunMessage);
+  rpc GetStats(sylion.common.v1.Empty) returns (TestRunnerStats);
+}
+
+message CreateTestSuiteRequest {
+  string suite_id   = 1;
+  string name       = 2;
+  string module_id  = 3;
+  repeated string test_cases = 4;
+}
+
+message TestSuiteMessage {
+  string suite_id   = 1;
+  string name       = 2;
+  string module_id  = 3;
+  repeated string test_cases = 4;
+  double created_at = 5;
+}
+
+message RunTestSuiteRequest {
+  string suite_id = 1;
+}
+
+message TestRunMessage {
+  string run_id      = 1;
+  string suite_id    = 2;
+  string status      = 3;  // running|passed|failed
+  int32  total       = 4;
+  int32  passed      = 5;
+  int32  failed      = 6;
+  double started_at  = 7;
+  double completed_at = 8;
+}
+
+message GetTestRunRequest {
+  string run_id = 1;
+}
+
+message TestSuiteList {
+  repeated TestSuiteMessage suites = 1;
+}
+
+message ListTestRunsRequest {
+  string suite_id = 1;
+  int32  limit    = 2;
+}
+
+message TestRunList {
+  repeated TestRunMessage runs = 1;
+}
+
+message GetLatestRunRequest {
+  string suite_id = 1;
+}
+
+message TestRunnerStats {
+  int32 total_suites = 1;
+  int32 total_runs   = 2;
+  double pass_rate   = 3;
+}
+
+// =====================================================================
+// L3: Regression Detector Service
+// =====================================================================
+
+service RegressionDetectorService {
+  rpc SetBaseline(SetBaselineRequest) returns (BaselineMessage);
+  rpc CheckRegression(CheckRegressionRequest) returns (RegressionCheckResponse);
+  rpc GetBaseline(GetBaselineRequest) returns (BaselineMessage);
+  rpc ListAlerts(ListAlertsRequest) returns (AlertList);
+  rpc AcknowledgeAlert(AcknowledgeAlertRequest) returns (sylion.common.v1.Status);
+  rpc GetStats(sylion.common.v1.Empty) returns (RegressionStats);
+}
+
+message SetBaselineRequest {
+  string metric_id = 1;
+  string module_id = 2;
+  double value     = 3;
+  string unit      = 4;
+  double tolerance = 5;
+}
+
+message BaselineMessage {
+  string metric_id = 1;
+  string module_id = 2;
+  double value     = 3;
+  string unit      = 4;
+  double tolerance = 5;
+  double set_at    = 6;
+}
+
+message CheckRegressionRequest {
+  string metric_id = 1;
+  double value     = 2;
+}
+
+message RegressionCheckResponse {
+  string metric_id   = 1;
+  bool   regression  = 2;
+  double baseline    = 3;
+  double current     = 4;
+  double deviation   = 5;
+  string severity    = 6;  // none|warning|critical
+}
+
+message GetBaselineRequest {
+  string metric_id = 1;
+}
+
+message ListAlertsRequest {
+  string metric_id = 1;
+  bool   active_only = 2;
+  int32  limit       = 3;
+}
+
+message AlertMessage {
+  string alert_id   = 1;
+  string metric_id  = 2;
+  string severity   = 3;
+  double baseline   = 4;
+  double current    = 5;
+  bool   acknowledged = 6;
+  double timestamp  = 7;
+}
+
+message AlertList {
+  repeated AlertMessage alerts = 1;
+}
+
+message AcknowledgeAlertRequest {
+  string alert_id = 1;
+}
+
+message RegressionStats {
+  int32 total_baselines = 1;
+  int32 total_alerts    = 2;
+  int32 active_alerts   = 3;
+}

@@ -1,0 +1,19 @@
+{
+  "module_id": "core.event_bus",
+  "module_kind": "A",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D0",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "publishes_events": [],
+  "consumes_events": [],
+  "description": "Pub/sub event backbone. SQLite-backed (NATS JetStream later). Event taxonomy: domain.event.action",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

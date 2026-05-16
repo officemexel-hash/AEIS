@@ -1,0 +1,227 @@
+syntax = "proto3";
+
+package sylion;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "sylion_common.proto";
+
+// ──────────────────────────────────────────────
+//  SYLION Execution – workflows & jobs
+// ──────────────────────────────────────────────
+
+// ═══════ Workflows ═══════
+
+/** Status of a workflow definition. */
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WF_DRAFT                    = 1;
+  WF_ACTIVE                   = 2;
+  WF_PAUSED                   = 3;
+  WF_ARCHIVED                 = 4;
+}
+
+/** Status of a single workflow run. */
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_QUEUED             = 1;
+  RUN_RUNNING            = 2;
+  RUN_SUCCEEDED          = 3;
+  RUN_FAILED             = 4;
+  RUN_CANCELLED          = 5;
+  RUN_TIMED_OUT          = 6;
+}
+
+/** A single step within a workflow definition. */
+message WorkflowStep {
+  string          step_id     = 1;
+  string          name        = 2;
+  string          handler     = 3;
+  repeated string depends_on  = 4;
+  map<string, string> config  = 5;
+  int32           timeout_ms  = 6;
+  int32           max_retries = 7;
+}
+
+message Workflow {
+  string                        workflow_id = 1;
+  string                        name        = 2;
+  string                        description = 3;
+  WorkflowStatus                status      = 4;
+  repeated WorkflowStep         steps       = 5;
+  map<string, string>           metadata    = 6;
+  google.protobuf.Timestamp     created_at  = 7;
+}
+
+message WorkflowRun {
+  string                      run_id        = 1;
+  string                      workflow_id   = 2;
+  RunStatus                   status        = 3;
+  map<string, bytes>          inputs        = 4;
+  map<string, bytes>          outputs       = 5;
+  string                      error_message = 6;
+  google.protobuf.Timestamp   started_at    = 7;
+  google.protobuf.Timestamp   completed_at  = 8;
+}
+
+message CreateWorkflowRequest {
+  string                    name        = 1;
+  string                    description = 2;
+  repeated WorkflowStep     steps       = 3;
+  map<string, string>       metadata    = 4;
+}
+
+message CreateWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message RunWorkflowRequest {
+  string                workflow_id = 1;
+  map<string, bytes>    inputs      = 2;
+}
+
+message RunWorkflowResponse {
+  WorkflowRun run = 1;
+}
+
+message GetRunRequest {
+  string run_id = 1;
+}
+
+message GetRunResponse {
+  WorkflowRun run = 1;
+}
+
+message ListWorkflowsRequest {
+  WorkflowStatus status_filter = 1;
+  int32          page_size     = 2;
+  string         page_token    = 3;
+}
+
+message ListWorkflowsResponse {
+  repeated Workflow workflows  = 1;
+  string            next_token = 2;
+}
+
+/** Workflow service – DAG-based workflow definitions and execution. */
+service WorkflowService {
+  rpc CreateWorkflow(CreateWorkflowRequest)  returns (CreateWorkflowResponse);
+  rpc RunWorkflow(RunWorkflowRequest)        returns (RunWorkflowResponse);
+  rpc GetRun(GetRunRequest)                  returns (GetRunResponse);
+  rpc ListWorkflows(ListWorkflowsRequest)    returns (ListWorkflowsResponse);
+}
+
+// ═══════ Jobs ═══════
+
+/** Status of a background job. */
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_QUEUED             = 1;
+  JOB_RUNNING            = 2;
+  JOB_SUCCEEDED          = 3;
+  JOB_FAILED             = 4;
+  JOB_CANCELLED          = 5;
+  JOB_RETRYING           = 6;
+}
+
+/** Priority level for job scheduling. */
+enum JobPriority {
+  JOB_PRIORITY_UNSPECIFIED = 0;
+  JOB_PRIO_LOW             = 1;
+  JOB_PRIO_NORMAL          = 2;
+  JOB_PRIO_HIGH            = 3;
+  JOB_PRIO_CRITICAL        = 4;
+}
+
+message Job {
+  string                      job_id       = 1;
+  string                      job_type     = 2;
+  JobStatus                   status       = 3;
+  JobPriority                 priority     = 4;
+  string                      assigned_to  = 5;
+  bytes                       payload      = 6;
+  bytes                       result       = 7;
+  string                      error_message = 8;
+  int32                       retry_count  = 9;
+  int32                       max_retries  = 10;
+  map<string, string>         labels       = 11;
+  google.protobuf.Timestamp   created_at   = 12;
+  google.protobuf.Timestamp   started_at   = 13;
+  google.protobuf.Timestamp   completed_at = 14;
+}
+
+message SubmitJobRequest {
+  string                job_type     = 1;
+  JobPriority           priority     = 2;
+  bytes                 payload      = 3;
+  int32                 max_retries  = 4;
+  map<string, string>   labels       = 5;
+}
+
+message SubmitJobResponse {
+  Job job = 1;
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message GetJobResponse {
+  Job job = 1;
+}
+
+message GetNextJobRequest {
+  string  worker_id       = 1;
+  repeated string capabilities = 2;
+}
+
+message GetNextJobResponse {
+  Job job = 1;
+}
+
+message CompleteJobRequest {
+  string  job_id  = 1;
+  bytes   result  = 2;
+}
+
+message CompleteJobResponse {
+  Job job = 1;
+}
+
+message FailJobRequest {
+  string  job_id        = 1;
+  string  error_message = 2;
+  bool    retryable     = 3;
+}
+
+message FailJobResponse {
+  Job job = 1;
+}
+
+message GetStatsRequest {
+  string  job_type     = 1;
+  int64   since_epoch  = 2;
+}
+
+message JobStats {
+  int64   total_jobs      = 1;
+  int64   completed_jobs  = 2;
+  int64   failed_jobs     = 3;
+  int64   retried_jobs    = 4;
+  double  avg_duration_ms = 5;
+  int64   queued_now      = 6;
+}
+
+message GetStatsResponse {
+  JobStats stats = 1;
+}
+
+/** Job service – background job queue with scheduling and stats. */
+service JobService {
+  rpc SubmitJob(SubmitJobRequest)     returns (SubmitJobResponse);
+  rpc GetJob(GetJobRequest)           returns (GetJobResponse);
+  rpc GetNextJob(GetNextJobRequest)   returns (GetNextJobResponse);
+  rpc CompleteJob(CompleteJobRequest) returns (CompleteJobResponse);
+  rpc FailJob(FailJobRequest)         returns (FailJobResponse);
+  rpc GetStats(GetStatsRequest)       returns (GetStatsResponse);
+}

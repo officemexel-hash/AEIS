@@ -1,0 +1,45 @@
+project_id: "proj_demo_01_mobile_field_inspector"
+name: "Mobile Field Inspector"
+type: "mobile-app"
+target_d_level: "D4"
+domain: "field_operations"
+
+description: |
+  Mobile app for field inspectors performing on-site verification visits.
+  Operator captures photo evidence, GPS, signature; submits via mobile while
+  online or offline-queued; auto-syncs when reconnects.
+
+required_personas:
+  - "operator_beginner"
+  - "mobile_first_operator"
+  - "incident_responder"
+
+domain_specific_human_errors:
+  - error_class: "stale_data_action"
+    target_action: "submit_after_lost_connectivity_during_approval"
+    severity_if_system_allows_error: "D3"
+  - error_class: "wrong_context"
+    target_action: "gps_spoofing_attempt"
+    severity_if_system_allows_error: "D4"
+  - error_class: "premature_action"
+    target_action: "photo_evidence_corruption_unverified"
+    severity_if_system_allows_error: "D3"
+
+required_test_classes: ["T0", "T2", "T3", "T4", "T5", "T6", "T7", "T9", "T15"]
+
+release_blockers:
+  - "PASS without evidence"
+  - "GPS coordinates outside expected range"
+  - "Photo upload without signature"
+  - "Offline action without conflict resolution"
+
+expected_modules: 8
+expected_api_endpoints: 12
+expected_ui_pages: 5
+
+success_criteria:
+  - "PRODUCTION_RELEASED status reached"
+  - "Council session completed with critic+sentinel pass"
+  - "Minimum 5 lessons_learned recorded"
+  - "Anti-pattern catalog gained ≥1 entry"
+  - "All 13 guardians reported GREEN at release"

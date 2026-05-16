@@ -1,0 +1,26 @@
+{
+  "module_id": "sylion.aeis.advisor.actions",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.engine"
+  ],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.actions.action_routed",
+    "aeis.advisor.actions.routing_failed",
+    "aeis.advisor.actions.human_gate_ticket_created",
+    "aeis.advisor.actions.masterplan_proposal_created",
+    "aeis.advisor.actions.preference_saved",
+    "aeis.advisor.actions.action_retry_scheduled"
+  ],
+  "events_subscribe": [],
+  "storage": {
+    "postgres_schemas": [
+      "advisor_actions"
+    ]
+  }
+}

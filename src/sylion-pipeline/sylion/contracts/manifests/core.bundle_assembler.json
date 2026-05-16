@@ -1,0 +1,24 @@
+{
+  "module_id": "core.bundle_assembler",
+  "module_kind": "A",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D1",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus",
+    "core.module_registry"
+  ],
+  "publishes_events": [
+    "bundle.assembled"
+  ],
+  "consumes_events": [],
+  "description": "Assemble, validate, and ship module bundles for coordinated deployment.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

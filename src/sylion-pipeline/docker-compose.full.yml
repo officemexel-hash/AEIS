@@ -1,0 +1,110 @@
+# =============================================================================
+# SYLION AEIS API — PostgreSQL + NATS JetStream + FastAPI docker-compose
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.full.yml up -d
+#   docker compose -f docker-compose.full.yml up -d --build   (rebuild API image)
+#
+# Environment variables (optional, override defaults):
+#   SYLION_DB_URL      — full asyncpg connection string
+#   SYLION_DB_MODE     — "postgres" to enable PostgreSQL, defaults to "sqlite"
+#   SYLION_EVENT_MODE  — "nats" to enable NATS event bus, defaults to "sqlite"
+#   NATS_URL           — NATS server URL
+# =============================================================================
+
+name: sylion-api
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL 16 — persistent storage for SYLION AEIS
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: sylion-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: sylion
+      POSTGRES_USER: sylion
+      POSTGRES_PASSWORD: sylion_dev
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sylion -d sylion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # 2. NATS JetStream — persistent event bus for SYLION AEIS
+  # ---------------------------------------------------------------------------
+  nats:
+    image: nats:alpine
+    container_name: sylion-nats
+    restart: unless-stopped
+
+    command: >
+      nats-server
+      -js
+      --store_dir /data
+      --max_mem_store 256MB
+      --max_file_store 1GB
+
+    ports:
+      - "4222:4222"   # client
+      - "8222:8222"   # monitoring
+
+    volumes:
+      - natsdata:/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # 3. SYLION AEIS API — FastAPI application
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: sylion-api
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      SYLION_DB_URL: postgresql+asyncpg://sylion:sylion_dev@postgres:5432/sylion
+      SYLION_DB_MODE: postgres
+      SYLION_EVENT_MODE: nats
+      NATS_URL: nats://nats:4222
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  pgdata:
+    driver: local
+  natsdata:
+    driver: local

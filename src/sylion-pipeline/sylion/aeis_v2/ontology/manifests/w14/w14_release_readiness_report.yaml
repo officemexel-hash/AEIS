@@ -1,0 +1,117 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_release_readiness_report
+  name_pl: Raport gotowości releasu W14
+  name_en: W14 Release Readiness Report
+  version: v1.0
+  description_pl: 'Raport operatorski podsumowujący checklisty, koszty i rekomendacje.
+
+    Dedykowane są tier dowodowy i wynik zrozumienia człowieka,
+
+    a checklisty oraz agregaty kosztu i latencji trafiają do rozszerzenia.'
+  description_en: 'Operator-facing report summarizing checklists, costs, and recommendations.
+
+    Evidence tier and human comprehension score are dedicated,
+
+    while checklist and aggregate cost/latency details remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - release_readiness
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: evidence_tier_used
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - H0
+    - H1
+    - H2
+    - H3
+    - H4
+    default: H1
+  - name: human_comprehension_score
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 1.0
+  - name: blocker_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: warning_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: recommendation_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: release_candidate
+    target: w14_release_candidate
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - evidence_tier_used
+    - human_comprehension_score
+    - blocker_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: []
+  actions:
+  - id: publish_release_readiness_report
+    description_pl: Publikuje raport gotowości do wykorzystania przez operatora i
+      council.
+    description_en: Publishes the readiness report for operator and council use.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.release_readiness_report.published
+  - id: revise_release_readiness_report
+    description_pl: Rejestruje rewizję raportu po nowych danych lub findingach.
+    description_en: Records a revision of the report after new data or findings.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.release_readiness_report.revised

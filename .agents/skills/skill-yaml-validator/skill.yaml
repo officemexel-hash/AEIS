@@ -1,0 +1,11 @@
+name: skill-yaml-validator
+version: 1.0.0
+description: Validates skill.yaml manifests against SYLION schema
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: skill_yaml_path
+    type: string
+    required: true
+outputs:
+  - validation_result

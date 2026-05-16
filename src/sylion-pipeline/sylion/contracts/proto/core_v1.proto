@@ -1,0 +1,447 @@
+// SYLION AEIS -- Class A: Core Kernel (8 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: ModuleRegistry, EventBus, EvidenceSpine, DecisionGateEngine,
+//          ContractRegistry, BundleAssembler, ManifestLoader, EnvironmentOrchestrator
+
+syntax = "proto3";
+
+package sylion.core.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/core/v1;corev1";
+option java_package = "com.sylion.aeis.core.v1";
+
+// =====================================================================
+// A1: Module Registry Service
+// =====================================================================
+
+service ModuleRegistryService {
+  rpc Register(RegisterModuleRequest) returns (ModuleManifest);
+  rpc Deregister(sylion.common.v1.ModuleId) returns (sylion.common.v1.Status);
+  rpc GetModule(sylion.common.v1.ModuleId) returns (ModuleManifest);
+  rpc ListModules(ListModulesRequest) returns (ModuleList);
+  rpc Transition(TransitionRequest) returns (TransitionResponse);
+  rpc Heartbeat(sylion.common.v1.ModuleId) returns (sylion.common.v1.Status);
+}
+
+message RegisterModuleRequest {
+  string module_id       = 1;
+  string module_kind     = 2;   // A-O
+  string owner_plan      = 3;
+  string strategy        = 4;   // greenfield | brownfield | rebuild
+  string contract_version = 5;
+  string decision_class  = 6;
+  string security_profile = 7;
+  string auth_mode       = 8;
+  string execution_guard = 9;
+  string audit_mode      = 10;
+  repeated string depends_on = 11;
+  string description     = 12;
+  string version         = 13;
+  string milestone       = 14;
+}
+
+message ModuleManifest {
+  string module_id        = 1;
+  string module_kind      = 2;
+  string owner_plan       = 3;
+  string strategy         = 4;
+  string contract_version = 5;
+  string decision_class   = 6;
+  string security_profile = 7;
+  string auth_mode        = 8;
+  string execution_guard  = 9;
+  string audit_mode       = 10;
+  repeated string depends_on = 11;
+  string description      = 12;
+  string version          = 13;
+  string milestone        = 14;
+  string lifecycle_stage  = 15;
+  double registered_at    = 16;
+  double last_heartbeat   = 17;
+}
+
+message ListModulesRequest {
+  string kind      = 1;   // optional filter
+  string milestone = 2;   // optional filter
+  string lifecycle = 3;   // optional filter
+}
+
+message ModuleList {
+  repeated ModuleManifest modules = 1;
+}
+
+message TransitionRequest {
+  string module_id = 1;
+  string target    = 2;  // target lifecycle stage
+}
+
+message TransitionResponse {
+  string module_id = 1;
+  string lifecycle = 2;
+}
+
+// =====================================================================
+// A2: Event Bus Service
+// =====================================================================
+
+service EventBusService {
+  rpc Publish(PublishEventRequest) returns (PublishEventResponse);
+  rpc Subscribe(SubscribeRequest) returns (stream SylionEventMessage);
+  rpc Ack(AckRequest) returns (sylion.common.v1.Status);
+  rpc QueryEvents(QueryEventsRequest) returns (EventList);
+  rpc Replay(ReplayRequest) returns (ReplayResponse);
+  rpc GetCatalog(sylion.common.v1.Empty) returns (CatalogResponse);
+}
+
+message PublishEventRequest {
+  string topic           = 1;
+  string payload_json    = 2;
+  string source_module   = 3;
+  string idempotency_key = 4;
+}
+
+message PublishEventResponse {
+  string event_id = 1;
+}
+
+message SylionEventMessage {
+  string event_id        = 1;
+  string topic           = 2;
+  string payload_json    = 3;
+  string source_module   = 4;
+  double timestamp       = 5;
+  string idempotency_key = 6;
+}
+
+message SubscribeRequest {
+  string topic = 1;  // use "*" for all events
+}
+
+message AckRequest {
+  string event_id = 1;
+}
+
+message QueryEventsRequest {
+  string topic  = 1;   // optional filter
+  double since  = 2;   // optional epoch filter
+  int32  limit  = 3;
+}
+
+message EventList {
+  repeated SylionEventMessage events = 1;
+}
+
+message ReplayRequest {
+  double since = 1;
+  string topic = 2;
+}
+
+message ReplayResponse {
+  int32 replayed_count = 1;
+}
+
+message CatalogResponse {
+  map<string, int64> topic_counts = 1;
+}
+
+// =====================================================================
+// A3: Evidence Spine Service
+// =====================================================================
+
+service EvidenceSpineService {
+  rpc Append(AppendEvidenceRequest) returns (AppendEvidenceResponse);
+  rpc QueryEvidence(QueryEvidenceRequest) returns (EvidenceEntryList);
+  rpc VerifyChain(sylion.common.v1.Empty) returns (VerifyChainResponse);
+  rpc ReplayEvidence(ReplayEvidenceRequest) returns (EvidenceEntryList);
+}
+
+message AppendEvidenceRequest {
+  string source_plan  = 1;
+  string event_type   = 2;
+  string payload_json = 3;
+  string actor_id     = 4;
+  string signature    = 5;
+}
+
+message AppendEvidenceResponse {
+  string entry_id  = 1;
+  string hash      = 2;
+  string prev_hash = 3;
+}
+
+message QueryEvidenceRequest {
+  string source_plan = 1;
+  string event_type  = 2;
+  double since       = 3;
+  int32  limit       = 4;
+}
+
+message EvidenceEntryMessage {
+  string entry_id    = 1;
+  string source_plan = 2;
+  string event_type  = 3;
+  string payload_json = 4;
+  string prev_hash   = 5;
+  string hash        = 6;
+  double timestamp   = 7;
+  string actor_id    = 8;
+  string signature   = 9;
+}
+
+message EvidenceEntryList {
+  repeated EvidenceEntryMessage entries = 1;
+}
+
+message VerifyChainResponse {
+  bool   valid   = 1;
+  string message = 2;
+}
+
+message ReplayEvidenceRequest {
+  double since = 1;
+}
+
+// =====================================================================
+// A4: Decision Gate Engine Service
+// =====================================================================
+
+service DecisionGateEngineService {
+  rpc Classify(ClassifyRequest) returns (DecisionRecordMessage);
+  rpc RegisterGate(RegisterGateRequest) returns (sylion.common.v1.Status);
+  rpc EvaluateGate(EvaluateGateRequest) returns (EvaluateGateResponse);
+  rpc GetDecisions(GetDecisionsRequest) returns (DecisionRecordList);
+}
+
+message ClassifyRequest {
+  string description       = 1;
+  string source_plan       = 2;
+  string module_id         = 3;
+  string change_type       = 4;  // config|contract|module|architecture|system
+  string blast_radius      = 5;  // low|medium|high|critical
+  bool   reversible        = 6;
+  bool   affects_contracts = 7;
+  bool   affects_kernel    = 8;
+  string proposed_by       = 9;
+}
+
+message DecisionRecordMessage {
+  string decision_id       = 1;
+  string decision_class    = 2;
+  string description       = 3;
+  string source_plan       = 4;
+  string module_id         = 5;
+  string change_type       = 6;
+  string blast_radius      = 7;
+  bool   reversible        = 8;
+  bool   affects_contracts = 9;
+  bool   affects_kernel    = 10;
+  string requirements_json = 11;
+  double timestamp         = 12;
+  string status            = 13;
+}
+
+message RegisterGateRequest {
+  string gate_id              = 1;
+  string name                 = 2;
+  string description          = 3;
+  string fail_condition       = 4;
+  string blocks               = 5;
+  string decision_class_min   = 6;
+  string owner_plan           = 7;
+  bool   enabled              = 8;
+}
+
+message EvaluateGateRequest {
+  string gate_id      = 1;
+  string context_json = 2;
+}
+
+message EvaluateGateResponse {
+  string gate_id  = 1;
+  string name     = 2;
+  string result   = 3;  // pass|fail|conditional
+  string message  = 4;
+  string blocks   = 5;
+  double timestamp = 6;
+}
+
+message GetDecisionsRequest {
+  string decision_class = 1;
+  string source_plan    = 2;
+}
+
+message DecisionRecordList {
+  repeated DecisionRecordMessage records = 1;
+}
+
+// =====================================================================
+// A5: Contract Registry Service
+// =====================================================================
+
+service ContractRegistryService {
+  rpc Publish(PublishContractRequest) returns (PublishContractResponse);
+  rpc GetContract(GetContractRequest) returns (ContractMessage);
+  rpc CheckCompatibility(CompatibilityRequest) returns (CompatibilityResponse);
+  rpc ListVersions(ContractNameRequest) returns (ContractVersionList);
+  rpc ListAll(ListAllContractsRequest) returns (ContractVersionList);
+}
+
+message PublishContractRequest {
+  string name               = 1;
+  string contract_type      = 2;  // grpc_service|query_view|event_schema|policy_definition|config_schema
+  string version            = 3;
+  string schema_def         = 4;
+  string producer_module    = 5;
+  repeated string consumer_modules = 6;
+  string description        = 7;
+}
+
+message PublishContractResponse {
+  string contract_id = 1;
+  string name        = 2;
+  string version     = 3;
+  bool   breaking    = 4;
+}
+
+message GetContractRequest {
+  string name    = 1;
+  string version = 2;  // optional; returns latest if empty
+}
+
+message ContractMessage {
+  string contract_id       = 1;
+  string name              = 2;
+  string contract_type     = 3;
+  string version           = 4;
+  string schema_def        = 5;
+  string producer_module   = 6;
+  repeated string consumer_modules = 7;
+  string description       = 8;
+  double created_at        = 9;
+}
+
+message CompatibilityRequest {
+  string name        = 1;
+  string new_version = 2;
+}
+
+message CompatibilityResponse {
+  bool   compatible  = 1;
+  bool   breaking    = 2;
+  string old_version = 3;
+  string new_version = 4;
+  string message     = 5;
+}
+
+message ContractNameRequest {
+  string name = 1;
+}
+
+message ListAllContractsRequest {
+  string contract_type = 1;
+}
+
+message ContractVersionList {
+  repeated ContractMessage contracts = 1;
+}
+
+// =====================================================================
+// A6: Bundle Assembler Service
+// =====================================================================
+
+service BundleAssemblerService {
+  rpc Assemble(AssembleRequest) returns (BundleMessage);
+  rpc Validate(BundleIdRequest) returns (ValidateBundleResponse);
+  rpc Ship(BundleIdRequest) returns (ShipResponse);
+}
+
+message AssembleRequest {
+  repeated string module_ids = 1;
+  string created_by          = 2;
+}
+
+message BundleMessage {
+  string bundle_id   = 1;
+  repeated string modules = 2;
+  string state       = 3;  // BUILDING|TESTING|PASSED|FAILED
+  double created_at  = 4;
+  string created_by  = 5;
+}
+
+message BundleIdRequest {
+  string bundle_id = 1;
+}
+
+message ValidateBundleResponse {
+  string bundle_id   = 1;
+  bool   valid       = 2;
+  string state       = 3;
+  repeated ModuleValidationResult results = 4;
+}
+
+message ModuleValidationResult {
+  string module_id = 1;
+  bool   valid     = 2;
+  string reason    = 3;
+}
+
+message ShipResponse {
+  bool   shipped    = 1;
+  string bundle_id  = 2;
+  repeated string modules = 3;
+  string message    = 4;
+}
+
+// =====================================================================
+// A7: Manifest Loader Service
+// =====================================================================
+
+service ManifestLoaderService {
+  rpc LoadYaml(LoadYamlRequest) returns (ManifestMessage);
+  rpc LoadDict(ManifestMessage) returns (ManifestMessage);
+}
+
+message LoadYamlRequest {
+  string path = 1;  // file path to module.yaml
+}
+
+message ManifestMessage {
+  string module_id    = 1;
+  string module_kind  = 2;
+  string owner_plan   = 3;
+  string description  = 4;
+  map<string, string> extra_fields = 5;
+}
+
+// =====================================================================
+// A8: Environment Orchestrator Service
+// =====================================================================
+
+service EnvironmentOrchestratorService {
+  rpc Deploy(DeployRequest) returns (DeployResult);
+  rpc GetStatus(sylion.common.v1.Empty) returns (ModuleStatusList);
+}
+
+message DeployRequest {
+  string module_id = 1;
+  string action    = 2;  // deploy|undeploy|swap
+  string version   = 3;
+  string config_json = 4;
+  string requested_by = 5;
+}
+
+message DeployResult {
+  string request_id = 1;
+  string module_id  = 2;
+  string action     = 3;
+  string status     = 4;  // success|failed
+  string message    = 5;
+  double timestamp  = 6;
+}
+
+message ModuleStatusList {
+  repeated ModuleManifest modules = 1;
+}

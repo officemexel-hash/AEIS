@@ -1,0 +1,27 @@
+{
+  "module_id": "execution.tool_runner",
+  "module_kind": "C",
+  "owner_plan": "P08",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "execution.tool.started",
+    "execution.tool.completed",
+    "execution.tool.failed"
+  ],
+  "consumes_events": [
+    "cognitive.code.generated"
+  ],
+  "description": "Executes registered tools with input validation and output capture.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

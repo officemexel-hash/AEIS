@@ -1,0 +1,51 @@
+# /etc/udev/rules.d/51-android.rules
+# SYLION v5.9.1 — udev rules dla urządzeń Google Pixel (RC-03)
+# Vendor: Google Inc. VID=18d1
+#
+# Instalacja:
+#   sudo cp 51-android.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#   sudo usermod -aG plugdev "$USER"   # wyloguj i zaloguj ponownie
+#
+# Źródła PID (devicehunt.com, usb-ids.gowdy.us):
+#   4ee0 — fastboot
+#   4ee1 — MTP (Charging only, debug off)
+#   4ee2 — MTP + debug
+#   4ee5 — PTP
+#   4ee6 — PTP + debug
+#   4ee7 — Charging + debug (ADB — najczęstszy tryb Pixel 9)
+#   4ee8 — MIDI
+#   4ee9 — MIDI + debug
+#   4ee3 — tether
+#   4ee4 — tether + debug
+
+# --- Reguła ogólna (wszystkie tryby Google/Pixel) ---
+# Wystarczy VID — pokrywa wszystkie PID tryby automatycznie.
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0666", GROUP="plugdev", TAG+="uaccess"
+
+# --- Reguły specyficzne dla Pixel 9 PID (ADB + fastboot) ---
+# Pixel 9 ADB (charging + debug) — 18d1:4ee7
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee7", \
+    MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="android_adb"
+
+# Pixel 9 MTP + debug — 18d1:4ee2
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee2", \
+    MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="android_mtp_adb"
+
+# Pixel 9 PTP + debug — 18d1:4ee6
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee6", \
+    MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="android_ptp_adb"
+
+# Pixel 9 fastboot — 18d1:4ee0
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee0", \
+    MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="android_fastboot"
+
+# Pixel 9 MTP (charging only, debug off) — 18d1:4ee1
+# Uwaga: w tym trybie ADB nie jest aktywny — SYL-PIX-014
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee1", \
+    MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="android_mtp"
+
+# Pixel 9 tether + debug — 18d1:4ee4
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee4", \
+    MODE="0660", GROUP="plugdev", TAG+="uaccess"

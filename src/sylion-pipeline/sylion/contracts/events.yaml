@@ -1,0 +1,1103 @@
+# SYLION AEIS v3.5 — Canonical Event Taxonomy
+# Format: <domain>.<subject>.<verb>
+# Each event has exactly one owning module.
+# Auto-extracted from codebase _emit() / publish(SylionEvent()) calls.
+
+event_taxonomy:
+  version: "1.0.0"
+  generated_from: "sylion-pipeline/sylion/**/*.py"
+  total_events: 172
+
+  events:
+
+    # =================================================================
+    # CORE (core.*)
+    # =================================================================
+
+    - topic: "bundle.assembled"
+      owner: "core.bundle_assembler"
+      description: "A deployment bundle has been assembled from modules and evidence"
+      payload_keys: ["bundle_id", "module_ids", "evidence_ids"]
+      idempotency: true
+
+    - topic: "contract.published"
+      owner: "core.contract_registry"
+      description: "A module contract has been published to the registry"
+      payload_keys: ["contract_id", "module_id", "version"]
+      idempotency: true
+
+    - topic: "decision.classified"
+      owner: "core.decision_gate_engine"
+      description: "A decision has been classified through the gate engine"
+      payload_keys: ["decision_id", "classification"]
+      idempotency: true
+
+    - topic: "environment.deployed"
+      owner: "core.environment_orchestrator"
+      description: "An environment has been deployed"
+      payload_keys: ["env_id"]
+      idempotency: true
+
+    - topic: "evidence.appended"
+      owner: "core.evidence_spine"
+      description: "Evidence has been appended to the hash-chained spine"
+      payload_keys: ["entry_id", "hash", "prev_hash"]
+      idempotency: true
+
+    - topic: "module.registered"
+      owner: "core.module_registry"
+      description: "A module has been registered in the system"
+      payload_keys: ["module_id"]
+      idempotency: true
+
+    - topic: "module.deregistered"
+      owner: "core.module_registry"
+      description: "A module has been deregistered from the system"
+      payload_keys: ["module_id"]
+      idempotency: true
+
+    - topic: "module.lifecycle.transition"
+      owner: "core.module_registry"
+      description: "A module lifecycle state transition occurred"
+      payload_keys: ["module_id", "from", "to"]
+      idempotency: true
+
+    # =================================================================
+    # AEIS — Self-* (aeis.*)
+    # =================================================================
+
+    - topic: "aeis.improvement_queue.submitted"
+      owner: "aeis.improvement_queue"
+      description: "An improvement proposal has been submitted to the queue"
+      payload_keys: ["proposal_id", "description"]
+      idempotency: true
+
+    - topic: "aeis.improvement_queue.started"
+      owner: "aeis.improvement_queue"
+      description: "Processing of an improvement proposal has started"
+      payload_keys: ["proposal_id"]
+      idempotency: true
+
+    - topic: "aeis.improvement_queue.completed"
+      owner: "aeis.improvement_queue"
+      description: "An improvement proposal has been completed"
+      payload_keys: ["proposal_id"]
+      idempotency: true
+
+    - topic: "aeis.improvement_queue.rejected"
+      owner: "aeis.improvement_queue"
+      description: "An improvement proposal has been rejected"
+      payload_keys: ["proposal_id"]
+      idempotency: true
+
+    - topic: "aeis.self_explanation.generated"
+      owner: "aeis.self_explanation"
+      description: "A self-explanation for a decision has been generated"
+      payload_keys: ["explanation_id", "decision_id"]
+      idempotency: true
+
+    - topic: "aeis.self_explanation.validated"
+      owner: "aeis.self_explanation"
+      description: "A self-explanation has passed validation"
+      payload_keys: ["explanation_id", "valid"]
+      idempotency: true
+
+    - topic: "aeis.self_limitation.policy_registered"
+      owner: "aeis.self_limitation"
+      description: "A self-limitation policy has been registered"
+      payload_keys: ["policy_id", "scope"]
+      idempotency: true
+
+    - topic: "aeis.self_limitation.violation"
+      owner: "aeis.self_limitation"
+      description: "A self-limitation policy violation has been detected"
+      payload_keys: ["policy_id", "violation_detail"]
+      idempotency: true
+
+    - topic: "aeis.self_observation.recorded"
+      owner: "aeis.self_observation"
+      description: "A self-observation metric has been recorded"
+      payload_keys: ["observation_id", "metric", "value"]
+      idempotency: true
+
+    - topic: "aeis.self_preservation.health_checked"
+      owner: "aeis.self_preservation"
+      description: "A system health check has been performed"
+      payload_keys: ["check_id", "status"]
+      idempotency: true
+
+    - topic: "aeis.self_preservation.mode_changed"
+      owner: "aeis.self_preservation"
+      description: "Self-preservation operational mode has changed"
+      payload_keys: ["from_mode", "to_mode"]
+      idempotency: true
+
+    # =================================================================
+    # COGNITIVE (cognitive.*)
+    # =================================================================
+
+    - topic: "code.operation"
+      owner: "cognitive.code_agent"
+      description: "A code generation/edit operation has been executed"
+      payload_keys: ["op_id", "operation", "input_hash", "model_id"]
+      idempotency: true
+
+    - topic: "context.source_added"
+      owner: "cognitive.context_builder"
+      description: "A context source has been added"
+      payload_keys: ["source_id", "source_type"]
+      idempotency: true
+
+    - topic: "context.cleared"
+      owner: "cognitive.context_builder"
+      description: "All context sources have been cleared"
+      payload_keys: ["sources_cleared"]
+      idempotency: true
+
+    - topic: "context.built"
+      owner: "cognitive.context_builder"
+      description: "A context window has been assembled from sources"
+      payload_keys: ["context_id", "token_count"]
+      idempotency: true
+
+    - topic: "evaluation.recorded"
+      owner: "cognitive.evaluator"
+      description: "An evaluation result has been recorded"
+      payload_keys: ["evaluation_id", "score"]
+      idempotency: true
+
+    - topic: "llm.call_completed"
+      owner: "cognitive.llm_adapter"
+      description: "An LLM API call has completed"
+      payload_keys: ["call_id", "model", "tokens_used"]
+      idempotency: true
+
+    - topic: "model.registered"
+      owner: "cognitive.model_router"
+      description: "An LLM model has been registered with the router"
+      payload_keys: ["model_id", "provider"]
+      idempotency: true
+
+    - topic: "routing.decision"
+      owner: "cognitive.model_router"
+      description: "A model routing decision has been made"
+      payload_keys: ["request_id", "model_id", "reason"]
+      idempotency: true
+
+    - topic: "plan.created"
+      owner: "cognitive.planner"
+      description: "A plan has been created"
+      payload_keys: ["plan_id", "goal"]
+      idempotency: true
+
+    - topic: "plan.decomposed"
+      owner: "cognitive.planner"
+      description: "A plan has been decomposed into tasks"
+      payload_keys: ["plan_id", "task_count"]
+      idempotency: true
+
+    - topic: "task.added"
+      owner: "cognitive.planner"
+      description: "A task has been added to a plan"
+      payload_keys: ["task_id", "plan_id"]
+      idempotency: true
+
+    - topic: "task.completed"
+      owner: "cognitive.planner"
+      description: "A task has been completed"
+      payload_keys: ["task_id"]
+      idempotency: true
+
+    - topic: "reasoning.recorded"
+      owner: "cognitive.reasoner"
+      description: "A reasoning trace has been recorded"
+      payload_keys: ["trace_id", "conclusion"]
+      idempotency: true
+
+    # =================================================================
+    # CELLULAR (cellular.*)
+    # =================================================================
+
+    - topic: "cellular.core.started"
+      owner: "cellular.core_network"
+      description: "A simulated core network has been started"
+      payload_keys: ["core_id", "technology"]
+      idempotency: false
+
+    - topic: "cellular.ran.started"
+      owner: "cellular.ran_lab"
+      description: "A simulated RAN stack has been started"
+      payload_keys: ["stack_id", "technology", "frequency", "plmn_mcc", "plmn_mnc"]
+      idempotency: false
+
+    - topic: "cellular.ran.stopped"
+      owner: "cellular.ran_lab"
+      description: "A simulated RAN stack has been stopped"
+      payload_keys: ["stack_id"]
+      idempotency: false
+
+    - topic: "cellular.rf.isolation.checked"
+      owner: "cellular.rf_isolation"
+      description: "RF isolation check has been performed"
+      payload_keys: ["check_id", "frequency", "measurement_dbm", "result"]
+      idempotency: false
+
+    - topic: "cellular.ue.attached"
+      owner: "cellular.ue_emulator"
+      description: "A simulated UE has attached to a RAN and core"
+      payload_keys: ["ue_id", "ran_id", "core_id", "imsi"]
+      idempotency: false
+
+    # =================================================================
+    # DEVICES (device.*)
+    # =================================================================
+
+    - topic: "device.registered"
+      owner: "devices.device_registry"
+      description: "A device has been registered"
+      payload_keys: ["device_id", "device_type"]
+      idempotency: true
+
+    - topic: "device.lifecycle.changed"
+      owner: "devices.device_registry"
+      description: "A device lifecycle state has changed"
+      payload_keys: ["device_id", "from_state", "to_state"]
+      idempotency: true
+
+    - topic: "device.authorized"
+      owner: "devices.device_registry"
+      description: "A device has been authorized for operation"
+      payload_keys: ["device_id"]
+      idempotency: true
+
+    - topic: "device.attached"
+      owner: "devices.device_discovery"
+      description: "A device has been discovered and attached"
+      payload_keys: ["device_id", "transport"]
+      idempotency: true
+
+    - topic: "device.released"
+      owner: "devices.device_discovery"
+      description: "A device has been released from the system"
+      payload_keys: ["device_id"]
+      idempotency: true
+
+    - topic: "device.artifact.deployed"
+      owner: "devices.artifact_deployer"
+      description: "An artifact has been deployed to a device"
+      payload_keys: ["deployment_id", "device_id", "artifact_path"]
+      idempotency: true
+
+    - topic: "device.artifact.rolled_back"
+      owner: "devices.artifact_deployer"
+      description: "An artifact deployment has been rolled back"
+      payload_keys: ["deployment_id", "device_id"]
+      idempotency: true
+
+    - topic: "device.test.completed"
+      owner: "devices.test_harness"
+      description: "A device test has completed"
+      payload_keys: ["test_id", "device_id", "passed"]
+      idempotency: true
+
+    # =================================================================
+    # EFFICIENCY (efficiency.*)
+    # =================================================================
+
+    - topic: "efficiency.code_bloat.measured"
+      owner: "efficiency.code_bloat"
+      description: "Code bloat metrics have been measured"
+      payload_keys: ["measurement_id", "total_lines", "total_bytes"]
+      idempotency: true
+
+    - topic: "efficiency.code_bloat.delta_recorded"
+      owner: "efficiency.code_bloat"
+      description: "A code bloat delta between measurements has been recorded"
+      payload_keys: ["delta_id", "from", "to"]
+      idempotency: true
+
+    - topic: "efficiency.cost_envelope.recorded"
+      owner: "efficiency.cost_envelope"
+      description: "A cost metric has been recorded"
+      payload_keys: ["record_id", "amount", "currency"]
+      idempotency: true
+
+    - topic: "efficiency.cost_envelope.budget_set"
+      owner: "efficiency.cost_envelope"
+      description: "A cost budget has been set"
+      payload_keys: ["budget_id", "limit"]
+      idempotency: true
+
+    - topic: "efficiency.cost_envelope.budget_checked"
+      owner: "efficiency.cost_envelope"
+      description: "A budget check has been performed"
+      payload_keys: ["budget_id", "within_budget"]
+      idempotency: true
+
+    - topic: "efficiency.memory_footprint.snapshotted"
+      owner: "efficiency.memory_footprint"
+      description: "A memory footprint snapshot has been taken"
+      payload_keys: ["snapshot_id", "heap_bytes", "rss_bytes"]
+      idempotency: true
+
+    - topic: "efficiency.memory_footprint.budget_set"
+      owner: "efficiency.memory_footprint"
+      description: "A memory budget has been set"
+      payload_keys: ["budget_id", "limit_bytes"]
+      idempotency: true
+
+    - topic: "efficiency.memory_footprint.budget_checked"
+      owner: "efficiency.memory_footprint"
+      description: "A memory budget check has been performed"
+      payload_keys: ["budget_id", "within_budget"]
+      idempotency: true
+
+    - topic: "efficiency.memory_footprint.leak_check"
+      owner: "efficiency.memory_footprint"
+      description: "A memory leak check has been performed"
+      payload_keys: ["check_id", "leak_detected"]
+      idempotency: true
+
+    - topic: "efficiency.runtime_perf.recorded"
+      owner: "efficiency.runtime_perf"
+      description: "A runtime performance metric has been recorded"
+      payload_keys: ["record_id", "latency_ms", "throughput"]
+      idempotency: true
+
+    - topic: "efficiency.runtime_perf.slo_defined"
+      owner: "efficiency.runtime_perf"
+      description: "An SLO has been defined"
+      payload_keys: ["slo_id", "target_ms"]
+      idempotency: true
+
+    - topic: "efficiency.runtime_perf.slo_checked"
+      owner: "efficiency.runtime_perf"
+      description: "An SLO compliance check has been performed"
+      payload_keys: ["slo_id", "compliant"]
+      idempotency: true
+
+    # =================================================================
+    # EXECUTION (execution.*)
+    # =================================================================
+
+    - topic: "execution.adapter.route_registered"
+      owner: "execution.adapter_bus"
+      description: "An adapter route has been registered"
+      payload_keys: ["route_id", "protocol"]
+      idempotency: true
+
+    - topic: "execution.adapter.route_removed"
+      owner: "execution.adapter_bus"
+      description: "An adapter route has been removed"
+      payload_keys: ["route_id"]
+      idempotency: true
+
+    - topic: "execution.connector.registered"
+      owner: "execution.connector_framework"
+      description: "A connector has been registered"
+      payload_keys: ["connector_id", "protocol"]
+      idempotency: true
+
+    - topic: "execution.connector.status_changed"
+      owner: "execution.connector_framework"
+      description: "A connector status has changed"
+      payload_keys: ["connector_id", "status"]
+      idempotency: true
+
+    - topic: "execution.connector.deregistered"
+      owner: "execution.connector_framework"
+      description: "A connector has been deregistered"
+      payload_keys: ["connector_id"]
+      idempotency: true
+
+    - topic: "execution.job.submitted"
+      owner: "execution.job_runner"
+      description: "A job has been submitted to the runner"
+      payload_keys: ["job_id", "tool_id"]
+      idempotency: true
+
+    - topic: "execution.job.started"
+      owner: "execution.job_runner"
+      description: "A job has started execution"
+      payload_keys: ["job_id"]
+      idempotency: true
+
+    - topic: "execution.job.completed"
+      owner: "execution.job_runner"
+      description: "A job has completed successfully"
+      payload_keys: ["job_id", "exit_code"]
+      idempotency: true
+
+    - topic: "execution.job.failed"
+      owner: "execution.job_runner"
+      description: "A job has failed"
+      payload_keys: ["job_id", "error"]
+      idempotency: true
+
+    - topic: "execution.retry.policy_set"
+      owner: "execution.retry_orchestrator"
+      description: "A retry policy has been set"
+      payload_keys: ["policy_id", "max_retries"]
+      idempotency: true
+
+    - topic: "execution.retry.attempt_recorded"
+      owner: "execution.retry_orchestrator"
+      description: "A retry attempt has been recorded"
+      payload_keys: ["attempt_id", "job_id", "attempt_number"]
+      idempotency: true
+
+    - topic: "execution.retry.circuit_reset"
+      owner: "execution.retry_orchestrator"
+      description: "A circuit breaker has been reset"
+      payload_keys: ["circuit_id"]
+      idempotency: true
+
+    - topic: "execution.tool.registered"
+      owner: "execution.tool_runner"
+      description: "A tool has been registered"
+      payload_keys: ["tool_id", "name"]
+      idempotency: true
+
+    - topic: "execution.tool.executed"
+      owner: "execution.tool_runner"
+      description: "A tool has been executed"
+      payload_keys: ["execution_id", "tool_id", "exit_code"]
+      idempotency: true
+
+    - topic: "execution.workflow.created"
+      owner: "execution.workflow_engine"
+      description: "A workflow has been created"
+      payload_keys: ["workflow_id", "steps"]
+      idempotency: true
+
+    - topic: "execution.workflow.completed"
+      owner: "execution.workflow_engine"
+      description: "A workflow has completed"
+      payload_keys: ["workflow_id", "status"]
+      idempotency: true
+
+    # =================================================================
+    # GOVERNANCE (governance.*)
+    # =================================================================
+
+    - topic: "council.session_opened"
+      owner: "governance.council_workflow"
+      description: "A council voting session has been opened"
+      payload_keys: ["session_id", "proposal_id"]
+      idempotency: true
+
+    - topic: "council.vote_cast"
+      owner: "governance.council_workflow"
+      description: "A vote has been cast in a council session"
+      payload_keys: ["session_id", "voter_id", "vote"]
+      idempotency: true
+
+    - topic: "council.resolved"
+      owner: "governance.council_workflow"
+      description: "A council session has been resolved"
+      payload_keys: ["session_id", "outcome"]
+      idempotency: true
+
+    - topic: "council.human_gate"
+      owner: "governance.council_workflow"
+      description: "A human gate decision has been applied to a council session"
+      payload_keys: ["session_id", "decision", "by"]
+      idempotency: true
+
+    - topic: "decision.proposed"
+      owner: "governance.decision_ladder"
+      description: "A decision proposal has been created"
+      payload_keys: ["proposal_id", "title"]
+      idempotency: true
+
+    - topic: "decision.approved"
+      owner: "governance.decision_ladder"
+      description: "A decision proposal has been approved"
+      payload_keys: ["proposal_id", "approved_by"]
+      idempotency: true
+
+    - topic: "decision.rejected"
+      owner: "governance.decision_ladder"
+      description: "A decision proposal has been rejected"
+      payload_keys: ["proposal_id", "rejected_by", "reason"]
+      idempotency: true
+
+    - topic: "decision.executed"
+      owner: "governance.decision_ladder"
+      description: "A decision proposal has been executed"
+      payload_keys: ["proposal_id"]
+      idempotency: true
+
+    - topic: "evidence.pack_created"
+      owner: "governance.evidence_workflow"
+      description: "An evidence pack has been created for a proposal"
+      payload_keys: ["pack_id", "proposal_id"]
+      idempotency: true
+
+    - topic: "evidence.pack_submitted"
+      owner: "governance.evidence_workflow"
+      description: "An evidence pack has been submitted for review"
+      payload_keys: ["pack_id"]
+      idempotency: true
+
+    - topic: "gate.registered"
+      owner: "governance.gates_registry"
+      description: "A quality gate has been registered"
+      payload_keys: ["gate_id", "name"]
+      idempotency: true
+
+    - topic: "gate.evaluated"
+      owner: "governance.gates_registry"
+      description: "A quality gate evaluation has been performed"
+      payload_keys: ["gate_id", "result"]
+      idempotency: true
+
+    - topic: "policy.registered"
+      owner: "governance.policy_registry"
+      description: "A governance policy has been registered"
+      payload_keys: ["policy_id", "name"]
+      idempotency: true
+
+    - topic: "policy.updated"
+      owner: "governance.policy_registry"
+      description: "A governance policy has been updated"
+      payload_keys: ["policy_id"]
+      idempotency: true
+
+    - topic: "policy.disabled"
+      owner: "governance.policy_registry"
+      description: "A governance policy has been disabled"
+      payload_keys: ["policy_id"]
+      idempotency: true
+
+    - topic: "policy.enabled"
+      owner: "governance.policy_registry"
+      description: "A governance policy has been enabled"
+      payload_keys: ["policy_id"]
+      idempotency: true
+
+    - topic: "policy.applied"
+      owner: "governance.policy_registry"
+      description: "A governance policy has been applied"
+      payload_keys: ["policy_id", "target"]
+      idempotency: true
+
+    - topic: "role.registered"
+      owner: "governance.roles"
+      description: "An agent role has been registered"
+      payload_keys: ["agent_id", "department"]
+      idempotency: true
+
+    - topic: "role.deregistered"
+      owner: "governance.roles"
+      description: "An agent role has been deregistered"
+      payload_keys: ["agent_id"]
+      idempotency: true
+
+    - topic: "validation.rule_registered"
+      owner: "governance.self_explanation_validator"
+      description: "A validation rule has been registered"
+      payload_keys: ["rule_id", "description"]
+      idempotency: true
+
+    - topic: "validation.completed"
+      owner: "governance.self_explanation_validator"
+      description: "A validation run has completed"
+      payload_keys: ["validation_id", "passed"]
+      idempotency: true
+
+    # =================================================================
+    # MEMORY (memory.*)
+    # =================================================================
+
+    - topic: "compact.compacted"
+      owner: "memory.compact_layer"
+      description: "Memory has been compacted"
+      payload_keys: ["compaction_id", "bytes_freed"]
+      idempotency: true
+
+    - topic: "compact.recorded"
+      owner: "memory.compact_layer"
+      description: "A compaction record has been stored"
+      payload_keys: ["record_id", "before_bytes", "after_bytes"]
+      idempotency: true
+
+    - topic: "evidence.stored"
+      owner: "memory.evidence_store"
+      description: "Evidence has been stored in the evidence store"
+      payload_keys: ["evidence_id", "category"]
+      idempotency: true
+
+    - topic: "evidence.deleted"
+      owner: "memory.evidence_store"
+      description: "Evidence has been deleted from the evidence store"
+      payload_keys: ["evidence_id"]
+      idempotency: true
+
+    - topic: "indexer.section_indexed"
+      owner: "memory.indexer"
+      description: "A knowledge section has been indexed"
+      payload_keys: ["section_id"]
+      idempotency: true
+
+    - topic: "indexer.section_removed"
+      owner: "memory.indexer"
+      description: "A knowledge section has been removed from the index"
+      payload_keys: ["section_id"]
+      idempotency: true
+
+    - topic: "kanon.loaded"
+      owner: "memory.kanon_access"
+      description: "Kanon knowledge has been loaded"
+      payload_keys: ["sections_loaded"]
+      idempotency: true
+
+    - topic: "kanon.section_stored"
+      owner: "memory.kanon_access"
+      description: "A Kanon section has been stored"
+      payload_keys: ["section_id"]
+      idempotency: true
+
+    - topic: "kb.source_registered"
+      owner: "memory.kb_adapter"
+      description: "A knowledge base source has been registered"
+      payload_keys: ["source_id", "source_type"]
+      idempotency: true
+
+    - topic: "kb.queried"
+      owner: "memory.kb_adapter"
+      description: "A knowledge base query has been executed"
+      payload_keys: ["query_id", "results_count"]
+      idempotency: true
+
+    - topic: "kb.indexed"
+      owner: "memory.kb_adapter"
+      description: "Knowledge base content has been indexed"
+      payload_keys: ["source_id", "documents_indexed"]
+      idempotency: true
+
+    - topic: "retrieval.retrieve"
+      owner: "memory.retrieval"
+      description: "A memory retrieval operation has been performed"
+      payload_keys: ["query_id", "results"]
+      idempotency: true
+
+    - topic: "retrieval.get_context"
+      owner: "memory.retrieval"
+      description: "Context has been retrieved from memory"
+      payload_keys: ["context_id", "token_count"]
+      idempotency: true
+
+    - topic: "self_model.initialized"
+      owner: "memory.self_model_store"
+      description: "The self-model has been initialized"
+      payload_keys: ["model_id"]
+      idempotency: true
+
+    - topic: "self_model.updated"
+      owner: "memory.self_model_store"
+      description: "The self-model has been updated"
+      payload_keys: ["model_id", "fields_changed"]
+      idempotency: true
+
+    - topic: "self_model.snapshotted"
+      owner: "memory.self_model_store"
+      description: "A self-model snapshot has been taken"
+      payload_keys: ["snapshot_id", "model_id"]
+      idempotency: true
+
+    # =================================================================
+    # QUALITY (quality.*)
+    # =================================================================
+
+    - topic: "golden_set.registered"
+      owner: "quality.golden_set_registry"
+      description: "A golden test set has been registered"
+      payload_keys: ["set_id", "name"]
+      idempotency: true
+
+    - topic: "golden_set.tested"
+      owner: "quality.golden_set_registry"
+      description: "A golden set test run has been performed"
+      payload_keys: ["set_id", "passed", "total"]
+      idempotency: true
+
+    - topic: "golden_set.deactivated"
+      owner: "quality.golden_set_registry"
+      description: "A golden test set has been deactivated"
+      payload_keys: ["set_id"]
+      idempotency: true
+
+    - topic: "regression.baseline_set"
+      owner: "quality.regression_detector"
+      description: "A regression baseline has been set"
+      payload_keys: ["baseline_id", "metrics"]
+      idempotency: true
+
+    - topic: "regression.detected"
+      owner: "quality.regression_detector"
+      description: "A regression has been detected"
+      payload_keys: ["alert_id", "metric", "deviation"]
+      idempotency: true
+
+    - topic: "regression.alert_acknowledged"
+      owner: "quality.regression_detector"
+      description: "A regression alert has been acknowledged"
+      payload_keys: ["alert_id"]
+      idempotency: true
+
+    - topic: "test_suite.created"
+      owner: "quality.test_runner"
+      description: "A test suite has been created"
+      payload_keys: ["suite_id", "case_count"]
+      idempotency: true
+
+    - topic: "test_suite.run_completed"
+      owner: "quality.test_runner"
+      description: "A test suite run has completed"
+      payload_keys: ["suite_id", "passed", "failed"]
+      idempotency: true
+
+    # =================================================================
+    # REBUILD (rebuild.*)
+    # =================================================================
+
+    - topic: "rebuild.cft.suite_created"
+      owner: "rebuild.cft_runner"
+      description: "A rebuild CFT (Contract Fitness Test) suite has been created"
+      payload_keys: ["suite_id", "test_count"]
+      idempotency: true
+
+    - topic: "rebuild.cft.test_completed"
+      owner: "rebuild.cft_runner"
+      description: "A CFT test has completed"
+      payload_keys: ["test_id", "passed"]
+      idempotency: true
+
+    - topic: "rebuild.cutover.plan_created"
+      owner: "rebuild.cutover_controller"
+      description: "A cutover plan has been created"
+      payload_keys: ["plan_id", "steps"]
+      idempotency: true
+
+    - topic: "rebuild.cutover.executed"
+      owner: "rebuild.cutover_controller"
+      description: "A cutover has been executed"
+      payload_keys: ["plan_id", "success"]
+      idempotency: true
+
+    - topic: "rebuild.cutover.rolled_back"
+      owner: "rebuild.cutover_controller"
+      description: "A cutover has been rolled back"
+      payload_keys: ["plan_id"]
+      idempotency: true
+
+    - topic: "rebuild.lpw.recorded"
+      owner: "rebuild.lpw_manager"
+      description: "A Last-Working-Point (LWP) state has been recorded"
+      payload_keys: ["lpw_id", "snapshot_hash"]
+      idempotency: true
+
+    - topic: "rebuild.lpw.snapshot_created"
+      owner: "rebuild.lpw_manager"
+      description: "An LPW snapshot has been created"
+      payload_keys: ["snapshot_id"]
+      idempotency: true
+
+    - topic: "rebuild.lpw.restored"
+      owner: "rebuild.lpw_manager"
+      description: "An LPW snapshot has been restored"
+      payload_keys: ["snapshot_id"]
+      idempotency: true
+
+    - topic: "rebuild.orchestrator.plan_created"
+      owner: "rebuild.orchestrator"
+      description: "A rebuild plan has been created"
+      payload_keys: ["plan_id", "module_id"]
+      idempotency: true
+
+    - topic: "rebuild.orchestrator.step_added"
+      owner: "rebuild.orchestrator"
+      description: "A step has been added to a rebuild plan"
+      payload_keys: ["plan_id", "step_id"]
+      idempotency: true
+
+    - topic: "rebuild.orchestrator.plan_executed"
+      owner: "rebuild.orchestrator"
+      description: "A rebuild plan has been executed"
+      payload_keys: ["plan_id", "success"]
+      idempotency: true
+
+    # =================================================================
+    # SDR (sdr.*)
+    # =================================================================
+
+    - topic: "sdr.analysis.completed"
+      owner: "sdr.signal_analyzer"
+      description: "An SDR signal analysis has completed"
+      payload_keys: ["analysis_id", "signal_type"]
+      idempotency: true
+
+    - topic: "sdr.capture.created"
+      owner: "sdr.capture_orchestrator"
+      description: "An SDR capture session has been created"
+      payload_keys: ["capture_id", "frequency", "sample_rate"]
+      idempotency: true
+
+    - topic: "sdr.capture.started"
+      owner: "sdr.capture_orchestrator"
+      description: "An SDR capture has started"
+      payload_keys: ["capture_id"]
+      idempotency: true
+
+    - topic: "sdr.capture.completed"
+      owner: "sdr.capture_orchestrator"
+      description: "An SDR capture has completed"
+      payload_keys: ["capture_id"]
+      idempotency: true
+
+    - topic: "sdr.device.registered"
+      owner: "sdr.sdr_gateway"
+      description: "An SDR device has been registered"
+      payload_keys: ["sdr_id", "device_type"]
+      idempotency: true
+
+    - topic: "sdr.device.status_changed"
+      owner: "sdr.sdr_gateway"
+      description: "An SDR device status has changed"
+      payload_keys: ["sdr_id", "status"]
+      idempotency: true
+
+    - topic: "sdr.protocol.decoded"
+      owner: "sdr.protocol_decoder"
+      description: "A signal protocol has been decoded"
+      payload_keys: ["decode_id", "protocol"]
+      idempotency: true
+
+    - topic: "sdr.rf.policy_added"
+      owner: "sdr.rf_safety_governor"
+      description: "An RF safety policy has been added"
+      payload_keys: ["policy_id", "max_power_dbm"]
+      idempotency: true
+
+    - topic: "sdr.rf.tx"
+      owner: "sdr.rf_safety_governor"
+      description: "An RF transmission has been authorized"
+      payload_keys: ["tx_id", "frequency", "power_dbm"]
+      idempotency: true
+
+    - topic: "sdr.rf.tx_enabled"
+      owner: "sdr.rf_safety_governor"
+      description: "RF transmission has been enabled on a device"
+      payload_keys: ["sdr_id", "enabled"]
+      idempotency: true
+
+    # =================================================================
+    # SECURITY (security.*)
+    # =================================================================
+
+    - topic: "security.audit.logged"
+      owner: "security.audit_sink"
+      description: "An audit event has been logged"
+      payload_keys: ["audit_id", "action", "actor"]
+      idempotency: true
+
+    - topic: "security.auth.failed"
+      owner: "security.auth_provider"
+      description: "An authentication attempt has failed"
+      payload_keys: ["username"]
+      idempotency: false
+
+    - topic: "security.auth.success"
+      owner: "security.auth_provider"
+      description: "An authentication attempt has succeeded"
+      payload_keys: ["user_id"]
+      idempotency: false
+
+    - topic: "security.bootstrap.completed"
+      owner: "security.bootstrap_init"
+      description: "Security bootstrap initialization has completed"
+      payload_keys: ["initialized_components"]
+      idempotency: true
+
+    - topic: "security.bootstrap.reset"
+      owner: "security.bootstrap_init"
+      description: "Security bootstrap has been reset"
+      payload_keys: []
+      idempotency: true
+
+    - topic: "security.guard.checked"
+      owner: "security.execution_guard"
+      description: "An execution guard check has been performed"
+      payload_keys: ["check_id", "allowed"]
+      idempotency: true
+
+    - topic: "security.guard.rule_added"
+      owner: "security.execution_guard"
+      description: "An execution guard rule has been added"
+      payload_keys: ["rule_id", "pattern"]
+      idempotency: true
+
+    - topic: "security.phantom.checked"
+      owner: "security.phantom_wrapper"
+      description: "A phantom token check has been performed"
+      payload_keys: ["check_id", "valid"]
+      idempotency: true
+
+    - topic: "security.phantom.rule_registered"
+      owner: "security.phantom_wrapper"
+      description: "A phantom token rule has been registered"
+      payload_keys: ["rule_id"]
+      idempotency: true
+
+    - topic: "security.policy.created"
+      owner: "security.policy_engine"
+      description: "A security policy has been created"
+      payload_keys: ["policy_id", "effect"]
+      idempotency: true
+
+    - topic: "security.policy.evaluated"
+      owner: "security.policy_engine"
+      description: "A security policy has been evaluated"
+      payload_keys: ["evaluation_id", "policy_id", "decision"]
+      idempotency: true
+
+    - topic: "security.secret.deleted"
+      owner: "security.secret_provider"
+      description: "A secret has been deleted"
+      payload_keys: ["secret_id"]
+      idempotency: true
+
+    - topic: "security.secret.rotated"
+      owner: "security.secret_provider"
+      description: "A secret has been rotated"
+      payload_keys: ["secret_id"]
+      idempotency: true
+
+    - topic: "security.secret.stored"
+      owner: "security.secret_provider"
+      description: "A secret has been stored"
+      payload_keys: ["secret_id", "key"]
+      idempotency: true
+
+    - topic: "security.session.cleanup"
+      owner: "security.session_broker"
+      description: "Expired sessions have been cleaned up"
+      payload_keys: ["removed"]
+      idempotency: true
+
+    - topic: "security.session.created"
+      owner: "security.session_broker, security.auth_provider"
+      description: "A session has been created (emitted by both session_broker and auth_provider)"
+      payload_keys: ["session_id", "user_id"]
+      idempotency: true
+
+    - topic: "security.session.destroyed"
+      owner: "security.session_broker"
+      description: "A session has been destroyed"
+      payload_keys: ["session_id"]
+      idempotency: true
+
+    - topic: "security.user.created"
+      owner: "security.auth_provider"
+      description: "A user has been created"
+      payload_keys: ["user_id", "username"]
+      idempotency: true
+
+    # =================================================================
+    # SKILLS (skill.*)
+    # =================================================================
+
+    - topic: "skill.demand_signal.analyzed"
+      owner: "skills.demand_signal"
+      description: "Skill demand signal analysis has been performed"
+      payload_keys: ["analysis_id", "top_skills"]
+      idempotency: true
+
+    - topic: "skill.demand_signal.recorded"
+      owner: "skills.demand_signal"
+      description: "A skill demand signal has been recorded"
+      payload_keys: ["signal_id", "skill_name", "source"]
+      idempotency: true
+
+    - topic: "skill.executor.executed"
+      owner: "skills.executor"
+      description: "A skill has been executed"
+      payload_keys: ["execution_id", "skill_id", "success"]
+      idempotency: true
+
+    - topic: "skill.lifecycle.changed"
+      owner: "skills.registry"
+      description: "A skill lifecycle state has changed (activated, deprecated, removed)"
+      payload_keys: ["skill_id", "transition"]
+      idempotency: true
+
+    - topic: "skill.registry.registered"
+      owner: "skills.registry"
+      description: "A skill has been registered in the skill registry"
+      payload_keys: ["skill_id", "name"]
+      idempotency: true
+
+    # =================================================================
+    # SURFACE (surface.*)
+    # =================================================================
+
+    - topic: "surface.console_api.registered"
+      owner: "surface.console_api"
+      description: "A console API endpoint has been registered"
+      payload_keys: ["endpoint_id", "method", "path"]
+      idempotency: true
+
+    - topic: "surface.console_api.request_recorded"
+      owner: "surface.console_api"
+      description: "A console API request has been recorded"
+      payload_keys: ["request_id", "method", "path", "status"]
+      idempotency: true
+
+    - topic: "surface.console_ui.component_registered"
+      owner: "surface.console_ui"
+      description: "A console UI component has been registered"
+      payload_keys: ["component_id", "component_type"]
+      idempotency: true
+
+    - topic: "surface.console_ui.layout_created"
+      owner: "surface.console_ui"
+      description: "A console UI layout has been created"
+      payload_keys: ["layout_id", "regions"]
+      idempotency: true
+
+    - topic: "surface.ws_gateway.broadcast"
+      owner: "surface.ws_gateway"
+      description: "A WebSocket broadcast has been sent"
+      payload_keys: ["channel", "subscriber_count"]
+      idempotency: true
+
+    - topic: "surface.ws_gateway.connected"
+      owner: "surface.ws_gateway"
+      description: "A WebSocket client has connected"
+      payload_keys: ["client_id"]
+      idempotency: false
+
+    - topic: "surface.ws_gateway.disconnected"
+      owner: "surface.ws_gateway"
+      description: "A WebSocket client has disconnected"
+      payload_keys: ["client_id"]
+      idempotency: false
+
+    - topic: "surface.ws_gateway.message_sent"
+      owner: "surface.ws_gateway"
+      description: "A WebSocket message has been sent to a client"
+      payload_keys: ["client_id", "message_type"]
+      idempotency: true
+
+    - topic: "surface.ws_gateway.subscribed"
+      owner: "surface.ws_gateway"
+      description: "A WebSocket client has subscribed to a channel"
+      payload_keys: ["client_id", "channel"]
+      idempotency: true
+
+    - topic: "security.session.revoked"
+      owner: "security.auth_provider"
+      description: "A session has been revoked by the auth provider"
+      payload_keys: ["session_id"]
+      idempotency: true

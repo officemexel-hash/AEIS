@@ -1,0 +1,118 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_release_decision
+  name_pl: Decyzja releasowa W14
+  name_en: W14 Release Decision
+  version: v1.0
+  description_pl: 'Końcowa decyzja councilu i Human Gate dla promocji lub rollbacku.
+
+    Wynik i ticket HG są dedykowane do audytu, a podpisy
+
+    oraz plan rollbacku pozostają w rozszerzeniu JSONB.'
+  description_en: 'Final council and Human Gate decision for promotion or rollback.
+
+    Outcome and HG ticket are dedicated for auditability,
+
+    while signatures and rollback plans remain in the JSONB extension.'
+  tags:
+  - w14
+  - testing
+  - release_decision
+  d_level: D3
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: hg_ticket
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: council_session
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  - name: outcome
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - approved
+    - rejected
+    - deferred
+    - rollback
+    default: deferred
+  - name: signature_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: release_candidate
+    target: w14_release_candidate
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: charter
+    target: w14_test_charter
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - hg_ticket
+    - outcome
+    - signature_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: []
+  actions:
+  - id: seal_release_decision
+    description_pl: Pieczętuje końcową decyzję releasową do wykonania produkcyjnego.
+    description_en: Seals the final release decision for production execution.
+    d_level: D5
+    hg_required: true
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.release_decision.sealed
+  - id: defer_release_decision
+    description_pl: Odracza decyzję releasową do czasu uzupełnienia dowodów.
+    description_en: Defers the release decision until evidence is completed.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: outcome
+      to: deferred
+    - type: emit_event
+      topic: aeis.w14.release_decision.deferred

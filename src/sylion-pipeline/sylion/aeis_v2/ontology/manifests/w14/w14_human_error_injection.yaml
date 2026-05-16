@@ -1,0 +1,161 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_human_error_injection
+  name_pl: Wstrzyknięcie błędu ludzkiego W14
+  name_en: W14 Human Error Injection
+  version: v1.0
+  description_pl: 'Skryptowany wzorzec błędu operatora używany w warstwie L4.
+
+    Klasa błędu, akcja docelowa i D-level są dedykowane, a oczekiwane reakcje
+
+    systemu pozostają w rozszerzeniu.'
+  description_en: 'Scripted operator error pattern used in the L4 layer.
+
+    Error class, target action, and D-levels are dedicated,
+
+    while expected system responses remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - human_error
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: error_class
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - wrong_click
+    - gate_skip
+    - premature_action
+    - stale_data_action
+    - mock_as_live
+    - bypass_attempt
+    - typo_payload
+    - multi_tab_confusion
+    - panic_cancel
+    - wrong_context
+    - permission_overreach
+    - timeout_abandonment
+    - authority_abuse
+    - cognitive_overload
+    - cargo_cult_approval
+    - confirmation_bias
+    - anchor_mismatch
+    - sunk_cost_trap
+    - halo_effect
+    - time_pressure_shortcut
+    - authority_deference
+    default: wrong_click
+  - name: target_action
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: timing
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: context_label
+    type: text
+    nullable: false
+    indexed: false
+    searchable: true
+    unique: false
+  - name: severity_if_allowed
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - D0
+    - D1
+    - D2
+    - D3
+    - D4
+    - D5
+    default: D2
+  - name: simulated_target_d_level
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - D0
+    - D1
+    - D2
+    - D3
+    - D4
+    - D5
+    default: D2
+  - name: action_d_level
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - D0
+    - D1
+    - D2
+    - D3
+    - D4
+    - D5
+    default: D2
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations: []
+  audit:
+    enabled: true
+    track_fields:
+    - error_class
+    - target_action
+    - severity_if_allowed
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - target_action
+    - context_label
+  actions:
+  - id: activate_human_error_injection
+    description_pl: Włącza wzorzec błędu do bieżącej sesji symulacyjnej.
+    description_en: Activates the error pattern for the current simulation session.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_error_injection.activated
+  - id: retire_human_error_injection
+    description_pl: Wycofuje wzorzec z biblioteki aktywnych testów.
+    description_en: Retires the pattern from the active testing library.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_error_injection.retired

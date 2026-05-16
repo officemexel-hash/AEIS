@@ -1,0 +1,271 @@
+// SYLION AEIS -- Class G: Efficiency (4 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: CodeBloatTracker, RuntimePerfTracker, MemoryFootprintTracker, CostEnvelopeTracker
+
+syntax = "proto3";
+
+package sylion.efficiency.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/efficiency/v1;efficiencyv1";
+option java_package = "com.sylion.aeis.efficiency.v1";
+
+// =====================================================================
+// G1: Code Bloat Tracker Service
+// =====================================================================
+
+service CodeBloatTrackerService {
+  rpc Measure(MeasureRequest) returns (MeasureResponse);
+  rpc RecordDelta(RecordDeltaRequest) returns (sylion.common.v1.Status);
+  rpc GetModule(GetModuleRequest) returns (ModuleMeasurement);
+  rpc ListModules(sylion.common.v1.Empty) returns (ModuleMeasurementList);
+  rpc GetHistory(GetHistoryRequest) returns (MeasurementHistoryList);
+  rpc IsWithinBudget(GetModuleRequest) returns (BudgetCheckResponse);
+}
+
+message MeasureRequest {
+  string module_id = 1;
+  int32  lines     = 2;
+  int32  functions = 3;
+  int32  imports   = 4;
+}
+
+message MeasureResponse {
+  string module_id = 1;
+  double bloat_ratio = 2;
+  string status  = 3;
+}
+
+message RecordDeltaRequest {
+  string module_id = 1;
+  int32  delta_lines = 2;
+  string description = 3;
+}
+
+message GetModuleRequest {
+  string module_id = 1;
+}
+
+message ModuleMeasurement {
+  string module_id = 1;
+  int32  lines     = 2;
+  int32  functions = 3;
+  int32  imports   = 4;
+  double bloat_ratio = 5;
+  double measured_at = 6;
+}
+
+message ModuleMeasurementList {
+  repeated ModuleMeasurement modules = 1;
+}
+
+message GetHistoryRequest {
+  string module_id = 1;
+  int32  limit     = 2;
+}
+
+message MeasurementHistoryList {
+  repeated ModuleMeasurement measurements = 1;
+}
+
+message BudgetCheckResponse {
+  string module_id   = 1;
+  bool   within_budget = 2;
+  double bloat_ratio = 3;
+  double budget_limit = 4;
+}
+
+// =====================================================================
+// G2: Runtime Perf Tracker Service
+// =====================================================================
+
+service RuntimePerfTrackerService {
+  rpc Record(RecordPerfRequest) returns (sylion.common.v1.Status);
+  rpc DefineSLO(DefineSLORequest) returns (SLOSummary);
+  rpc CheckSLO(CheckSLORequest) returns (SLOStatus);
+  rpc GetMeasurements(GetMeasurementsRequest) returns (PerfMeasurementList);
+  rpc ListSLOs(sylion.common.v1.Empty) returns (SLOList);
+  rpc GetStats(sylion.common.v1.Empty) returns (PerfStats);
+}
+
+message RecordPerfRequest {
+  string module_id = 1;
+  string metric    = 2;
+  double value     = 3;
+  string unit      = 4;
+}
+
+message DefineSLORequest {
+  string slo_id    = 1;
+  string name      = 2;
+  string metric    = 3;
+  double threshold = 4;
+  string comparison = 5;  // lt|gt|lte|gte
+}
+
+message SLOSummary {
+  string slo_id = 1;
+  string name   = 2;
+}
+
+message CheckSLORequest {
+  string slo_id = 1;
+}
+
+message SLOStatus {
+  string slo_id    = 1;
+  bool   met       = 2;
+  double current   = 3;
+  double threshold = 4;
+}
+
+message GetMeasurementsRequest {
+  string module_id = 1;
+  string metric    = 2;
+  int32  limit     = 3;
+}
+
+message PerfMeasurement {
+  string measurement_id = 1;
+  string module_id      = 2;
+  string metric         = 3;
+  double value          = 4;
+  string unit           = 5;
+  double timestamp      = 6;
+}
+
+message PerfMeasurementList {
+  repeated PerfMeasurement measurements = 1;
+}
+
+message SLOList {
+  repeated SLOMessage slos = 1;
+}
+
+message SLOMessage {
+  string slo_id    = 1;
+  string name      = 2;
+  string metric    = 3;
+  double threshold = 4;
+}
+
+message PerfStats {
+  int32 total_measurements = 1;
+  int32 slos_met           = 2;
+  int32 slos_violated      = 3;
+}
+
+// =====================================================================
+// G3: Memory Footprint Tracker Service
+// =====================================================================
+
+service MemoryFootprintTrackerService {
+  rpc Snapshot(SnapshotRequest) returns (MemorySnapshot);
+  rpc SetBudget(SetBudgetRequest) returns (sylion.common.v1.Status);
+  rpc CheckBudget(sylion.common.v1.Empty) returns (BudgetStatus);
+  rpc GetSnapshots(int32 limit) returns (MemorySnapshotList);
+  rpc GetCurrent(sylion.common.v1.Empty) returns (MemorySnapshot);
+  rpc DetectLeaks(sylion.common.v1.Empty) returns (LeakDetectionResponse);
+}
+
+message SnapshotRequest {
+  string module_id = 1;
+  int64  heap_bytes = 2;
+  int64  stack_bytes = 3;
+  int64  total_bytes = 4;
+}
+
+message MemorySnapshot {
+  string snapshot_id = 1;
+  string module_id   = 2;
+  int64  heap_bytes  = 3;
+  int64  stack_bytes = 4;
+  int64  total_bytes = 5;
+  double timestamp   = 6;
+}
+
+message SetBudgetRequest {
+  int64 max_bytes = 1;
+}
+
+message BudgetStatus {
+  bool   within_budget = 1;
+  int64  current_bytes = 2;
+  int64  budget_bytes  = 3;
+  double usage_pct     = 4;
+}
+
+message MemorySnapshotList {
+  repeated MemorySnapshot snapshots = 1;
+}
+
+message LeakDetectionResponse {
+  bool   leak_detected = 1;
+  repeated string suspected_modules = 2;
+  double growth_rate  = 3;
+}
+
+// =====================================================================
+// G4: Cost Envelope Tracker Service
+// =====================================================================
+
+service CostEnvelopeTrackerService {
+  rpc Record(RecordCostRequest) returns (sylion.common.v1.Status);
+  rpc SetBudget(SetCostBudgetRequest) returns (sylion.common.v1.Status);
+  rpc CheckBudget(sylion.common.v1.Empty) returns (CostBudgetStatus);
+  rpc GetDailySpend(sylion.common.v1.Empty) returns (DailySpendResponse);
+  rpc GetMonthlySpend(sylion.common.v1.Empty) returns (MonthlySpendResponse);
+  rpc GetRecords(GetCostRecordsRequest) returns (CostRecordList);
+  rpc IsWithinBudget(sylion.common.v1.Empty) returns (CostBudgetStatus);
+}
+
+message RecordCostRequest {
+  string category = 1;
+  double amount   = 2;
+  string currency = 3;
+  string description = 4;
+}
+
+message SetCostBudgetRequest {
+  double monthly_limit = 1;
+  string currency      = 2;
+}
+
+message CostBudgetStatus {
+  bool   within_budget  = 1;
+  double current_spend  = 2;
+  double budget_limit   = 3;
+  double remaining      = 4;
+}
+
+message DailySpendResponse {
+  string date          = 1;
+  double total_spend   = 2;
+  map<string, double> by_category = 3;
+}
+
+message MonthlySpendResponse {
+  string month         = 1;
+  double total_spend   = 2;
+  map<string, double> by_category = 3;
+}
+
+message GetCostRecordsRequest {
+  string category = 1;
+  int32  limit    = 2;
+}
+
+message CostRecord {
+  string record_id  = 1;
+  string category   = 2;
+  double amount     = 3;
+  string currency   = 4;
+  string description = 5;
+  double timestamp  = 6;
+}
+
+message CostRecordList {
+  repeated CostRecord records = 1;
+}

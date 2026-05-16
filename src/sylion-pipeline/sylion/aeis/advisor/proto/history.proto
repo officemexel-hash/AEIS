@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.history.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "sylion/aeis/advisor/history/v1;advisorhistoryv1";
+
+// History service contract. The Python service (history/service.py) implements
+// this surface; codegen stubs land in `_generated/history_pb2*.py` once
+// `python -m grpc_tools.protoc` runs over this folder.
+//
+// Architecture refs:
+//   - master_spec §4 (lifecycle 14-16: history records action; soft/hard learning)
+//   - master_spec §9.3 (3D preference matrix + soft learning rules)
+//   - 02_postgresql_schema.sql (advisor_history.card_actions, learning_signals)
+//   - 03_module_manifests.md §9 (history manifest spec)
+//   - 07_event_taxonomy.md §4.9 (history events)
+
+service HistoryService {
+  rpc RecordAction(RecordActionRequest) returns (RecordActionResponse);
+  rpc GetActionsForCard(GetActionsForCardRequest) returns (GetActionsForCardResponse);
+  rpc GetActionsForOperator(GetActionsForOperatorRequest) returns (GetActionsForOperatorResponse);
+  rpc ComputeHistoryMatch(ComputeHistoryMatchRequest) returns (ComputeHistoryMatchResponse);
+  rpc ComputeHistoricalAcceptanceRate(ComputeHistoricalAcceptanceRateRequest) returns (ComputeHistoricalAcceptanceRateResponse);
+  rpc GetLearningSignals(GetLearningSignalsRequest) returns (GetLearningSignalsResponse);
+  rpc ApplyPendingLearning(ApplyPendingLearningRequest) returns (ApplyPendingLearningResponse);
+  rpc ListPendingHardChangeRequests(ListPendingHardChangeRequestsRequest) returns (ListPendingHardChangeRequestsResponse);
+  rpc ConfirmHardChange(ConfirmHardChangeRequest) returns (ConfirmHardChangeResponse);
+  rpc RejectHardChange(RejectHardChangeRequest) returns (RejectHardChangeResponse);
+}
+
+message CardAction {
+  string action_event_id = 1;
+  string card_id = 2;
+  string operator_id = 3;
+  string action = 4;                          // CARD_ACTIONS enum (string-typed for JSON friendliness)
+  string operator_note = 5;
+  string modified_recommendation = 6;
+  google.protobuf.Struct context = 7;
+  string created_human_gate_ticket_id = 8;
+  string created_masterplan_proposal_id = 9;
+  string saved_preference_id = 10;
+  bool triggered_soft_learning = 11;
+  bool triggered_hard_learning_request = 12;
+  google.protobuf.Timestamp performed_at = 13;
+}
+
+message LearningSignal {
+  string signal_id = 1;
+  string operator_id = 2;
+  string signal_type = 3;                      // 'card_acceptance' | 'card_rejection' | 'preference_save' | 'pattern_match' | 'dont_learn_flag'
+  string preference_key = 4;
+  string context_project_type = 5;
+  string context_project_domain = 6;
+  double signal_strength = 7;                  // 0.0–1.0
+  string source_card_id = 8;
+  string source_action_event_id = 9;
+  bool applied_to_preference = 10;
+  google.protobuf.Timestamp applied_at = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message RecordActionRequest {
+  string card_id = 1;
+  string operator_id = 2;
+  string action = 3;
+  string operator_note = 4;
+  string modified_recommendation = 5;
+  google.protobuf.Struct context = 6;
+}
+
+message RecordActionResponse {
+  string action_event_id = 1;
+  bool triggered_soft_learning = 2;
+  bool triggered_hard_learning_request = 3;
+  bool skip_learning = 4;
+}
+
+message GetActionsForCardRequest { string card_id = 1; }
+message GetActionsForCardResponse { repeated CardAction actions = 1; }
+
+message GetActionsForOperatorRequest {
+  string operator_id = 1;
+  int32 limit = 2;
+}
+message GetActionsForOperatorResponse { repeated CardAction actions = 1; }
+
+message ComputeHistoryMatchRequest {
+  string operator_id = 1;
+  string recommendation_type = 2;
+  string project_type = 3;
+  string project_domain = 4;
+}
+
+message ComputeHistoryMatchResponse {
+  int32 similar_accepted_count = 1;
+  int32 similar_rejected_count = 2;
+  double similar_acceptance_rate = 3;
+}
+
+message ComputeHistoricalAcceptanceRateRequest {
+  string operator_id = 1;
+  string recommendation_type = 2;
+}
+
+message ComputeHistoricalAcceptanceRateResponse {
+  int32 operator_accepted_count = 1;
+  int32 operator_rejected_count = 2;
+  double operator_acceptance_rate_for_type = 3;
+}
+
+message GetLearningSignalsRequest {
+  string operator_id = 1;
+  bool only_unapplied = 2;
+}
+message GetLearningSignalsResponse { repeated LearningSignal signals = 1; }
+
+message ApplyPendingLearningRequest { string operator_id = 1; }
+message ApplyPendingLearningResponse { int32 applied_count = 1; }
+
+message ListPendingHardChangeRequestsRequest { string operator_id = 1; }
+message ListPendingHardChangeRequestsResponse { repeated LearningSignal signals = 1; }
+
+message ConfirmHardChangeRequest {
+  string signal_id = 1;
+  string operator_id = 2;
+}
+message ConfirmHardChangeResponse { bool ok = 1; }
+
+message RejectHardChangeRequest {
+  string signal_id = 1;
+  string operator_id = 2;
+}
+message RejectHardChangeResponse { bool ok = 1; }

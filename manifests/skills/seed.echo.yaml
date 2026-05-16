@@ -1,0 +1,28 @@
+skill_id: seed.echo
+name: seed.echo
+version: 1.0.0
+description: Echo the provided text back to the caller.
+category: skill
+domain: seed
+owner_role: operator
+entry_point: sylion.skills.catalog:seed_echo_handler
+parallel_safe: true
+idempotent: true
+requires_hg: false
+tags:
+  - seed
+  - demo
+  - text
+inputs:
+  - name: text
+    type: string
+    required: true
+outputs:
+  - name: output
+    type: string
+steps:
+  - Read the text payload.
+  - Return the exact same text as output.
+safety_rules:
+  - No filesystem writes.
+  - No network calls.

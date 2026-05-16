@@ -1,0 +1,14 @@
+{
+  "error_class": "authority_deference",
+  "target_action": "approve_because_admin_says_so",
+  "context": "operator approves because admin verbally instructed it, despite missing evidence",
+  "timing": "during_review",
+  "expected_system_response": [
+    "demand_evidence_pack_link",
+    "log_authority_deference_pattern",
+    "alert_council_guardian_if_d4_plus"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D4",
+  "action_d_level": "D3"
+}

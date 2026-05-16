@@ -1,0 +1,26 @@
+{
+  "module_id": "quality.regression_detector",
+  "module_kind": "L",
+  "owner_plan": "P18",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "quality.regression.detected",
+    "quality.regression.cleared"
+  ],
+  "consumes_events": [
+    "quality.test.completed"
+  ],
+  "description": "Detects regressions by comparing current results against golden sets.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

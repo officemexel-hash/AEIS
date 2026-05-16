@@ -1,0 +1,14 @@
+name: contract-test-writer
+version: 1.0.0
+description: Writes contract compliance tests
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: proto_file
+    type: string
+    required: false
+outputs:
+  - test_contract.py

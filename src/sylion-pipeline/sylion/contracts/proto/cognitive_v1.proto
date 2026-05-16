@@ -1,0 +1,443 @@
+// SYLION AEIS -- Class B: Cognitive (7 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: Planner, Evaluator, Reasoner, ContextBuilder,
+//          ModelRouter, LLMAdapter, CodeAgent
+
+syntax = "proto3";
+
+package sylion.cognitive.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/cognitive/v1;cognitivev1";
+option java_package = "com.sylion.aeis.cognitive.v1";
+
+// =====================================================================
+// B1: Planner Service
+// =====================================================================
+
+service PlannerService {
+  rpc CreatePlan(CreatePlanRequest) returns (PlanMessage);
+  rpc GetPlan(GetPlanRequest) returns (PlanMessage);
+  rpc ListPlans(ListPlansRequest) returns (PlanList);
+  rpc AddTask(AddTaskRequest) returns (TaskMessage);
+  rpc Decompose(DecomposeRequest) returns (TaskList);
+  rpc CompleteTask(CompleteTaskRequest) returns (TaskMessage);
+  rpc GetTasks(GetTasksRequest) returns (TaskList);
+  rpc GetNextTask(GetPlanRequest) returns (TaskMessage);
+}
+
+message CreatePlanRequest {
+  string title       = 1;
+  string description = 2;
+  string parent_plan = 3;
+}
+
+message PlanMessage {
+  string plan_id      = 1;
+  string title        = 2;
+  string description  = 3;
+  string status       = 4;
+  string parent_plan  = 5;
+  double created_at   = 6;
+  double completed_at = 7;
+}
+
+message GetPlanRequest {
+  string plan_id = 1;
+}
+
+message ListPlansRequest {
+  string status = 1;
+}
+
+message PlanList {
+  repeated PlanMessage plans = 1;
+}
+
+message AddTaskRequest {
+  string plan_id      = 1;
+  string title        = 2;
+  string description  = 3;
+  int32  priority     = 4;
+  repeated string depends_on = 5;
+}
+
+message TaskMessage {
+  string task_id      = 1;
+  string plan_id      = 2;
+  string title        = 3;
+  string description  = 4;
+  string status       = 5;
+  int32  priority     = 6;
+  string depends_on_json = 7;
+  string assigned_to  = 8;
+  double created_at   = 9;
+  double completed_at = 10;
+}
+
+message DecomposeRequest {
+  string plan_id = 1;
+  repeated AddTaskRequest subtasks = 2;
+}
+
+message TaskList {
+  repeated TaskMessage tasks = 1;
+}
+
+message CompleteTaskRequest {
+  string task_id = 1;
+}
+
+message GetTasksRequest {
+  string plan_id = 1;
+  string status  = 2;
+}
+
+// =====================================================================
+// B2: Evaluator Service
+// =====================================================================
+
+service EvaluatorService {
+  rpc Evaluate(EvaluateRequest) returns (EvaluationMessage);
+  rpc GetEvaluation(GetEvaluationRequest) returns (EvaluationMessage);
+  rpc QueryByTarget(QueryByTargetRequest) returns (EvaluationList);
+  rpc GetAverageScore(AverageScoreRequest) returns (AverageScoreResponse);
+  rpc ListEvaluations(ListEvaluationsRequest) returns (EvaluationList);
+}
+
+message EvaluateRequest {
+  string target_type = 1;
+  string target_id   = 2;
+  double score       = 3;
+  string verdict     = 4;  // pass|fail|conditional
+  string details_json = 5;
+}
+
+message EvaluationMessage {
+  string evaluation_id = 1;
+  string target_type   = 2;
+  string target_id     = 3;
+  double score         = 4;
+  string verdict       = 5;
+  string details_json  = 6;
+  string evaluated_by  = 7;
+  double timestamp     = 8;
+}
+
+message GetEvaluationRequest {
+  string evaluation_id = 1;
+}
+
+message QueryByTargetRequest {
+  string target_type = 1;
+  string target_id   = 2;
+}
+
+message EvaluationList {
+  repeated EvaluationMessage evaluations = 1;
+}
+
+message AverageScoreRequest {
+  string target_type = 1;
+}
+
+message AverageScoreResponse {
+  string target_type = 1;
+  double avg_score   = 2;
+  int32  count       = 3;
+}
+
+message ListEvaluationsRequest {
+  int32 limit = 1;
+}
+
+// =====================================================================
+// B3: Reasoner Service
+// =====================================================================
+
+service ReasonerService {
+  rpc Reason(ReasonRequest) returns (ReasoningChainMessage);
+  rpc GetChain(GetChainRequest) returns (ReasoningChainMessage);
+  rpc QueryChains(QueryChainsRequest) returns (ReasoningChainList);
+  rpc GetStats(sylion.common.v1.Empty) returns (ReasonerStats);
+}
+
+message ReasonRequest {
+  string query       = 1;
+  string context     = 2;
+  string conclusion  = 3;
+  repeated string steps = 4;
+  double confidence  = 5;
+  string source      = 6;
+}
+
+message ReasoningChainMessage {
+  string chain_id      = 1;
+  string query         = 2;
+  string conclusion    = 3;
+  repeated string steps = 4;
+  double confidence    = 5;
+  string source        = 6;
+  double timestamp     = 7;
+}
+
+message GetChainRequest {
+  string chain_id = 1;
+}
+
+message QueryChainsRequest {
+  string query_text = 1;
+  int32  limit      = 2;
+}
+
+message ReasoningChainList {
+  repeated ReasoningChainMessage chains = 1;
+}
+
+message ReasonerStats {
+  int32  total_chains  = 1;
+  double avg_confidence = 2;
+  map<string, int64> by_source = 3;
+}
+
+// =====================================================================
+// B4: Context Builder Service
+// =====================================================================
+
+service ContextBuilderService {
+  rpc AddSource(AddSourceRequest) returns (SourceSummary);
+  rpc ClearSources(sylion.common.v1.Empty) returns (ClearSourcesResponse);
+  rpc BuildContext(BuildContextRequest) returns (BuildContextResponse);
+  rpc GetContextStats(sylion.common.v1.Empty) returns (ContextStatsMessage);
+}
+
+message AddSourceRequest {
+  string source_id = 1;
+  string content   = 2;
+  int32  priority  = 3;
+}
+
+message SourceSummary {
+  string source_id       = 1;
+  int32  priority        = 2;
+  int32  content_length  = 3;
+}
+
+message ClearSourcesResponse {
+  int32 sources_cleared = 1;
+}
+
+message BuildContextRequest {
+  string query    = 1;
+  int32  max_chars = 2;
+  repeated string sources = 3;
+}
+
+message BuildContextResponse {
+  string context = 1;
+}
+
+message ContextStatsMessage {
+  int32 source_count        = 1;
+  int32 total_content_chars = 2;
+  int32 min_priority        = 3;
+  int32 max_priority        = 4;
+}
+
+// =====================================================================
+// B5: Model Router Service
+// =====================================================================
+
+service ModelRouterService {
+  rpc RegisterModel(RegisterModelRequest) returns (ModelSummary);
+  rpc GetModel(GetModelRequest) returns (ModelMessage);
+  rpc ListModels(ListModelsRequest) returns (ModelList);
+  rpc Route(RouteRequest) returns (ModelMessage);
+  rpc RecordRouting(RecordRoutingRequest) returns (RoutingDecisionMessage);
+  rpc GetRoutingStats(sylion.common.v1.Empty) returns (RoutingStatsMessage);
+}
+
+message RegisterModelRequest {
+  string model_id      = 1;
+  string provider      = 2;
+  string name          = 3;
+  string tier          = 4;  // basic|standard|advanced|premium
+  double cost_per_1k_input = 5;
+  double cost_per_1k_output = 6;
+  int32  max_context   = 7;
+  repeated string capabilities = 8;
+}
+
+message ModelSummary {
+  string model_id = 1;
+  string provider = 2;
+  string name     = 3;
+  string tier     = 4;
+}
+
+message GetModelRequest {
+  string model_id = 1;
+}
+
+message ModelMessage {
+  string model_id            = 1;
+  string provider            = 2;
+  string name                = 3;
+  string tier                = 4;
+  double cost_per_1k_input   = 5;
+  double cost_per_1k_output  = 6;
+  int32  max_context         = 7;
+  repeated string capabilities = 8;
+  bool   active              = 9;
+}
+
+message ListModelsRequest {
+  string tier        = 1;
+  bool   active_only = 2;
+}
+
+message ModelList {
+  repeated ModelMessage models = 1;
+}
+
+message RouteRequest {
+  string task_type   = 1;
+  string requirements_json = 2;
+}
+
+message RecordRoutingRequest {
+  string task_type   = 1;
+  string model_id    = 2;
+  string reason      = 3;
+  double cost_estimate = 4;
+}
+
+message RoutingDecisionMessage {
+  string decision_id  = 1;
+  string task_type    = 2;
+  string model_id     = 3;
+  double cost_estimate = 4;
+}
+
+message RoutingStatsMessage {
+  int32  total_decisions  = 1;
+  double avg_cost_estimate = 2;
+  map<string, int64> by_task_type = 3;
+  map<string, int64> by_model     = 4;
+}
+
+// =====================================================================
+// B6: LLM Adapter Service
+// =====================================================================
+
+service LLMAdapterService {
+  rpc Call(LLMCallRequest) returns (LLMCallResponse);
+  rpc GetCall(GetCallRequest) returns (LLMCallRecord);
+  rpc ListCalls(ListCallsRequest) returns (LLMCallRecordList);
+  rpc GetUsageStats(sylion.common.v1.Empty) returns (LLMUsageStats);
+}
+
+message LLMCallRequest {
+  string model_id   = 1;
+  string prompt     = 2;
+  int32  max_tokens = 3;
+}
+
+message LLMCallResponse {
+  string call_id      = 1;
+  string text         = 2;
+  int32  tokens       = 3;
+  double cost         = 4;
+  int32  latency_ms   = 5;
+}
+
+message GetCallRequest {
+  string call_id = 1;
+}
+
+message LLMCallRecord {
+  string call_id           = 1;
+  string model_id          = 2;
+  string prompt_hash       = 3;
+  int32  prompt_tokens     = 4;
+  int32  completion_tokens = 5;
+  double cost              = 6;
+  int32  latency_ms        = 7;
+  string status            = 8;
+  double timestamp         = 9;
+}
+
+message ListCallsRequest {
+  string model_id = 1;
+  int32  limit    = 2;
+}
+
+message LLMCallRecordList {
+  repeated LLMCallRecord calls = 1;
+}
+
+message LLMUsageStats {
+  int32  total_calls            = 1;
+  int64  total_prompt_tokens    = 2;
+  int64  total_completion_tokens = 3;
+  double total_cost             = 4;
+  map<string, ModelUsage> by_model = 5;
+}
+
+message ModelUsage {
+  int32  calls = 1;
+  double cost  = 2;
+}
+
+// =====================================================================
+// B7: Code Agent Service
+// =====================================================================
+
+service CodeAgentService {
+  rpc Generate(GenerateRequest) returns (CodeOperationMessage);
+  rpc Review(ReviewRequest) returns (CodeOperationMessage);
+  rpc Analyze(AnalyzeRequest) returns (CodeOperationMessage);
+  rpc Fix(FixRequest) returns (CodeOperationMessage);
+  rpc ListOperations(ListOperationsRequest) returns (CodeOperationList);
+}
+
+message GenerateRequest {
+  string prompt    = 1;
+  string language  = 2;
+}
+
+message ReviewRequest {
+  string code           = 1;
+  repeated string criteria = 2;
+}
+
+message AnalyzeRequest {
+  string code = 1;
+}
+
+message FixRequest {
+  string code   = 1;
+  string issue  = 2;
+}
+
+message CodeOperationMessage {
+  string op_id       = 1;
+  string operation   = 2;  // generate|review|analyze|fix
+  string input_hash  = 3;
+  string output_hash = 4;
+  string model_id    = 5;
+  string result      = 6;
+  string metadata_json = 7;
+  double timestamp   = 8;
+}
+
+message ListOperationsRequest {
+  string operation = 1;
+  int32  limit     = 2;
+}
+
+message CodeOperationList {
+  repeated CodeOperationMessage operations = 1;
+}

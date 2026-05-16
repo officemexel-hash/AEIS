@@ -1,0 +1,61 @@
+project_id: "proj_demo_06_skills_marketplace"
+name: "AEIS Skills Marketplace"
+type: "marketplace"
+target_d_level: "D5"
+domain: "supply_chain"
+
+description: |
+  Marketplace for community-uploaded AEIS Skills (procedures, workflows,
+  evaluators). Each skill executes within sandbox; runaway cost protection;
+  dependency confusion attack mitigation; signature verification.
+  D5 because skills affect runtime behavior of all consuming projects.
+
+required_personas:
+  - "admin_overconfident"
+  - "viewer_curious"
+  - "incident_responder"
+
+domain_specific_human_errors:
+  - error_class: "bypass_attempt"
+    target_action: "malicious_skill_upload_without_static_scan"
+    severity_if_system_allows_error: "D5"
+  - error_class: "premature_action"
+    target_action: "approve_runaway_cost_skill_without_budget_check"
+    severity_if_system_allows_error: "D5"
+  - error_class: "permission_overreach"
+    target_action: "dependency_confusion_attack_via_typo_squat"
+    severity_if_system_allows_error: "D5"
+
+required_test_classes:
+  - "T0"   # spec alignment
+  - "T2"   # unit
+  - "T3"   # api contract
+  - "T4"   # integration
+  - "T5"   # ui_e2e
+  - "T6"   # human-like
+  - "T7"   # human error injection
+  - "T8"   # negative
+  - "T9"   # regression
+  - "T10"  # security (critical for marketplace)
+  - "T11"  # governance
+  - "T13"  # chaos
+  - "T19"  # llm behavioral
+
+release_blockers:
+  - "Skill upload without static security scan"
+  - "Skill execution without sandbox isolation"
+  - "Cost budget overrun unhandled"
+  - "Dependency without signature verification"
+  - "Any P0/P1 finding"
+  - "Council session not D5-complete"
+
+expected_modules: 14
+expected_api_endpoints: 25
+expected_ui_pages: 9
+
+success_criteria:
+  - "PRODUCTION_RELEASED status reached"
+  - "Council session D5 completed (full Council + multi-sig + sentinels)"
+  - "Cost Sentinel + Security Sentinel both zero open alerts"
+  - "Minimum 8 lessons_learned (D5 + complex domain)"
+  - "Anti-pattern catalog gained ≥2 entries"

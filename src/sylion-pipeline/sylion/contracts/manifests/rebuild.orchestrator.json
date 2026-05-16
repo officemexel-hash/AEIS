@@ -1,0 +1,26 @@
+{
+  "module_id": "rebuild.orchestrator",
+  "module_kind": "K",
+  "owner_plan": "P14",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "rebuild.plan.created",
+    "rebuild.plan.completed"
+  ],
+  "consumes_events": [
+    "governance.council.ratified"
+  ],
+  "description": "Orchestrates module rebuild lifecycle: plan, execute, validate.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

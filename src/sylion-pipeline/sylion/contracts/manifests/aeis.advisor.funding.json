@@ -1,0 +1,100 @@
+{
+  "module_id": "sylion.aeis.advisor.funding",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.engine",
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.pricing"
+  ],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.funding.module_enabled",
+    "aeis.advisor.funding.module_disabled",
+    "aeis.advisor.funding.country_filter_changed",
+    "aeis.advisor.funding.grant_loaded",
+    "aeis.advisor.funding.grant_data_refreshed",
+    "aeis.advisor.funding.scoring_calculated",
+    "aeis.advisor.funding.eligibility_floor_breached",
+    "aeis.advisor.funding.consortium_suggested",
+    "aeis.advisor.funding.simulation_completed",
+    "aeis.advisor.funding.token_budget_threshold_crossed",
+    "aeis.advisor.funding.research_initiated",
+    "aeis.advisor.funding.research_completed",
+    "aeis.advisor.funding.company_data_updated",
+    "aeis.advisor.funding.scoring_history_persisted"
+  ],
+  "events_subscribe": [
+    "aeis.idea.intake.completed",
+    "aeis.idea.sot_drafted",
+    "aeis.idea.masterplan_created",
+    "aeis.advisor.funding.company_data_updated",
+    "aeis.advisor.preferences.updated"
+  ],
+  "storage": {
+    "postgres_schemas": ["advisor_funding"],
+    "sqlite_tables_dev": [
+      "advisor_funding_companies",
+      "advisor_funding_company_persons",
+      "advisor_funding_grant_programs",
+      "advisor_funding_scoring_components",
+      "advisor_funding_scoring_profiles",
+      "advisor_funding_scoring_history",
+      "advisor_funding_consortium_pool",
+      "advisor_funding_research_logs"
+    ]
+  },
+  "activation": {
+    "default": "disabled",
+    "toggle_preference": "funding_advisor_enabled",
+    "country_filter_preference": "funding_countries",
+    "token_budget_preference": "funding_token_budget_monthly"
+  },
+  "scoring_profile": {
+    "key_insight": "Each grant program has its own scoring_profile referencing universal scoring_components. Same company + same idea -> different grants produce different scores.",
+    "universal_components": [
+      "eligibility",
+      "thematic_alignment",
+      "capacity",
+      "competitive_position",
+      "regional_fit",
+      "consortium_readiness",
+      "timeline_fit"
+    ],
+    "default_weights": {
+      "eligibility": 30,
+      "thematic_alignment": 20,
+      "capacity": 15,
+      "competitive_position": 10,
+      "regional_fit": 10,
+      "consortium_readiness": 10,
+      "timeline_fit": 5
+    },
+    "default_hard_floors": {
+      "eligibility": 50
+    }
+  },
+  "loc_budget": {
+    "loc_max": 3500,
+    "loc_max_default": 1500,
+    "exception_evidence_pack": "docs/claude_parallel/aeis_advisor/_handoff/evidence_pack_b003_loc_budget.md",
+    "exception_decision_class": "D3",
+    "rationale_summary": "Funding module spans companies + grants + per-grant scoring profiles + simulator + token budget + consortium pool; the L1 'same idea -> different grants -> different scores' insight requires these to share a single transactional boundary."
+  },
+  "golden_tests": {
+    "path": "tests/aeis/advisor/funding/",
+    "minimum_required": [
+      "same_company_different_grants_different_scores",
+      "eligibility_floor_breach_blocks_card",
+      "regional_grant_filtered_by_company_region",
+      "manual_grant_load_creates_profile_with_default_weights",
+      "simulation_static_returns_predefined",
+      "simulation_dynamic_recomputes_with_operator_changes",
+      "simulation_auto_generated_returns_top_3_score_improving",
+      "separate_token_budget_enforced",
+      "opt_out_skips_module_entirely"
+    ]
+  }
+}

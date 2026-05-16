@@ -1,0 +1,24 @@
+{
+  "module_id": "quality.test_runner",
+  "module_kind": "L",
+  "owner_plan": "P18",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "quality.test.started",
+    "quality.test.completed"
+  ],
+  "consumes_events": [],
+  "description": "Test execution engine with golden set comparison and reporting.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

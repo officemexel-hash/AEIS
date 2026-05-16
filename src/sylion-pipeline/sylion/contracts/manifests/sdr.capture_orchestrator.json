@@ -1,0 +1,28 @@
+{
+  "module_id": "sdr.capture_orchestrator",
+  "module_kind": "N",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus",
+    "sdr.rf_safety_governor"
+  ],
+  "publishes_events": [
+    "sdr.capture.started",
+    "sdr.capture.completed"
+  ],
+  "consumes_events": [
+    "sdr.gateway.capture",
+    "sdr.safety.check"
+  ],
+  "description": "Orchestrates multi-channel RF capture with scheduling and coordination.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

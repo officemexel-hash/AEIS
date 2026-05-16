@@ -1,0 +1,17 @@
+{
+  "module_id": "governance.tickets",
+  "module_kind": "E",
+  "owner_plan": "P05",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "hash-chain",
+  "depends_on": [],
+  "description": "Unified Human Gate ticket store for blocking, non-blocking, batch, financial, legal, production, security, external-action, and final approvals.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

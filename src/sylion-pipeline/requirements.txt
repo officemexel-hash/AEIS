@@ -1,0 +1,185 @@
+# SYLION Pipeline — Pinned dependencies
+# Generated: 2026-04-11 (updated: 2026-04-19 SEQ-001/SEQ-005 security patches)
+# Python: >=3.11,<3.14
+# Update with: pip-compile requirements.in -o requirements-lock.txt
+# IMPORTANT (SEQ-001): ALWAYS run with venv python, NEVER with system python.
+#   Enforce: source .venv/bin/activate && pip install -r requirements-lock.txt
+#   CI check: python -c "import aiohttp; assert aiohttp.__version__ == '3.13.5'"
+#   Pre-flight: pip-audit -r requirements-lock.txt --fail-on-vuln
+# Security patch: 2026-04-11 — aiohttp CVE batch fix (v5.9.1-sec-p1)
+#   aiohttp 3.13.3 → 3.13.5  (10 CVE HIGH — see docs/pip_audit_report.md)
+#     CVE-2026-22815 HIGH  — uncapped memory usage in header/trailer handling
+#     CVE-2026-34513 HIGH  — request smuggling via content_type injection
+#     CVE-2026-34514 HIGH  — NTLMv2 remote path info disclosure (Windows)
+#     CVE-2026-34515 HIGH  — Authorization header leaked on cross-origin redirect
+#     CVE-2026-34516 HIGH  — DoS via excessive multipart headers memory usage
+#     CVE-2026-34519 HIGH  — HTTP Response Splitting (XSS/cache-poisoning)
+#     CVE-2026-34520 HIGH  — DNS cache DoS (unbounded memory usage)
+#     CVE-2026-34525 HIGH  — Request smuggling via multiple Host headers
+#     CVE-2025-69223 HIGH  — DoS via zip bomb / compressed request
+#     CVE-2025-69227 HIGH  — DoS via infinite loop in POST body handling
+#
+# Security patch: 2026-04-19 — Cluster D CVE fix (v5.9.1)
+#   starlette 0.46.2 → 0.49.1  (CVE-2025-62727 HIGH, CVE-2025-54121 Medium)
+#   fastapi 0.115.12 → 0.136.0  (required for starlette >=0.49 compat)
+#   python-multipart 0.0.20 → 0.0.27  (CVE-2026-24486 HIGH, CVE-2026-40347 Medium, CVE-2026-42561)
+#   pypdf 5.4.0 → 6.10.2  (22 CVEs DoS)
+#   litellm 1.67.4.post1 → 1.83.10  (CVE-2026-35030 CRITICAL, CVE-2026-35029 HIGH, GHSA-69x8-hrgq-fjj8 HIGH, CVE-2026-42203/42208/42271/40217)
+#   pytest 8.3.4 → 9.0.3  (CVE-2025-71176 Medium local priv-esc)
+#   fastuuid 0.14.0 — new transitive dep pulled in by litellm>=1.83.0
+#
+# TRANSITIVE aiohttp CHAIN:
+#   litellm==1.83.10 → aiohttp>=3.10  (direct require)
+#   openai==2.24.0  → aiohttp (optional extra 'aiohttp')
+#   NOTE: aiohttp was NOT previously pinned in this lockfile — this patch adds it.
+
+# === Core framework ===
+fastapi==0.136.0
+uvicorn==0.34.2
+starlette==0.49.1
+pydantic==2.11.1
+pydantic-core==2.33.0
+
+# === Password hashing (MANDATORY — do NOT remove) ===
+argon2-cffi==23.1.0
+argon2-cffi-bindings==21.2.0
+
+# === Async file I/O (non-blocking upload streaming — Council v5.8) ===
+aiofiles==24.1.0
+
+# === Form/file upload (required by FastAPI UploadFile) ===
+python-multipart==0.0.27
+
+# === PostgreSQL async driver (opt-in via SYLION_DB_MODE=postgres) ===
+asyncpg==0.30.0
+
+# === SQLAlchemy with async support (PostgreSQL mode) ===
+sqlalchemy[asyncio]==2.0.40
+
+# === Document text extraction (Baseline Center: PDF/DOCX upload) ===
+pypdf==6.10.2
+python-docx==1.1.2
+
+# === Environment & config ===
+# SECURITY PATCH (Phase 3 W2.6): python-dotenv 1.1.0 -> 1.2.2
+# CVE-2026-28684 (GHSA-mf9w-mj56-hr94) MEDIUM — set_key()/unset_key() follow
+# symlinks across cross-device temp moves, enabling local file overwrite.
+# Sylion uses load_dotenv (read-only) but bumping is trivial; fix in 1.2.2.
+python-dotenv==1.2.2
+pyyaml==6.0.2
+
+# === HTTP client ===
+httpx==0.28.1
+anyio==4.9.0
+
+# === LLM providers ===
+# v5.9.1 Security fix: 1.83.10 resolves known 1.83.0/1.83.7 CVEs.
+litellm==1.83.10
+# fastuuid is a direct dep of litellm>=1.83.0 (UUID generation performance)
+fastuuid==0.14.0
+
+# === Numeric / ML (SemanticDedup, BenchmarkHarness) ===
+numpy==1.26.4
+
+# === CLI / UI ===
+rich==14.0.0
+
+# === File watching ===
+watchdog==6.0.0
+
+# === Utilities ===
+typing-extensions==4.13.2
+sniffio==1.3.1
+certifi==2025.1.31
+idna==3.10
+
+# === JWT authentication (P8/Wave9: jwt_auth.py) ===
+# CP-1: pinned exact version for lockfile integrity
+# SECURITY PATCH 2026-05-13: PyJWT 2.10.1 -> 2.12.0
+# CVE-2026-32597 (GHSA-752w-5fwx-jx9f) — missing 'crit' header validation
+# Fix version: PyJWT >= 2.12.0. Runtime already 2.12.1; lockfile updated for
+# clean-install environments. See reports/security_audit_report.md SEQ-005.
+PyJWT==2.12.0
+
+# === Prometheus metrics (P8/Wave9: metrics.py + /api/metrics/prom endpoint) ===
+# CP-1: pinned exact version for lockfile integrity
+prometheus-client==0.20.0
+
+# === Testing ===
+pytest==9.0.3
+
+# =============================================================================
+# SECURITY PATCH 2026-04-11: aiohttp transitive CVE fix
+# Previously UNPINNED — aiohttp was a transitive dep of litellm but not
+# explicitly listed in this lockfile, leaving the resolved version to pip's
+# resolver (currently resolving to 3.13.3 which carries 10 HIGH CVEs).
+#
+# Target: aiohttp==3.13.5 (latest stable, all CVEs fixed, Python >=3.9 compat)
+# Verified: Python 3.12 wheels available on PyPI (cp312-cp312 wheels present)
+#
+# aiohttp and its transitive deps (all pinned below):
+# =============================================================================
+aiohttp==3.13.5
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
+attrs==26.1.0
+frozenlist==1.8.0
+multidict==6.7.1
+propcache==0.4.1
+yarl==1.23.0
+
+# =============================================================================
+# T-05 PATCH v6.0.0: missing security and ML dependencies
+# bcrypt: password hashing fallback (argon2-cffi preferred, bcrypt fallback)
+# sentence-transformers + scikit-learn: used by semantic_dedup.py
+# =============================================================================
+bcrypt==4.1.3
+sentence-transformers==3.0.1
+scikit-learn==1.5.2
+
+# =============================================================================
+# T-06: NATS JetStream adapter (optional — SYLION_EVENT_MODE=nats)
+# For production staging/prod environments. In-process mode (SQLite) is default.
+# Install: pip install nats-py
+# =============================================================================
+nats-py>=2.9.0  # optional: NATS JetStream event bus backend
+
+# =============================================================================
+# Phase 3 W1.3: Redis cache backend (optional — SYLION_CACHE_URL=redis://...)
+# Default: in-memory LRU fallback (sylion.infra.cache._InMemoryLRU).
+# In dev / tests / single-node deployments, leave SYLION_CACHE_URL unset.
+# =============================================================================
+redis==5.2.1  # optional: Redis-backed cache (sylion.infra.cache)
+
+# =============================================================================
+# Import linting — enforces R2.5 dependency rules from Ksiega/Masterplan
+# Run: python scripts/check_imports.py
+# =============================================================================
+import-linter==2.3
+
+# =============================================================================
+# Phase 3 W2.2 (scope-fill): SOPS+age envelope encryption for secrets/{env}.yaml
+#  - pyrage: Rust-backed age v1 implementation (X25519 + ChaCha20-Poly1305).
+#    No `age`/`sops` binary required at runtime. Used by
+#    sylion.security.sops_provider.SopsAgeProvider.
+#  - cryptography: AES-256-GCM for per-leaf encryption (already pulled in
+#    transitively via PyJWT + others; pinning here for the SOPS provider).
+#  - pyyaml: already listed above; SOPS file format is YAML.
+# =============================================================================
+pyrage>=1.3.0
+cryptography>=42.0.0
+
+# =============================================================================
+# Phase 3 W3.3: OpenTelemetry tracing (sylion.observability.tracing)
+# Activation is env-gated (SYLION_TRACING_ENABLED=1); the module no-ops if
+# the flag is unset, so dev/test runs incur zero overhead. The packages
+# below ARE installed in every deploy so production can flip the flag
+# without a code-or-pip change. Pinned to 1.27.0 / 0.48b0 — the bundle
+# validated against FastAPI 0.136 + SQLAlchemy 2.0 + redis-py 5.2.
+# =============================================================================
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp-proto-grpc==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-instrumentation-sqlalchemy==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-instrumentation-httpx==0.48b0

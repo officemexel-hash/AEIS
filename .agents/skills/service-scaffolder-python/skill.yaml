@@ -1,0 +1,15 @@
+name: service-scaffolder-python
+version: 1.0.0
+description: Scaffolds Python service following SYLION pattern
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: proto_file
+    type: string
+    required: false
+outputs:
+  - service.py
+  - __init__.py

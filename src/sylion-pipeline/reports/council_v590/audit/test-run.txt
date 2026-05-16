@@ -1,0 +1,157 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-8.3.4, pluggy-1.6.0
+rootdir: /home/user/workspace/SYLION_v590_work/sylion-pipeline
+plugins: anyio-4.9.0
+collected 40 items
+
+tests/test_concurrency_v588.py ..                                        [  5%]
+tests/test_m02_m08_v590.py ........FE                                    [ 27%]
+tests/test_m03_m06_v590.py .....EEEE                                     [ 50%]
+tests/test_m07_h04_v590.py FFF.FF.                                       [ 67%]
+tests/test_regressions_v588.py .............                             [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at teardown of TestM08Backup.test_backup_failure_does_not_corrupt_main_db _
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/runner.py:341: in from_call
+    result: TResult | None = func()
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/runner.py:242: in <lambda>
+    lambda: runtest_hook(item=item, **kwds), when=when, reraise=reraise
+/tmp/sylion_venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+/tmp/sylion_venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/threadexception.py:97: in pytest_runtest_teardown
+    yield from thread_exception_runtest_hook()
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/threadexception.py:68: in thread_exception_runtest_hook
+    yield
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:100: in pytest_runtest_teardown
+    yield from unraisable_exception_runtest_hook()
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:70: in unraisable_exception_runtest_hook
+    yield
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/logging.py:853: in pytest_runtest_teardown
+    yield from self._runtest_for(item, "teardown")
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/logging.py:829: in _runtest_for
+    yield
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/capture.py:885: in pytest_runtest_teardown
+    return (yield)
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/runner.py:189: in pytest_runtest_teardown
+    item.session._setupstate.teardown_exact(nextitem)
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/runner.py:557: in teardown_exact
+    raise exceptions[0]
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/runner.py:546: in teardown_exact
+    fin()
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/fixtures.py:1032: in finish
+    raise exceptions[0]
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/fixtures.py:1021: in finish
+    fin()
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/fixtures.py:907: in _teardown_yield_fixture
+    next(it)
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/monkeypatch.py:57: in monkeypatch
+    mpatch.undo()
+/tmp/sylion_venv/lib/python3.12/site-packages/_pytest/monkeypatch.py:394: in undo
+    setattr(obj, name, value)
+E   TypeError: cannot set 'backup' attribute of immutable type 'sqlite3.Connection'
+__ ERROR at setup of TestDashboardM06.test_api_dashboard_json_shape_unchanged __
+tests/test_m03_m06_v590.py:321: in auth_token
+    return _bootstrap_auth()
+tests/test_m03_m06_v590.py:289: in _bootstrap_auth
+    row = conn.execute("SELECT value FROM config WHERE key='setup_token'").fetchone()
+E   sqlite3.OperationalError: no such table: config
+_ ERROR at setup of TestDashboardM06.test_api_dashboard_empty_tables_returns_zeros _
+tests/test_m03_m06_v590.py:321: in auth_token
+    return _bootstrap_auth()
+tests/test_m03_m06_v590.py:289: in _bootstrap_auth
+    row = conn.execute("SELECT value FROM config WHERE key='setup_token'").fetchone()
+E   sqlite3.OperationalError: no such table: config
+__ ERROR at setup of TestDashboardM06.test_api_dashboard_null_values_handled ___
+tests/test_m03_m06_v590.py:321: in auth_token
+    return _bootstrap_auth()
+tests/test_m03_m06_v590.py:289: in _bootstrap_auth
+    row = conn.execute("SELECT value FROM config WHERE key='setup_token'").fetchone()
+E   sqlite3.OperationalError: no such table: config
+__ ERROR at setup of TestDashboardM06.test_api_dashboard_query_count_reduced ___
+tests/test_m03_m06_v590.py:321: in auth_token
+    return _bootstrap_auth()
+tests/test_m03_m06_v590.py:289: in _bootstrap_auth
+    row = conn.execute("SELECT value FROM config WHERE key='setup_token'").fetchone()
+E   sqlite3.OperationalError: no such table: config
+=================================== FAILURES ===================================
+__________ TestM08Backup.test_backup_failure_does_not_corrupt_main_db __________
+tests/test_m02_m08_v590.py:472: in test_backup_failure_does_not_corrupt_main_db
+    monkeypatch.setattr(sqlite3.Connection, "backup", _failing_backup)
+E   TypeError: cannot set 'backup' attribute of immutable type 'sqlite3.Connection'
+__ TestEnsureDependenciesM07.test_ensure_dependencies_single_fork_on_success ___
+tests/test_m07_h04_v590.py:106: in test_ensure_dependencies_single_fork_on_success
+    assert mock_run.call_count == 1, (
+E   AssertionError: M-07 happy-path: oczekiwano 1 wywołania subprocess.run (batch fork), dostano 13
+E   assert 13 == 1
+E    +  where 13 = <MagicMock name='run' id='139935833744368'>.call_count
+_ TestEnsureDependenciesM07.test_ensure_dependencies_fallback_per_package_on_failure _
+tests/test_m07_h04_v590.py:150: in test_ensure_dependencies_fallback_per_package_on_failure
+    assert mock_run.call_count == expected, (
+E   AssertionError: M-07 fallback: oczekiwano 14 wywołań (1 batch + 13 fallback), dostano 15
+E   assert 15 == 14
+E    +  where 15 = <MagicMock name='run' id='139935833324000'>.call_count
+----------------------------- Captured stdout call -----------------------------
+[SYLION] Detected broken install of fastapi (import fails); will reinstall
+[SYLION] Auto-installing 1 missing package(s)...
+  -> fastapi (import fastapi)
+  [OK] fastapi installed and importable
+______ TestEnsureDependenciesM07.test_ensure_dependencies_timeout_handled ______
+tests/test_m07_h04_v590.py:194: in test_ensure_dependencies_timeout_handled
+    assert "timeout" in captured.out.lower() or "timed out" in captured.out.lower(), (
+E   AssertionError: M-07 timeout: stdout powinien zawierać informację o timeout, dostano: '[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n'
+E   assert ('timeout' in '[sylion] detected broken install of fastapi (import fails); will reinstall\n[sylion] auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [ok] fastapi installed and importable\n' or 'timed out' in '[sylion] detected broken install of fastapi (import fails); will reinstall\n[sylion] auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [ok] fastapi installed and importable\n')
+E    +  where '[sylion] detected broken install of fastapi (import fails); will reinstall\n[sylion] auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [ok] fastapi installed and importable\n' = <built-in method lower of str object at 0x7f4559a44030>()
+E    +    where <built-in method lower of str object at 0x7f4559a44030> = '[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n'.lower
+E    +      where '[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n' = CaptureResult(out='[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n', err='').out
+E    +  and   '[sylion] detected broken install of fastapi (import fails); will reinstall\n[sylion] auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [ok] fastapi installed and importable\n' = <built-in method lower of str object at 0x7f4559a44030>()
+E    +    where <built-in method lower of str object at 0x7f4559a44030> = '[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n'.lower
+E    +      where '[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n' = CaptureResult(out='[SYLION] Detected broken install of fastapi (import fails); will reinstall\n[SYLION] Auto-installing 1 missing package(s)...\n  -> fastapi (import fastapi)\n  [OK] fastapi installed and importable\n', err='').out
+__ TestSeedAgentsH04.test_seed_agents_unknown_tag_on_first_iteration_failure ___
+tests/test_m07_h04_v590.py:285: in test_seed_agents_unknown_tag_on_first_iteration_failure
+    conn.cursor = patched_cursor
+E   AttributeError: 'sqlite3.Connection' object attribute 'cursor' is read-only
+----------------------------- Captured stdout call -----------------------------
+
+==================================================
+  SYLION — FIRST-RUN SETUP
+  Setup token: CrBFzvpGtLgM7jPbSwTEIqO0_LpFPiQV_8CQmL-NSOI
+  Open: http://127.0.0.1:8421/#setup
+==================================================
+
+_____ TestSeedAgentsH04.test_seed_agents_agent_id_reset_between_iterations _____
+tests/test_m07_h04_v590.py:351: in test_seed_agents_agent_id_reset_between_iterations
+    conn.cursor = lambda: SelectiveFailCursor(real_cursor_method())
+E   AttributeError: 'sqlite3.Connection' object attribute 'cursor' is read-only
+----------------------------- Captured stdout call -----------------------------
+
+==================================================
+  SYLION — FIRST-RUN SETUP
+  Setup token: WAoSVFfeLFbZFAdok4QGmd0goUtihaLbc_q_FyoXZ8M
+  Open: http://127.0.0.1:8421/#setup
+==================================================
+
+=============================== warnings summary ===============================
+tests/test_regressions_v588.py::test_bug1_litellm_imports_cleanly
+  /tmp/sylion_venv/lib/python3.12/site-packages/litellm/types/llms/openai.py:874: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class LiteLLMFineTuningJobCreate(FineTuningJobCreate):
+
+tests/test_regressions_v588.py::test_bug1_litellm_imports_cleanly
+  /tmp/sylion_venv/lib/python3.12/site-packages/litellm/caching/llm_caching_handler.py:17: DeprecationWarning: There is no current event loop
+    event_loop = asyncio.get_event_loop()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_m02_m08_v590.py::TestM08Backup::test_backup_failure_does_not_corrupt_main_db
+FAILED tests/test_m07_h04_v590.py::TestEnsureDependenciesM07::test_ensure_dependencies_single_fork_on_success
+FAILED tests/test_m07_h04_v590.py::TestEnsureDependenciesM07::test_ensure_dependencies_fallback_per_package_on_failure
+FAILED tests/test_m07_h04_v590.py::TestEnsureDependenciesM07::test_ensure_dependencies_timeout_handled
+FAILED tests/test_m07_h04_v590.py::TestSeedAgentsH04::test_seed_agents_unknown_tag_on_first_iteration_failure
+FAILED tests/test_m07_h04_v590.py::TestSeedAgentsH04::test_seed_agents_agent_id_reset_between_iterations
+ERROR tests/test_m02_m08_v590.py::TestM08Backup::test_backup_failure_does_not_corrupt_main_db
+ERROR tests/test_m03_m06_v590.py::TestDashboardM06::test_api_dashboard_json_shape_unchanged
+ERROR tests/test_m03_m06_v590.py::TestDashboardM06::test_api_dashboard_empty_tables_returns_zeros
+ERROR tests/test_m03_m06_v590.py::TestDashboardM06::test_api_dashboard_null_values_handled
+ERROR tests/test_m03_m06_v590.py::TestDashboardM06::test_api_dashboard_query_count_reduced
+============== 6 failed, 30 passed, 2 warnings, 5 errors in 2.76s ==============

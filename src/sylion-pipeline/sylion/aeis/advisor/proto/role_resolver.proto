@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.role_resolver;
+
+service RoleResolverService {
+  rpc ResolveRole(ResolveRoleRequest) returns (ModelChoice);
+  rpc ResolveJudgeModel(ResolveJudgeModelRequest) returns (ModelChoice);
+  rpc ListAvailableRoles(ListAvailableRolesRequest) returns (ListAvailableRolesResponse);
+  rpc GetRoutingMatrix(GetRoutingMatrixRequest) returns (GetRoutingMatrixResponse);
+  rpc PreviewRouting(PreviewRoutingRequest) returns (RoutingPreview);
+}
+
+message ResolveRoleRequest {
+  string role = 1;
+  string risk_level = 2;
+  string project_domain = 3;
+  string project_type = 4;
+}
+
+message ResolveJudgeModelRequest {
+  string judge_purpose = 1;
+  string risk_level = 2;
+}
+
+message ModelChoice {
+  string model_id = 1;
+  string reason = 2;
+  bool is_local_fallback = 3;
+  double confidence = 4;
+  double estimated_cost_usd = 5;
+}
+
+message ListAvailableRolesRequest {}
+
+message Role {
+  string role_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message ListAvailableRolesResponse {
+  repeated Role roles = 1;
+}
+
+message GetRoutingMatrixRequest {}
+
+message RoutingEntry {
+  string purpose_or_role = 1;
+  string risk_level = 2;
+  string model_id = 3;
+  string description = 4;
+}
+
+message GetRoutingMatrixResponse {
+  repeated RoutingEntry entries = 1;
+}
+
+message PreviewRoutingRequest {
+  string operator_id = 1;
+  string scenario = 2;
+}
+
+message RoutingPreview {
+  string operator_id = 1;
+  string scenario = 2;
+  ModelChoice resolved = 3;
+  repeated ModelChoice alternatives = 4;
+}

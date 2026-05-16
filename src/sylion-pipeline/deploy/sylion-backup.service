@@ -1,0 +1,40 @@
+[Unit]
+Description=SYLION Dashboard — SQLite Backup (P8-BACKUP-SCRIPT)
+Documentation=file:///opt/sylion/deploy/BACKUP_STRATEGY.md
+# Uruchamia się po sieci (dla potencjalnego rsync offsite) i po głównym serwisie
+After=network.target sylion-dashboard.service
+# NIE wymaga running serwisu — backup działa też gdy dashboard jest zatrzymany
+Wants=sylion-dashboard.service
+
+[Service]
+Type=oneshot
+
+# Bezpieczeństwo: uruchom jako użytkownik serwisu, nie root
+User=www-data
+Group=www-data
+
+# Zmienne środowiskowe — ścieżki konfiguracji
+EnvironmentFile=-/etc/sylion/backup.env
+
+# Ścieżka skryptu (twarda — nie zależy od CWD)
+ExecStart=/opt/sylion/scripts/backup_db.sh
+
+# Limity zasobów
+# CPUQuota=50%        — odkomentuj jeśli backup obciąża CPU
+# IOWeight=100        — niski priorytet I/O (1-10000, default 100)
+# MemoryMax=256M      — odkomentuj jeśli chcesz ograniczyć RAM
+
+# Timeout: backup nie powinien trwać dłużej niż 10 min
+TimeoutStartSec=600
+
+# Logowanie do journald (stdout/stderr skryptu)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sylion-backup
+
+# Restart: nie restartuj przy błędzie (timer uruchomi ponownie za 24h)
+# Błędy są logowane i powinny być monitorowane przez systemctl status
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

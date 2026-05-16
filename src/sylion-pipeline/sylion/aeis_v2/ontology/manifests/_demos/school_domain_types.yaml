@@ -1,0 +1,123 @@
+# Education-domain ObjectType examples - SYLION v2 demo
+# Source: docs/v2/_drafts/ollama_batch/batch_E/e6_school_manifests.yaml (curated by v2 cron)
+# Notes:
+#   These are sample TYPE definitions (not instance rows), demonstrating how a
+#   new domain (school/education) would be modelled in SYLION v2 ontology.
+#   They are NOT loaded into the production registry; they serve as a tutorial
+#   reference for operators authoring their own ObjectTypes.
+#   Schema is simplified vs. real production manifests (see customer.yaml for
+#   the full sylion.aeis.v2/Object format with metadata, spec, d_level, etc.).
+---
+id: student
+version: 0.1.0
+name_pl: Student
+name_en: Student
+dedicated_columns:
+  - name: student_id
+    type: string
+    nullable: false
+  - name: first_name
+    type: string
+    nullable: false
+  - name: last_name
+    type: string
+    nullable: false
+  - name: birth_date
+    type: date
+    nullable: false
+  - name: email
+    type: string
+    nullable: true
+  - name: phone_number
+    type: string
+    nullable: true
+---
+id: teacher
+version: 0.1.0
+name_pl: Nauczyciel
+name_en: Teacher
+dedicated_columns:
+  - name: teacher_id
+    type: string
+    nullable: false
+  - name: first_name
+    type: string
+    nullable: false
+  - name: last_name
+    type: string
+    nullable: false
+  - name: subject
+    type: string
+    nullable: false
+  - name: email
+    type: string
+    nullable: true
+  - name: hire_date
+    type: date
+    nullable: false
+---
+id: course
+version: 0.1.0
+name_pl: Kurs
+name_en: Course
+dedicated_columns:
+  - name: course_id
+    type: string
+    nullable: false
+  - name: title
+    type: string
+    nullable: false
+  - name: description
+    type: text
+    nullable: true
+  - name: credits
+    type: number
+    nullable: false
+  - name: department
+    type: string
+    nullable: false
+---
+id: grade
+version: 0.1.0
+name_pl: Ocena
+name_en: Grade
+dedicated_columns:
+  - name: grade_id
+    type: string
+    nullable: false
+  - name: student_id
+    type: string
+    nullable: false
+  - name: course_id
+    type: string
+    nullable: false
+  - name: grade_value
+    type: string
+    nullable: false
+  - name: date_awarded
+    type: date
+    nullable: false
+---
+id: assignment
+version: 0.1.0
+name_pl: Zadanie
+name_en: Assignment
+dedicated_columns:
+  - name: assignment_id
+    type: string
+    nullable: false
+  - name: course_id
+    type: string
+    nullable: false
+  - name: title
+    type: string
+    nullable: false
+  - name: description
+    type: text
+    nullable: true
+  - name: due_date
+    type: date
+    nullable: false
+  - name: points
+    type: number
+    nullable: false

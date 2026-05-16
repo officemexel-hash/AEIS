@@ -1,0 +1,97 @@
+name: Feature Request
+description: Propose a new feature or enhancement for SYLION pipeline
+title: "[FEAT] "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request
+        Describe the feature you'd like to see in SYLION. Concrete proposals are easier to evaluate than vague suggestions.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      options:
+        - orchestrator / core pipeline
+        - agents (new agent)
+        - agents (existing agent improvement)
+        - dashboard / UI
+        - API / integrations
+        - security / compliance
+        - observability / metrics
+        - developer experience / CI
+        - documentation
+        - performance
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem does this solve? Who is affected?
+      placeholder: "As a [role], I need [capability] because [reason]."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature in enough detail to estimate scope.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you evaluate and why did you rule them out?
+
+  - type: textarea
+    id: adr
+    attributes:
+      label: ADR reference (if applicable)
+      description: |
+        If this feature would require a new Architecture Decision Record, note it here.
+        See `docs/ADR_*.md` for existing decisions.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (your estimate)
+      options:
+        - Critical — blocking production use
+        - High — significant friction without it
+        - Medium — quality-of-life improvement
+        - Low — nice to have
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know this feature is done?
+      placeholder: |
+        - [ ] `python orchestrator.py --feature-x` works
+        - [ ] Unit tests cover happy and error paths
+        - [ ] CHANGELOG entry added
+        - [ ] Documentation updated
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues and this feature has not been requested before
+          required: true
+        - label: This is not a bug report (use the bug template for that)
+          required: true
+        - label: I am willing to contribute a PR for this feature
+          required: false

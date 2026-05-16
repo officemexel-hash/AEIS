@@ -1,0 +1,266 @@
+syntax = "proto3";
+
+package sylion;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "sylion_common.proto";
+
+// ──────────────────────────────────────────────
+//  SYLION AEIS – self-awareness services
+// ──────────────────────────────────────────────
+
+// ═══════ Autonomy ═══════
+
+/** AEIS autonomy stages S1-S5. */
+enum AutonomyStage {
+  AUTONOMY_STAGE_UNSPECIFIED = 0;
+  AUTONOMY_S1_OBSERVE        = 1;
+  AUTONOMY_S2_SUGGEST        = 2;
+  AUTONOMY_S3_AUTOMATE       = 3;
+  AUTONOMY_S4_GOVERN         = 4;
+  AUTONOMY_S5_EVOLVE         = 5;
+}
+
+message AutonomyStatus {
+  AutonomyStage               current_stage = 1;
+  AutonomyStage               target_stage  = 2;
+  double                      readiness_pct = 3;
+  repeated string             active_gates  = 4;
+  google.protobuf.Timestamp   last_advanced = 5;
+}
+
+message AutonomyStageDetail {
+  AutonomyStage   stage           = 1;
+  string          name            = 2;
+  string          description     = 3;
+  repeated string requirements    = 4;
+  bool            satisfied       = 5;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  AutonomyStatus status = 1;
+}
+
+message GetStagesRequest {}
+
+message GetStagesResponse {
+  repeated AutonomyStageDetail stages = 1;
+}
+
+message AdvanceStageRequest {
+  string reason = 1;
+}
+
+message AdvanceStageResponse {
+  AutonomyStatus status = 1;
+}
+
+message AutonomyAction {
+  string                      action_id    = 1;
+  string                      title        = 2;
+  string                      description  = 3;
+  string                      category     = 4;
+  AutonomyStage               min_stage    = 5;
+  bool                        enabled      = 6;
+  google.protobuf.Timestamp   last_used    = 7;
+}
+
+message GetActionsRequest {
+  AutonomyStage min_stage_filter = 1;
+}
+
+message GetActionsResponse {
+  repeated AutonomyAction actions = 1;
+}
+
+/** Autonomy service – tracks AEIS self-governance level and available actions. */
+service AutonomyService {
+  rpc GetStatus(GetStatusRequest)     returns (GetStatusResponse);
+  rpc GetStages(GetStagesRequest)     returns (GetStagesResponse);
+  rpc AdvanceStage(AdvanceStageRequest) returns (AdvanceStageResponse);
+  rpc GetActions(GetActionsRequest)   returns (GetActionsResponse);
+}
+
+// ═══════ Explanations ═══════
+
+/** Type of explanation generated. */
+enum ExplanationType {
+  EXPLANATION_TYPE_UNSPECIFIED = 0;
+  EXPL_DECISION_RATIONALE      = 1;
+  EXPL_SYSTEM_BEHAVIOR         = 2;
+  EXPL_MODEL_OUTPUT            = 3;
+  EXPL_INCIDENT_ROOT_CAUSE     = 4;
+  EXPL_ARCHITECTURE_CHANGE     = 5;
+}
+
+/** Audience for an explanation. */
+enum ExplanationAudience {
+  EXPLANATION_AUDIENCE_UNSPECIFIED = 0;
+  AUD_DEVELOPER                    = 1;
+  AUD_OPERATOR                     = 2;
+  AUD_STAKEHOLDER                  = 3;
+  AUD_AUDITOR                      = 4;
+}
+
+message Explanation {
+  string                      explanation_id   = 1;
+  ExplanationType              type             = 2;
+  ExplanationAudience          audience         = 3;
+  string                      subject_id       = 4;
+  string                      summary          = 5;
+  string                      detail           = 6;
+  double                      confidence       = 7;
+  map<string, string>         evidence_refs    = 8;
+  google.protobuf.Timestamp   created_at       = 9;
+}
+
+message CreateExplanationRequest {
+  ExplanationType      type          = 1;
+  ExplanationAudience  audience      = 2;
+  string               subject_id    = 3;
+  string               summary       = 4;
+  string               detail        = 5;
+  double               confidence    = 6;
+  map<string, string>  evidence_refs = 7;
+}
+
+message CreateExplanationResponse {
+  Explanation explanation = 1;
+}
+
+message ListExplanationsRequest {
+  ExplanationType    type_filter    = 1;
+  string             subject_filter = 2;
+  int32              page_size      = 3;
+  string             page_token     = 4;
+}
+
+message ListExplanationsResponse {
+  repeated Explanation explanations = 1;
+  string               next_token   = 2;
+}
+
+message GetExplanationRequest {
+  string explanation_id = 1;
+}
+
+message GetExplanationResponse {
+  Explanation explanation = 1;
+}
+
+/** Explanation service – generates and stores human-readable explanations. */
+service ExplanationService {
+  rpc CreateExplanation(CreateExplanationRequest)  returns (CreateExplanationResponse);
+  rpc ListExplanations(ListExplanationsRequest)    returns (ListExplanationsResponse);
+  rpc GetExplanation(GetExplanationRequest)        returns (GetExplanationResponse);
+}
+
+// ═══════ Improvement ═══════
+
+/** Status of a self-improvement proposal. */
+enum ImprovementStatus {
+  IMPROVEMENT_STATUS_UNSPECIFIED = 0;
+  IMP_PROPOSED                   = 1;
+  IMP_VALIDATED                  = 2;
+  IMP_IN_PROGRESS                = 3;
+  IMP_COMPLETED                  = 4;
+  IMP_REJECTED                   = 5;
+  IMP_ROLLED_BACK                = 6;
+}
+
+/** Risk level of an improvement. */
+enum RiskLevel {
+  RISK_LEVEL_UNSPECIFIED = 0;
+  RISK_LOW               = 1;
+  RISK_MEDIUM            = 2;
+  RISK_HIGH              = 3;
+  RISK_CRITICAL          = 4;
+}
+
+message Improvement {
+  string                      improvement_id = 1;
+  string                      title          = 2;
+  string                      description    = 3;
+  ImprovementStatus           status         = 4;
+  RiskLevel                   risk           = 5;
+  double                      expected_benefit = 6;
+  repeated string             affected_modules = 7;
+  string                      evidence_ref   = 8;
+  string                      assigned_to    = 9;
+  google.protobuf.Timestamp   proposed_at    = 10;
+  google.protobuf.Timestamp   started_at     = 11;
+  google.protobuf.Timestamp   completed_at   = 12;
+}
+
+message CreateImprovementRequest {
+  string          title             = 1;
+  string          description       = 2;
+  RiskLevel       risk              = 3;
+  double          expected_benefit  = 4;
+  repeated string affected_modules  = 5;
+  string          evidence_ref      = 6;
+}
+
+message CreateImprovementResponse {
+  Improvement improvement = 1;
+}
+
+message ListImprovementsRequest {
+  ImprovementStatus  status_filter = 1;
+  RiskLevel          risk_filter   = 2;
+  int32              page_size     = 3;
+  string             page_token    = 4;
+}
+
+message ListImprovementsResponse {
+  repeated Improvement improvements = 1;
+  string                next_token  = 2;
+}
+
+message GetNextRequest {
+  string worker_id = 1;
+}
+
+message GetNextResponse {
+  Improvement improvement = 1;
+}
+
+message StartImprovementRequest {
+  string  improvement_id = 1;
+  string  assigned_to    = 2;
+}
+
+message StartImprovementResponse {
+  Improvement improvement = 1;
+}
+
+message CompleteImprovementRequest {
+  string  improvement_id = 1;
+  bytes   result         = 2;
+}
+
+message CompleteImprovementResponse {
+  Improvement improvement = 1;
+}
+
+message RejectImprovementRequest {
+  string  improvement_id = 1;
+  string  reason         = 2;
+}
+
+message RejectImprovementResponse {
+  Improvement improvement = 1;
+}
+
+/** Improvement service – manages self-improvement proposals end-to-end. */
+service ImprovementService {
+  rpc CreateImprovement(CreateImprovementRequest)     returns (CreateImprovementResponse);
+  rpc ListImprovements(ListImprovementsRequest)       returns (ListImprovementsResponse);
+  rpc GetNext(GetNextRequest)                         returns (GetNextResponse);
+  rpc StartImprovement(StartImprovementRequest)       returns (StartImprovementResponse);
+  rpc CompleteImprovement(CompleteImprovementRequest) returns (CompleteImprovementResponse);
+  rpc RejectImprovement(RejectImprovementRequest)     returns (RejectImprovementResponse);
+}

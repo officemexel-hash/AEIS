@@ -1,0 +1,270 @@
+{
+  "class": "E",
+  "module": "governance.council_workflow",
+  "description": "Golden set for CouncilWorkflow: open_session, cast_vote, tally, human_gate, get_session, list_sessions.",
+  "tests": [
+    {
+      "id": "open_session_d3",
+      "method": "open_session",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "proposal_id": "prop.golden_001",
+        "decision_class": "D3",
+        "title": "Deploy golden module",
+        "description": "Test deployment of golden module for validation",
+        "evidence_ref": "evidence.golden_001"
+      },
+      "expected": {
+        "status": "open"
+      }
+    },
+    {
+      "id": "open_session_d4",
+      "method": "open_session",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "proposal_id": "prop.golden_002",
+        "decision_class": "D4",
+        "title": "Critical infrastructure change",
+        "description": "D4 level decision requiring human gate",
+        "evidence_ref": "evidence.golden_002"
+      },
+      "expected": {
+        "status": "open"
+      }
+    },
+    {
+      "id": "open_session_d5",
+      "method": "open_session",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "proposal_id": "prop.golden_003",
+        "decision_class": "D5",
+        "title": "Emergency security override",
+        "description": "D5 level decision requiring external approval",
+        "evidence_ref": "evidence.golden_003"
+      },
+      "expected": {
+        "status": "open"
+      }
+    },
+    {
+      "id": "cast_vote_approve_1",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "open_session_d3",
+      "input": {
+        "session_id_ref": "open_session_d3",
+        "member_id": "council.member_01",
+        "value": "approve",
+        "rationale": "LGTM, all tests pass"
+      },
+      "expected": {
+        "cast": true
+      }
+    },
+    {
+      "id": "cast_vote_duplicate",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_1",
+      "input": {
+        "session_id_ref": "open_session_d3",
+        "member_id": "council.member_01",
+        "value": "approve",
+        "rationale": "Trying again"
+      },
+      "expected": {
+        "cast": false,
+        "message": "Member already voted"
+      }
+    },
+    {
+      "id": "cast_vote_approve_2",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_1",
+      "input": {
+        "session_id_ref": "open_session_d3",
+        "member_id": "council.member_02",
+        "value": "approve",
+        "rationale": "Architecture reviewed"
+      },
+      "expected": {
+        "cast": true
+      }
+    },
+    {
+      "id": "cast_vote_approve_3",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_2",
+      "input": {
+        "session_id_ref": "open_session_d3",
+        "member_id": "council.member_03",
+        "value": "approve",
+        "rationale": "Security scan clean"
+      },
+      "expected": {
+        "cast": true
+      }
+    },
+    {
+      "id": "cast_vote_approve_4_quorum",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_3",
+      "input": {
+        "session_id_ref": "open_session_d3",
+        "member_id": "council.member_04",
+        "value": "approve",
+        "rationale": "Final approval"
+      },
+      "expected": {
+        "cast": true
+      },
+      "expected_tally": {
+        "resolved": true,
+        "outcome": "approved",
+        "approves": 4
+      }
+    },
+    {
+      "id": "cast_vote_nonexistent_session",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "session_id": "nonexistent_session_id",
+        "member_id": "council.member_01",
+        "value": "approve",
+        "rationale": "Bad session"
+      },
+      "expected": {
+        "cast": false,
+        "message": "Session not found"
+      }
+    },
+    {
+      "id": "open_session_rejection_flow",
+      "method": "open_session",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "proposal_id": "prop.golden_reject",
+        "decision_class": "D3",
+        "title": "Module to reject",
+        "description": "Testing rejection flow"
+      },
+      "expected": {
+        "status": "open"
+      }
+    },
+    {
+      "id": "cast_vote_reject_auto_resolve",
+      "method": "cast_vote",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "open_session_rejection_flow",
+      "input": {
+        "session_id_ref": "open_session_rejection_flow",
+        "member_id": "council.reject_01",
+        "value": "reject",
+        "rationale": "Fails validation"
+      },
+      "expected": {
+        "cast": true
+      },
+      "expected_tally": {
+        "resolved": true,
+        "outcome": "rejected",
+        "rejects": 1
+      }
+    },
+    {
+      "id": "tally_after_approval",
+      "method": "tally",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_4_quorum",
+      "input": {"session_id_ref": "open_session_d3"},
+      "expected": {
+        "approves": 4,
+        "rejects": 0,
+        "abstains": 0,
+        "total": 4,
+        "quorum": 4,
+        "resolved": true,
+        "outcome": "approved"
+      }
+    },
+    {
+      "id": "tally_after_rejection",
+      "method": "tally",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_reject_auto_resolve",
+      "input": {"session_id_ref": "open_session_rejection_flow"},
+      "expected": {
+        "approves": 0,
+        "rejects": 1,
+        "abstains": 0,
+        "total": 1,
+        "quorum": 4,
+        "resolved": true,
+        "outcome": "rejected"
+      }
+    },
+    {
+      "id": "get_session_approved",
+      "method": "get_session",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_4_quorum",
+      "input": {"session_id_ref": "open_session_d3"},
+      "expected": {
+        "proposal_id": "prop.golden_001",
+        "status": "closed_approved"
+      }
+    },
+    {
+      "id": "get_session_rejected",
+      "method": "get_session",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_reject_auto_resolve",
+      "input": {"session_id_ref": "open_session_rejection_flow"},
+      "expected": {
+        "proposal_id": "prop.golden_reject",
+        "status": "closed_rejected"
+      }
+    },
+    {
+      "id": "list_sessions_open",
+      "method": "list_sessions",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "open_session_d4",
+      "input": {"status": "open"},
+      "expected_type": "list",
+      "expected_min_length": 1
+    },
+    {
+      "id": "list_sessions_closed_approved",
+      "method": "list_sessions",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "cast_vote_approve_4_quorum",
+      "input": {"status": "closed_approved"},
+      "expected_type": "list",
+      "expected_min_length": 1
+    },
+    {
+      "id": "human_gate_d4_approve",
+      "method": "human_gate_decide",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "open_session_d4",
+      "input": {
+        "session_id_ref": "open_session_d4",
+        "gate_action": "first_approve_all_votes",
+        "decision": "approved",
+        "by": "human.operator"
+      },
+      "expected": {
+        "decided": true,
+        "human_gate": "approved"
+      }
+    }
+  ]
+}

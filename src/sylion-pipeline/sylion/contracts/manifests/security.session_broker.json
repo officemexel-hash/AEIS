@@ -1,0 +1,28 @@
+{
+  "module_id": "security.session_broker",
+  "module_kind": "F",
+  "owner_plan": "P07",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D5",
+  "security_profile": "staging-strict",
+  "auth_mode": "session",
+  "execution_guard": "strict",
+  "audit_mode": "extended",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "security.session.created",
+    "security.session.expired",
+    "security.session.revoked"
+  ],
+  "consumes_events": [
+    "security.auth.login",
+    "security.auth.logout"
+  ],
+  "description": "Session management with timeout, rotation, and concurrent limits.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

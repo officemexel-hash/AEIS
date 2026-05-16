@@ -1,0 +1,17 @@
+name: event-taxonomy-builder
+version: 1.0.0
+description: Designs event taxonomy for SYLION modules
+parallel_safe: true
+idempotent: false
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: domain
+    type: string
+    required: true
+  - name: actions
+    type: list
+    required: true
+outputs:
+  - event_definitions

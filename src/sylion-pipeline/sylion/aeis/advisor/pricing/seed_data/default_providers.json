@@ -1,0 +1,26 @@
+[
+  {
+    "provider_id": "anthropic",
+    "display_name": "Anthropic",
+    "is_local": false,
+    "metadata_url": "https://www.anthropic.com/pricing"
+  },
+  {
+    "provider_id": "openai",
+    "display_name": "OpenAI",
+    "is_local": false,
+    "metadata_url": "https://openai.com/api/pricing"
+  },
+  {
+    "provider_id": "google",
+    "display_name": "Google",
+    "is_local": false,
+    "metadata_url": "https://ai.google.dev/pricing"
+  },
+  {
+    "provider_id": "ollama_local",
+    "display_name": "Ollama Local",
+    "is_local": true,
+    "metadata_url": "http://localhost:11434"
+  }
+]

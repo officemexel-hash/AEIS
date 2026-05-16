@@ -1,0 +1,14 @@
+{
+  "error_class": "permission_overreach",
+  "target_action": "viewer_clicks_promote_to_production",
+  "context": "viewer-only role attempts a production promotion",
+  "timing": "before_action",
+  "expected_system_response": [
+    "block_action_with_rbac",
+    "audit_log_with_actor_and_role",
+    "no_state_mutation"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D5",
+  "action_d_level": "D2"
+}

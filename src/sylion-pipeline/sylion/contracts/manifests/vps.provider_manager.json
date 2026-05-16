@@ -1,0 +1,17 @@
+{
+  "module_id": "vps.provider_manager",
+  "module_kind": "A",
+  "owner_plan": "P02",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "description": "Virtual Provider Substrate manager for compute providers.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

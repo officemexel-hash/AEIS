@@ -1,0 +1,28 @@
+name: kernel-scaffolder
+version: 1.0.0
+description: Scaffolds a new SYLION kernel module
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: class
+    type: string
+    required: true
+  - name: port
+    type: integer
+    required: true
+  - name: owner_plan
+    type: string
+    required: true
+  - name: depends_on
+    type: list
+    required: false
+outputs:
+  - manifest.yaml
+  - __init__.py
+  - module.py
+  - contract.proto
+  - 001_init.sql
+  - test_golden.py

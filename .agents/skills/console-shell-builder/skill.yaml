@@ -1,0 +1,28 @@
+name: console-shell-builder
+version: "1.0.0"
+description: >
+  Builds Next.js page shells for SYLION surface modules. Generates page.tsx,
+  custom hooks, and mock fallback data following the patterns established in
+  sylion-frontend.
+parallel_safe: true
+idempotent: true
+inputs:
+  module_id:
+    type: string
+    required: true
+    description: "The SYLION module identifier (e.g., m1_roast)"
+  panel_name:
+    type: string
+    required: true
+    description: "The display name for the panel (e.g., RoastEngine)"
+  endpoints:
+    type: list
+    required: true
+    description: List of API endpoint objects with name, method, path, and response_shape
+outputs:
+  files:
+    type: list
+    description: List of created file paths with their purposes
+  summary:
+    type: string
+    description: Human-readable summary of what was generated

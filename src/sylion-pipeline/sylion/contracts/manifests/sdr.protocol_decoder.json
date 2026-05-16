@@ -1,0 +1,26 @@
+{
+  "module_id": "sdr.protocol_decoder",
+  "module_kind": "N",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "sdr.protocol.identified",
+    "sdr.protocol.decoded"
+  ],
+  "consumes_events": [
+    "sdr.signal.classified"
+  ],
+  "description": "Protocol identification and decoding for known RF protocols.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

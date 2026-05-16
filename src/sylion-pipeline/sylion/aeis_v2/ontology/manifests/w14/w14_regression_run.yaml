@@ -1,0 +1,100 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_regression_run
+  name_pl: Bieg regresyjny W14
+  name_en: W14 Regression Run
+  version: v1.0
+  description_pl: 'Specjalizowany bieg porównujący zachowanie przed i po naprawie.
+
+    Kluczowy jest status oraz odniesienia do findingu i dwóch przebiegów,
+
+    a lista testów sąsiednich trafia do rozszerzenia.'
+  description_en: 'Specialized run comparing behavior before and after a fix.
+
+    The important fields are status and links to the finding and two runs,
+
+    while neighboring test runs remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - regression
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: status
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - pending
+    - passed
+    - failed
+    default: pending
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: finding
+    target: w14_finding
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: pre_fix_run
+    target: w14_test_run
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: post_fix_run
+    target: w14_test_run
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - status
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: []
+  actions:
+  - id: mark_regression_passed
+    description_pl: Oznacza regresję jako zaliczoną po porównaniu obu przebiegów.
+    description_en: Marks the regression as passed after comparing both runs.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: passed
+    - type: emit_event
+      topic: aeis.w14.regression_run.passed
+  - id: mark_regression_failed
+    description_pl: Oznacza regresję jako nieudaną i emituje eskalację.
+    description_en: Marks the regression as failed and emits an escalation event.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: failed
+    - type: emit_event
+      topic: aeis.w14.regression_run.failed

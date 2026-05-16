@@ -1,0 +1,120 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_human_persona
+  name_pl: Persona ludzka W14
+  name_en: W14 Human Persona
+  version: v1.0
+  description_pl: 'Model symulowanego operatora z poziomem kompetencji i ryzyka.
+
+    Kolumny wspierają filtrowanie po nazwie, capability i tolerancji ryzyka,
+
+    a stan dynamiczny pozostaje w rozszerzeniu.'
+  description_en: 'Model of a simulated operator with capability and risk traits.
+
+    Columns support filtering by name, capability, and risk tolerance,
+
+    while dynamic state remains in the extension.'
+  tags:
+  - w14
+  - testing
+  - persona
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: name
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: capability_level
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - beginner
+    - intermediate
+    - expert
+    default: intermediate
+  - name: error_proneness
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0.0
+  - name: attention_span_min
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 30
+  - name: trust_in_ai_baseline
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0.5
+  - name: risk_tolerance
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - low
+    - medium
+    - high
+    default: medium
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations: []
+  audit:
+    enabled: true
+    track_fields:
+    - name
+    - capability_level
+    - risk_tolerance
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - name
+  actions:
+  - id: retune_human_persona
+    description_pl: Aktualizuje charakterystykę persony do kolejnej serii symulacji.
+    description_en: Retunes the persona profile for the next simulation series.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_persona.retuned
+  - id: archive_human_persona
+    description_pl: Archiwizuje personę po zakończeniu kampanii testowej.
+    description_en: Archives the persona after the test campaign ends.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_persona.archived

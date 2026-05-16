@@ -1,0 +1,14 @@
+{
+  "error_class": "sunk_cost_trap",
+  "target_action": "promote_release_after_5_failed_repair_attempts",
+  "context": "operator pushes a release because '5 attempts already invested', ignoring Loop Governor escalation",
+  "timing": "during_release_promotion",
+  "expected_system_response": [
+    "block_action",
+    "show_loop_governor_status",
+    "demand_human_decision_via_close_loop_as_blocked"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D4",
+  "action_d_level": "D3"
+}

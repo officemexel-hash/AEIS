@@ -1,0 +1,29 @@
+{
+  "module_id": "surface.ws_gateway",
+  "module_kind": "J",
+  "owner_plan": "P13",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "surface.ws.connected",
+    "surface.ws.disconnected",
+    "surface.ws.message"
+  ],
+  "consumes_events": [
+    "module.registered",
+    "decision.classified",
+    "environment.deployed"
+  ],
+  "description": "WebSocket gateway for real-time event streaming to clients.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

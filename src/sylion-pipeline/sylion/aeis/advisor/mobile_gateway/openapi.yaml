@@ -1,0 +1,466 @@
+openapi: 3.0.3
+info:
+  title: SYLION AEIS Advisor — Mobile Gateway
+  description: |
+    REST gateway exposed by `sylion.aeis.advisor.mobile_gateway` (Etap 1).
+    All endpoints require a device-bound JWT bearer token. Endpoints that
+    operate on D3+ cards additionally require a fresh biometric step-up
+    indicated by the `X-Biometric-Verified` header.
+
+    Etap 1 implementation calls the advisor engine in-process. Etap 2 will
+    swap this for a real gRPC client and add the Kotlin Multiplatform
+    mobile application that consumes this surface.
+  version: 0.1.0
+servers:
+  - url: /mobile/v1
+    description: Mobile gateway base path
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    BiometricVerifiedHeader:
+      name: X-Biometric-Verified
+      in: header
+      required: false
+      description: |
+        Set to `true` after the operator passes a fresh biometric prompt.
+        Required for any action whose underlying card has `d_level >= D3`.
+      schema:
+        type: string
+        enum: ["true", "false"]
+  schemas:
+    AdvisorCardEnvelope:
+      type: object
+      description: |
+        Wrapper proto-derived envelope produced by the advisor engine. Etap 2
+        replaces this generic schema with the canonical proto-generated type.
+      additionalProperties: true
+      required: [envelope_version, header]
+      properties:
+        envelope_version:
+          type: string
+        header:
+          type: object
+          additionalProperties: true
+        body:
+          type: object
+          additionalProperties: true
+    CardListResponse:
+      type: object
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisorCardEnvelope"
+        next_cursor:
+          type: string
+          nullable: true
+        total:
+          type: integer
+    CardActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [accept, reject, modify, remind, not_useful, convert_human_gate, convert_masterplan]
+        operator_note:
+          type: string
+          nullable: true
+        modified_recommendation:
+          type: string
+          nullable: true
+    CardActionResponse:
+      type: object
+      properties:
+        card_id:
+          type: string
+        action:
+          type: string
+        accepted:
+          type: boolean
+        biometric_required:
+          type: boolean
+    ProjectListResponse:
+      type: object
+      properties:
+        projects:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    LifecyclePhase:
+      type: object
+      properties:
+        hook:
+          type: string
+        phase_index:
+          type: integer
+        status:
+          type: string
+          enum: [pending, in_progress, approved, blocked]
+    ProjectLifecycleResponse:
+      type: object
+      properties:
+        project_id:
+          type: string
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/LifecyclePhase"
+    HumanGateTicketSummary:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+        title:
+          type: string
+        pending_since:
+          type: number
+        d_level:
+          type: string
+    HumanGateListResponse:
+      type: object
+      properties:
+        tickets:
+          type: array
+          items:
+            $ref: "#/components/schemas/HumanGateTicketSummary"
+    HumanGateDecisionRequest:
+      type: object
+      required: [decision, reviewer]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject, defer]
+        reviewer:
+          type: string
+        reason:
+          type: string
+          nullable: true
+    FundingDeadlinesResponse:
+      type: object
+      properties:
+        deadlines:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    PreferenceListResponse:
+      type: object
+      properties:
+        operator_id:
+          type: string
+        preferences:
+          type: object
+          additionalProperties: true
+    PreferenceValueResponse:
+      type: object
+      properties:
+        key:
+          type: string
+        value: {}
+        source:
+          type: string
+          enum: [default, operator, project, system]
+    PreferencePutRequest:
+      type: object
+      required: [value]
+      properties:
+        value: {}
+    SyncSnapshotResponse:
+      type: object
+      properties:
+        operator_id:
+          type: string
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisorCardEnvelope"
+        projects:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        human_gate_pending:
+          type: array
+          items:
+            $ref: "#/components/schemas/HumanGateTicketSummary"
+        funding_deadlines:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        settings:
+          type: object
+          additionalProperties: true
+        snapshot_taken_at:
+          type: number
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+          nullable: true
+  responses:
+    Unauthorized:
+      description: JWT missing / invalid / biometric step-up required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Operator lacks RBAC permissions for this resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotImplemented:
+      description: Endpoint is reserved for Etap 2 — not yet implemented
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+paths:
+  /cards:
+    get:
+      summary: List recent advisor cards for the authenticated operator
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Paginated list of cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /cards/{card_id}:
+    get:
+      summary: Fetch a single advisor card envelope by id
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Card envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisorCardEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /cards/{card_id}/actions:
+    post:
+      summary: Submit an operator action against a card
+      description: |
+        Cards with `d_level >= D3` require a fresh biometric step-up indicated
+        by `X-Biometric-Verified: true`. Without it, the gateway responds 401
+        and emits `aeis.advisor.mobile_gateway.biometric_step_up_triggered`.
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardActionRequest"
+      responses:
+        "200":
+          description: Action accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects:
+    get:
+      summary: List active projects (Etap 1 stub returns empty list)
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+      responses:
+        "200":
+          description: Project list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /projects/{project_id}/lifecycle:
+    get:
+      summary: 16-phase lifecycle skeleton for a project
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lifecycle skeleton
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectLifecycleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /human_gate/pending:
+    get:
+      summary: List Human Gate tickets awaiting operator decision
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+      responses:
+        "200":
+          description: Pending tickets (Etap 1 stub returns empty list)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HumanGateListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /human_gate/{ticket_id}/decide:
+    post:
+      summary: Decide a Human Gate ticket (Etap 2)
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HumanGateDecisionRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+  /funding/deadlines:
+    get:
+      summary: List funding deadlines (Etap 1 stub returns empty list)
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+      responses:
+        "200":
+          description: Funding deadlines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundingDeadlinesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /preferences:
+    get:
+      summary: Effective preference snapshot (Etap 1 stub returns empty dict)
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+      responses:
+        "200":
+          description: Operator preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /preferences/{key}:
+    get:
+      summary: Get a single effective preference value
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Preference value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceValueResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Mutate a preference value (Etap 2 — preferences gRPC owns mutation)
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencePutRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+  /sync/snapshot:
+    get:
+      summary: Offline cache snapshot (last 50 cards + 10 projects + HG + funding + settings)
+      parameters:
+        - $ref: "#/components/parameters/BiometricVerifiedHeader"
+      responses:
+        "200":
+          description: Snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncSnapshotResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"

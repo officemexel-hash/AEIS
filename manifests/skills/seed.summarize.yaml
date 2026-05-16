@@ -1,0 +1,29 @@
+skill_id: seed.summarize
+name: seed.summarize
+version: 1.0.0
+description: Produce a compact summary from the first sentence or first 12 words.
+category: skill
+domain: seed
+owner_role: operator
+entry_point: sylion.skills.catalog:seed_summarize_handler
+parallel_safe: true
+idempotent: true
+requires_hg: false
+tags:
+  - seed
+  - demo
+  - summary
+inputs:
+  - name: text
+    type: string
+    required: true
+outputs:
+  - name: summary
+    type: string
+steps:
+  - Read the text payload.
+  - Extract the first sentence when present.
+  - Fallback to the first 12 words when there is no sentence boundary.
+safety_rules:
+  - No filesystem writes.
+  - No network calls.

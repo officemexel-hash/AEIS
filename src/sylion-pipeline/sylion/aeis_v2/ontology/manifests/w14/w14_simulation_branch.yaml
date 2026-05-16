@@ -1,0 +1,113 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_simulation_branch
+  name_pl: Gałąź symulacyjna W14
+  name_en: W14 Simulation Branch
+  version: v1.0
+  description_pl: 'Wyspecjalizowana gałąź tworzona na potrzeby warstw L1-L4.
+
+    Stan i przyczyna odrzucenia są dedykowane, a snapshot path
+
+    i inne szczegóły techniczne trafiają do rozszerzenia.'
+  description_en: 'Specialized branch created for L1-L4 simulation layers.
+
+    State and discard reason are dedicated, while snapshot paths
+
+    and other technical details remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - simulation_branch
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: state
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - open
+    - merged
+    - discarded
+    default: open
+  - name: discard_reason
+    type: text
+    nullable: true
+    indexed: false
+    searchable: true
+    unique: false
+  - name: snapshot_db_path
+    type: text
+    nullable: true
+    indexed: false
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: parent_branch
+    target: w14_branch
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: contract
+    target: w14_simulation_contract
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - state
+    - discard_reason
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - discard_reason
+  actions:
+  - id: discard_simulation_branch
+    description_pl: Odrzuca gałąź symulacyjną po zakończeniu eksperymentu.
+    description_en: Discards the simulation branch after the experiment completes.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: state
+      to: discarded
+    - type: emit_event
+      topic: aeis.w14.simulation_branch.discarded
+  - id: reopen_simulation_branch
+    description_pl: Przywraca gałąź do stanu open dla powtórnej walidacji.
+    description_en: Returns the branch to open for repeated validation.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: state
+      to: open
+    - type: emit_event
+      topic: aeis.w14.simulation_branch.reopened

@@ -1,0 +1,26 @@
+{
+  "module_id": "rebuild.lpw_manager",
+  "module_kind": "K",
+  "owner_plan": "P14",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "rebuild.lpw.checkpoint",
+    "rebuild.lpw.replay"
+  ],
+  "consumes_events": [
+    "rebuild.plan.created"
+  ],
+  "description": "Last-Processed-Window manager for zero-data-loss rebuild transitions.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

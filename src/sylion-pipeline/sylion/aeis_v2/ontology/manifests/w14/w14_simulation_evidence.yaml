@@ -1,0 +1,108 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_simulation_evidence
+  name_pl: Dowód symulacyjny W14
+  name_en: W14 Simulation Evidence
+  version: v1.0
+  description_pl: 'Trwały pakiet dowodowy z przebiegu symulacji: trace, logi i skróty.
+
+    Warstwa wykonania, hash snapshotu i identyfikator śladu są dedykowane,
+
+    a logi oraz screenshoty pozostają w rozszerzeniu.'
+  description_en: 'Persistent evidence package from a simulation run: traces, logs,
+    and hashes.
+
+    Executed layer, snapshot hash, and trace identifier are dedicated,
+
+    while logs and screenshots remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - simulation_evidence
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: simulation_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: trace_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: layer_executed
+    type: integer
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - '1'
+    - '2'
+    - '3'
+    - '4'
+    default: '1'
+  - name: branch_snapshot_hash
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: sim_branch
+    target: w14_simulation_branch
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - simulation_ref
+    - trace_ref
+    - layer_executed
+    - branch_snapshot_hash
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - trace_ref
+  actions:
+  - id: seal_simulation_evidence
+    description_pl: Pieczętuje pakiet dowodowy do użycia w decyzjach releasowych.
+    description_en: Seals the evidence package for release decision use.
+    d_level: D4
+    hg_required: true
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.simulation_evidence.sealed
+  - id: attach_simulation_evidence
+    description_pl: Dołącza dowód do bieżącej ścieżki walidacyjnej lub findingu.
+    description_en: Attaches the evidence to the current validation or finding path.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.simulation_evidence.attached

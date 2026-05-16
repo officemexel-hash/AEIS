@@ -1,0 +1,49 @@
+# Idea demo rows - SYLION v2 ontology demo data
+# Source: docs/v2/_drafts/ollama_batch/batch_C/c1_idea_demos.yaml (curated by v2 cron)
+# Type definition: ../idea.yaml
+# Notes: status values draft|review|approved|rejected; priority low|medium|high.
+---
+id: 1
+name_pl: Integracja API zewnętrznego dostawcy płatności
+description_pl: >-
+  Rozszerzenie systemu o możliwość realizacji płatności online poprzez
+  integrację z zewnętrznym API płatności. Projekt obejmuje implementację
+  bezpiecznego połączenia, obsługę webhooków oraz raportowanie transakcji.
+status: draft
+priority: high
+---
+id: 2
+name_pl: Automatyczne backupy baz danych
+description_pl: >-
+  Rozwiązanie polegające na okresowym tworzeniu kopii zapasowych wszystkich
+  kluczowych baz danych oraz przechowywaniu ich w bezpiecznym, szyfrowanym
+  magazynie w chmurze.
+status: review
+priority: medium
+---
+id: 3
+name_pl: Dashboard analizy wydajności API
+description_pl: >-
+  Stworzenie interaktywnego panelu, który prezentuje w czasie rzeczywistym
+  kluczowe metryki wydajności API (czasy odpowiedzi, liczba żądań, procent
+  błędów).
+status: approved
+priority: high
+---
+id: 4
+name_pl: System zgłoszeń błędów w aplikacji mobilnej
+description_pl: >-
+  Implementacja wbudowanego mechanizmu zgłaszania błędów, który automatycznie
+  przesyła szczegółowe informacje (logi, stan aplikacji, dane użytkownika)
+  do zespołu wsparcia.
+status: rejected
+priority: low
+---
+id: 5
+name_pl: Wykorzystanie ML do prognozowania zapotrzebowania na zasoby
+description_pl: >-
+  Zastosowanie modeli uczenia maszynowego do prognozowania przyszłego
+  zapotrzebowania na zasoby serwerowe, w celu optymalizacji kosztów i
+  zwiększenia wydajności systemu.
+status: draft
+priority: medium

@@ -1,0 +1,27 @@
+{
+  "module_id": "aeis.self_observation",
+  "module_kind": "H",
+  "owner_plan": "P16",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "aeis.observation.snapshot",
+    "aeis.observation.anomaly"
+  ],
+  "consumes_events": [
+    "module.registered",
+    "environment.deployed"
+  ],
+  "description": "Real-time self-observation of system state, performance, and health.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

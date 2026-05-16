@@ -1,0 +1,410 @@
+# =============================================================================
+# Sylion Dashboard — Production docker-compose.yml
+# =============================================================================
+# Usage:
+#   docker compose up -d
+#   docker compose --profile monitoring up -d   (include Prometheus + Grafana)
+# =============================================================================
+
+name: sylion
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-healthcheck-defaults: &hc-defaults
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 15s
+
+secrets:
+  sylion_api_key:
+    external: true          # docker secret create sylion_api_key <file>
+  sylion_db_password:
+    external: true
+  caddy_tls_cert:
+    external: true
+  caddy_tls_key:
+    external: true
+
+volumes:
+  sylion-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+  tempo-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # 1. Sylion Dashboard
+  # ---------------------------------------------------------------------------
+  sylion-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Pin target stage explicitly so CI/CD matches local builds
+      target: runtime
+    image: ghcr.io/sylion/sylion-dashboard:latest
+    container_name: sylion-dashboard
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8421:8421"       # Bind to loopback — Caddy is the public face
+
+    volumes:
+      - sylion-data:/var/lib/sylion
+
+    secrets:
+      - sylion_api_key
+      - sylion_db_password
+
+    environment:
+      SYLION_HOME: /var/lib/sylion
+      SYLION_WORKERS: "2"
+      SYLION_API_KEY_FILE: /run/secrets/sylion_api_key
+      SYLION_DB_PASSWORD_FILE: /run/secrets/sylion_db_password
+      REDIS_URL: redis://redis:6379/0
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8421/health"]
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+    logging: *default-logging
+
+    # Read-only root filesystem where possible; only /var/lib/sylion is writable
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 2. Caddy — TLS termination + reverse proxy
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: sylion-caddy
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"     # HTTP/3 (QUIC)
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+    secrets:
+      - caddy_tls_cert
+      - caddy_tls_key
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/health"]
+
+    depends_on:
+      sylion-dashboard:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 3. Redis — distributed rate limiter & session cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: sylion-redis
+    restart: unless-stopped
+
+    command:
+      - redis-server
+      - --save 60 1
+      - --loglevel warning
+      - --maxmemory 64mb
+      - --maxmemory-policy allkeys-lru
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "redis-cli", "ping"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # ---------------------------------------------------------------------------
+  # 4. Prometheus — metrics scraping (optional, use --profile monitoring)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: sylion-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+
+    volumes:
+      # Phase 3 W3.2: mount the whole monitoring dir so prometheus.yml AND
+      # the *.yml rule files are visible. Path computed relative to
+      # docker-compose.yml location (src/sylion-pipeline/).
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/prometheus_alerts.yml:/etc/prometheus/rules/prometheus_alerts.yml:ro
+      - ./deploy/monitoring/prometheus_recording_rules.yml:/etc/prometheus/rules/prometheus_recording_rules.yml:ro
+      - ./deploy/monitoring/prometheus_slo_burn.yml:/etc/prometheus/rules/prometheus_slo_burn.yml:ro
+      - prometheus-data:/prometheus
+
+    ports:
+      - "127.0.0.1:9090:9090"
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 5. Grafana — dashboards (optional, use --profile monitoring)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: sylion-grafana
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      # Phase 3 W3.1: dashboard JSONs are mounted where the provider
+      # config (deploy/grafana/provisioning/dashboards/default.yml) tells
+      # Grafana to look — /var/lib/grafana/dashboards.
+      - ./deploy/monitoring:/var/lib/grafana/dashboards:ro
+
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/sylion_db_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+    secrets:
+      - sylion_db_password
+
+    depends_on:
+      - prometheus
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 6. Loki — log aggregation (Phase 3 W3.4)
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:2.9.6
+    container_name: sylion-loki
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    command: -config.file=/etc/loki/local-config.yaml
+
+    volumes:
+      - ./deploy/monitoring/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+
+    ports:
+      - "127.0.0.1:3100:3100"
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 7. Promtail — log shipper -> Loki (Phase 3 W3.4)
+  # ---------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:2.9.6
+    container_name: sylion-promtail
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    command: -config.file=/etc/promtail/config.yaml
+
+    volumes:
+      - ./deploy/monitoring/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      # Mount host log dirs read-only so promtail can tail container/app logs.
+      - /var/log:/var/log:ro
+
+    depends_on:
+      - loki
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 128M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 8. Alertmanager — alert routing/dispatch (Phase 3 W3.2)
+  #
+  # NOTE: alertmanager.yml contains shell-style ${VAR} placeholders for
+  # PAGERDUTY_ROUTING_KEY, SLACK_WEBHOOK_URL, SMTP_AUTH_PASSWORD. Alertmanager
+  # itself does NOT expand env vars in YAML — operators must run envsubst (or
+  # equivalent) to template the file before mounting, OR replace receivers
+  # with native_alertmanager_config secret refs in Phase 4.
+  # ---------------------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: sylion-alertmanager
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.listen-address=:9093
+      - --cluster.listen-address=
+
+    volumes:
+      - ./deploy/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+
+    ports:
+      - "127.0.0.1:9093:9093"
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/healthy"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 128M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------------------
+  # 9. Tempo — distributed traces backend (Phase 3 W3.3)
+  # ---------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: sylion-tempo
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+    command: -config.file=/etc/tempo.yaml
+
+    volumes:
+      - ./deploy/monitoring/tempo-config.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+
+    ports:
+      - "127.0.0.1:3200:3200"   # tempo HTTP
+      - "127.0.0.1:4317:4317"   # OTLP gRPC ingest
+
+    healthcheck:
+      <<: *hc-defaults
+      test: ["CMD", "wget", "-qO-", "http://localhost:3200/ready"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384M
+
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true

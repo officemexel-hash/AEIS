@@ -1,0 +1,11 @@
+name: buf-breaking-guardian
+version: 1.0.0
+description: Validates proto files for breaking changes
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: proto_file_paths
+    type: list
+    required: true
+outputs:
+  - validation_report

@@ -1,0 +1,39 @@
+# Vehicle demo rows - SYLION v2 ontology demo data
+# Source: docs/v2/_drafts/ollama_batch/batch_B/14_vehicle_demos.yaml (curated by v2 cron)
+# Type definition: ../vehicle.yaml
+# Notes: VINs are realistic 17-character examples; not bound to any real vehicle.
+---
+id: 1
+name_pl: Volkswagen Golf
+vin: "1HGCM82633A004352"
+kind: car
+status: active
+last_service_date: "2025-02-15"
+---
+id: 2
+name_pl: Toyota Corolla
+vin: "JH4KA2650MC008432"
+kind: car
+status: in_service
+last_service_date: "2024-10-10"
+---
+id: 3
+name_pl: Ford Transit
+vin: "WDBRF61J1JBA12345"
+kind: van
+status: active
+last_service_date: "2024-11-05"
+---
+id: 4
+name_pl: Scania R500
+vin: "1FAFP45X1WF123456"
+kind: truck
+status: retired
+last_service_date: "2023-06-20"
+---
+id: 5
+name_pl: Peugeot 3008
+vin: "3GCUK14T4JG123456"
+kind: car
+status: active
+last_service_date: "2025-01-30"

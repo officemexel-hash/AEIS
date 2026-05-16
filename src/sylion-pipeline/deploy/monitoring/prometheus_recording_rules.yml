@@ -1,0 +1,97 @@
+# Phase 3 W3.2 -- Prometheus recording rules.
+#
+# Pre-aggregate hot expressions so dashboard panels and burn-rate alerts
+# do not re-compute histogram_quantile on every refresh. Evaluated every
+# 15s (matches `evaluation_interval` in prometheus.yml).
+#
+# Convention: ``sylion:<aggregation>:<metric>``.
+
+groups:
+
+  - name: sylion.api.recording
+    interval: 30s
+    rules:
+
+      # Rolling RPS by endpoint and status class.
+      - record: sylion:rps:by_endpoint_status
+        expr: sum by (endpoint, status_class) (rate(aeis_http_requests_total[5m]))
+
+      # Rolling 5xx rate per endpoint (for the SLO burn-rate alert family).
+      - record: sylion:error_rate:5xx
+        expr: |
+          sum by (endpoint) (rate(aeis_http_requests_total{status_class="5xx"}[5m]))
+          /
+          (sum by (endpoint) (rate(aeis_http_requests_total[5m])) + 1e-9)
+
+      - record: sylion:error_rate:5xx_30m
+        expr: |
+          sum by (endpoint) (rate(aeis_http_requests_total{status_class="5xx"}[30m]))
+          /
+          (sum by (endpoint) (rate(aeis_http_requests_total[30m])) + 1e-9)
+
+      - record: sylion:error_rate:5xx_6h
+        expr: |
+          sum by (endpoint) (rate(aeis_http_requests_total{status_class="5xx"}[6h]))
+          /
+          (sum by (endpoint) (rate(aeis_http_requests_total[6h])) + 1e-9)
+
+      - record: sylion:error_rate:5xx_3d
+        expr: |
+          sum by (endpoint) (rate(aeis_http_requests_total{status_class="5xx"}[3d]))
+          /
+          (sum by (endpoint) (rate(aeis_http_requests_total[3d])) + 1e-9)
+
+  - name: sylion.latency.recording
+    interval: 30s
+    rules:
+
+      # Pre-computed histogram_quantile for dashboard hot panels.
+      - record: sylion:latency:p50
+        expr: |
+          histogram_quantile(0.5,
+            sum by (le, layer) (rate(aeis_pipeline_duration_seconds_bucket[5m])))
+
+      - record: sylion:latency:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, layer) (rate(aeis_pipeline_duration_seconds_bucket[5m])))
+
+      - record: sylion:latency:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, layer) (rate(aeis_pipeline_duration_seconds_bucket[5m])))
+
+      - record: sylion:skill_latency:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, skill_id) (rate(aeis_skill_execution_duration_seconds_bucket[5m])))
+
+      - record: sylion:council_vote_latency:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(aeis_council_vote_duration_seconds_bucket[5m])))
+
+  - name: sylion.governance.recording
+    interval: 30s
+    rules:
+
+      - record: sylion:governance:tickets_per_minute
+        expr: 60 * sum by (decision_class) (rate(aeis_governance_tickets_total[5m]))
+
+      - record: sylion:council:votes_per_minute
+        expr: 60 * sum by (decision_class) (rate(aeis_council_votes_total[5m]))
+
+      - record: sylion:autonomy:transitions_per_hour
+        expr: 3600 * sum by (from_stage, to_stage) (rate(aeis_autonomy_transitions_total[15m]))
+
+  - name: sylion.cache.recording
+    interval: 30s
+    rules:
+
+      - record: sylion:cache_hit_ratio
+        expr: |
+          sum by (namespace) (rate(aeis_cache_hits_total[5m]))
+          /
+          (sum by (namespace) (rate(aeis_cache_hits_total[5m]))
+           + sum by (namespace) (rate(aeis_cache_misses_total[5m]))
+           + 1e-9)

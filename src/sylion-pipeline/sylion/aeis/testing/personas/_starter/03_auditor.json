@@ -1,0 +1,29 @@
+{
+  "name": "auditor",
+  "description": "Katarzyna - compliance auditor. Methodical, evidence-driven.",
+  "baseline": {
+    "capability_level": "expert",
+    "expertise_domains": ["governance", "compliance", "evidence_chains"],
+    "error_proneness": 0.05,
+    "attention_span_min": 120,
+    "trust_in_ai_baseline": 0.4,
+    "risk_tolerance": "low"
+  },
+  "dynamic_state_initial": {
+    "fatigue_level": 0.0,
+    "cognitive_load": 0.15,
+    "time_pressure": 0.0,
+    "trust_in_ai": 0.4,
+    "current_interruptions": 0,
+    "hours_into_shift": 0.0,
+    "consecutive_decisions_count": 0
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 1.8,
+    "hesitation_probability": 0.15,
+    "double_check_probability": 0.95,
+    "asks_help_probability": 0.0,
+    "skips_warnings_probability": 0.0,
+    "verifies_evidence_probability": 0.98
+  }
+}

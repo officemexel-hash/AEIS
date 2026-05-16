@@ -1,0 +1,17 @@
+{
+  "module_id": "quality.quality_gate_engine",
+  "module_kind": "L",
+  "owner_plan": "P12",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "description": "Quality gate engine for entry/exit criteria validation.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

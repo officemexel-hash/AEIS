@@ -1,0 +1,87 @@
+// SYLION AEIS -- Common Proto Types
+// Version: 1.0.0 (Contract Freeze)
+// Shared messages used across all module class services.
+
+syntax = "proto3";
+
+package sylion.common.v1;
+
+option go_package = "github.com/sylion/aeis/api/common/v1;commonv1";
+option java_package = "com.sylion.aeis.common.v1";
+
+// --- Primitives ---
+
+message Empty {}
+
+message ModuleId {
+  string module_id = 1;
+}
+
+message Version {
+  string version = 1;  // semver, e.g. "1.0.0"
+}
+
+message Status {
+  bool   ok      = 1;
+  string message = 2;
+  string code    = 3;  // e.g. "OK", "NOT_FOUND", "ALREADY_EXISTS"
+}
+
+message Timestamp {
+  double epoch_seconds = 1;
+}
+
+// --- Pagination ---
+
+message PageRequest {
+  int32  limit  = 1;
+  string cursor = 2;  // opaque continuation token
+}
+
+message PageInfo {
+  int32  total_count  = 1;
+  bool   has_more     = 2;
+  string next_cursor  = 3;
+}
+
+// --- Generic Key-Value ---
+
+message KeyValue {
+  string key   = 1;
+  string value = 2;
+}
+
+message StringList {
+  repeated string items = 1;
+}
+
+// --- Module identifiers ---
+
+message ModuleKind {
+  string kind = 1;  // A-O class letter
+}
+
+message LifecycleStage {
+  string stage = 1;  // draft|build|validate|shadow|dual|cutover|stable|deprecated
+}
+
+// --- Decision types ---
+
+message DecisionClass {
+  string class_value = 1;  // D0-D5
+}
+
+// --- Evidence ---
+
+message ContentHash {
+  string algorithm = 1;  // e.g. "sha256"
+  string hex       = 2;
+}
+
+// --- Operation result ---
+
+message OperationResult {
+  bool   success = 1;
+  string message = 2;
+  string id      = 3;
+}

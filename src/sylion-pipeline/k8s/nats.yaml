@@ -1,0 +1,139 @@
+# =============================================================================
+# SYLION AEIS — NATS JetStream StatefulSet
+# =============================================================================
+# Event backbone for SYLION AEIS. JetStream provides durable, replayable
+# streams with at-least-once delivery guarantees.
+# =============================================================================
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  namespace: sylion
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/component: messaging
+data:
+  nats.conf: |
+    # --- Server ---
+    server_name: sylion-nats
+    listen: 0.0.0.0:4222
+    http_port: 8222
+
+    # --- JetStream ---
+    jetstream {
+      store_dir: "/data/jetstream"
+      max_mem_store: 256MB
+      max_file_store: 1GB
+      domain: sylion
+    }
+
+    # --- Limits ---
+    max_payload: 1MB
+    max_connections: 256
+    max_subscriptions: 1024
+
+    # --- Logging ---
+    debug: false
+    trace: false
+    logtime: true
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  namespace: sylion
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/component: messaging
+    app.kubernetes.io/part-of: sylion-aeis
+spec:
+  serviceName: nats
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nats
+        app.kubernetes.io/component: messaging
+    spec:
+      containers:
+        - name: nats
+          image: nats:alpine
+          args:
+            - "--config"
+            - "/etc/nats/nats.conf"
+          ports:
+            - containerPort: 4222
+              name: client
+            - containerPort: 8222
+              name: monitor
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nats
+              readOnly: true
+            - name: nats-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz?js-enabled-only=true
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: nats-config
+  volumeClaimTemplates:
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: sylion
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/component: messaging
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4222
+      targetPort: client
+      protocol: TCP
+      name: client
+    - port: 8222
+      targetPort: monitor
+      protocol: TCP
+      name: monitor
+  selector:
+    app.kubernetes.io/name: nats

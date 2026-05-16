@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.variants;
+
+service VariantsService {
+  rpc GenerateVariants(GenerateVariantsRequest) returns (VariantSet);
+  rpc CompareVariants(CompareVariantsRequest) returns (ComparisonMatrix);
+}
+
+message GenerateVariantsRequest {
+  string context_id = 1;
+  map<string, string> parameters = 2;
+}
+
+message Variant {
+  string variant_id = 1;
+  string name = 2;
+  string description = 3;
+  map<string, string> parameters = 4;
+  double estimated_cost_usd = 5;
+  double estimated_time_hours = 6;
+  string risk_level = 7;
+  double quality_projection = 8;
+}
+
+message VariantSet {
+  string context_id = 1;
+  repeated Variant variants = 2;
+  double generated_at = 3;
+}
+
+message CompareVariantsRequest {
+  repeated string variant_ids = 1;
+  string context_id = 2;
+}
+
+message ComparisonDimension {
+  string dimension = 1;
+  map<string, double> values = 2;
+  string winner = 3;
+}
+
+message ComparisonMatrix {
+  repeated string variant_ids = 1;
+  repeated ComparisonDimension dimensions = 2;
+}

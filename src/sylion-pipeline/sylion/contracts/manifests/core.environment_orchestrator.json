@@ -1,0 +1,25 @@
+{
+  "module_id": "core.environment_orchestrator",
+  "module_kind": "A",
+  "owner_plan": "P09",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D1",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus",
+    "core.module_registry",
+    "core.bundle_assembler"
+  ],
+  "publishes_events": [
+    "environment.deployed"
+  ],
+  "consumes_events": [],
+  "description": "Manage module deployment lifecycle with shadow->dual->cutover transitions.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

@@ -1,0 +1,23 @@
+{
+  "module_id": "core.decision_gate_engine",
+  "module_kind": "A",
+  "owner_plan": "P04",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D0",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "decision.classified"
+  ],
+  "consumes_events": [],
+  "description": "Classifies changes D0-D5 and evaluates governance gates. Foundation of governance.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

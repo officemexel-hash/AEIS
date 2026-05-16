@@ -1,0 +1,107 @@
+# =============================================================================
+# Sylion Dashboard — docker-compose.override.yml  (DEV ONLY)
+# =============================================================================
+# This file is automatically merged with docker-compose.yml by docker compose.
+# It is intentionally NOT committed to production branches.
+# Add to .gitignore if working on a shared repository, or keep in .git/info/exclude.
+#
+# Dev features:
+#   - Hot-reload via bind-mount of source tree
+#   - Relaxed security (root-accessible, no read_only)
+#   - MailHog for outgoing-email testing
+#   - Adminer for database inspection
+#   - No resource limits (fast iteration)
+#   - Verbose logging (text driver)
+# =============================================================================
+
+name: sylion
+
+secrets:
+  sylion_api_key:
+    file: ./secrets/dev_api_key.txt     # local plaintext file — NEVER commit
+  sylion_db_password:
+    file: ./secrets/dev_db_password.txt
+  caddy_tls_cert:
+    file: ./secrets/dev_tls.crt
+  caddy_tls_key:
+    file: ./secrets/dev_tls.key
+
+services:
+
+  sylion-dashboard:
+    build:
+      context: .
+      dockerfile: mega_audit/dockerfile/Dockerfile
+      target: runtime
+    image: sylion-dashboard:dev
+
+    # Live code reload — mount entire source over /app
+    volumes:
+      - .:/app
+      - sylion-data:/var/lib/sylion
+
+    ports:
+      - "8421:8421"        # Expose directly (no Caddy needed in dev)
+      - "8422:8422"        # Debug / profiling port (e.g. py-spy, pdb)
+
+    environment:
+      SYLION_WORKERS: "1"
+      SYLION_DEBUG: "true"
+      SYLION_LOG_LEVEL: "DEBUG"
+      REDIS_URL: redis://redis:6379/0
+
+    # Override CMD with hot-reload (uses watchdog / uvicorn reload flag)
+    command: ["python", "-m", "sylion.server", "--host", "0.0.0.0", "--http-port", "8421", "--log-level", "debug"]
+
+    # Remove read_only restriction in dev so code changes propagate
+    read_only: false
+    tmpfs: []
+
+    # No resource limits in dev
+    deploy:
+      resources: {}
+
+    # Human-readable logs in dev
+    logging:
+      driver: "local"
+      options:
+        max-size: "20m"
+
+  caddy:
+    # Use simple HTTP in dev; TLS handled by mkcert locally
+    volumes:
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  redis:
+    # Expose Redis port locally for inspection (redis-cli, RedisInsight)
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  # ---------------------------------------------------------------------------
+  # Dev-only: MailHog — catch all outgoing SMTP in a web UI
+  # ---------------------------------------------------------------------------
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: sylion-mailhog
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"   # SMTP (configure app to point here)
+      - "127.0.0.1:8025:8025"   # Web UI
+    logging:
+      driver: "none"
+
+  # ---------------------------------------------------------------------------
+  # Dev-only: Adminer — lightweight DB browser
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer:4.8.1
+    container_name: sylion-adminer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: "sylion-dashboard"
+    logging:
+      driver: "none"

@@ -1,0 +1,229 @@
+// SYLION AEIS -- Class M: Devices (4 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: DeviceDiscovery, DeviceRegistry, ArtifactDeployer, OnDeviceTestHarness
+
+syntax = "proto3";
+
+package sylion.devices.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/devices/v1;devicesv1";
+option java_package = "com.sylion.aeis.devices.v1";
+
+// =====================================================================
+// M1: Device Discovery Service
+// =====================================================================
+
+service DeviceDiscoveryService {
+  rpc Scan(ScanRequest) returns (DiscoveredDeviceList);
+  rpc GetDevice(GetDeviceRequest) returns (DeviceMessage);
+  rpc ListDevices(ListDevicesRequest) returns (DeviceMessageList);
+  rpc Release(ReleaseDeviceRequest) returns (DeviceMessage);
+}
+
+message ScanRequest {
+  string transport = 1;  // all|usb|bluetooth|wifi
+}
+
+message DiscoveredDeviceList {
+  repeated DeviceMessage devices = 1;
+}
+
+message GetDeviceRequest {
+  string device_id = 1;
+}
+
+message DeviceMessage {
+  string device_id     = 1;
+  string transport     = 2;
+  string model         = 3;
+  string firmware      = 4;
+  string capabilities_json = 5;
+  string status        = 6;  // detected|registered|active|released
+  double discovered_at = 7;
+}
+
+message ListDevicesRequest {
+  string transport = 1;
+  string status    = 2;
+}
+
+message DeviceMessageList {
+  repeated DeviceMessage devices = 1;
+}
+
+message ReleaseDeviceRequest {
+  string device_id = 1;
+}
+
+// =====================================================================
+// M2: Device Registry Service
+// =====================================================================
+
+service DeviceRegistryService {
+  rpc Register(RegisterDeviceRequest) returns (RegisteredDeviceMessage);
+  rpc Get(GetDeviceRequest) returns (RegisteredDeviceMessage);
+  rpc Transition(TransitionDeviceRequest) returns (sylion.common.v1.Status);
+  rpc Authorize(AuthorizeDeviceRequest) returns (sylion.common.v1.Status);
+  rpc ListDevices(ListRegisteredDevicesRequest) returns (RegisteredDeviceList);
+  rpc GetStats(sylion.common.v1.Empty) returns (DeviceRegistryStats);
+}
+
+message RegisterDeviceRequest {
+  string device_id = 1;
+  string model     = 2;
+  string firmware  = 3;
+  string capabilities_json = 4;
+  string owner     = 5;
+}
+
+message RegisteredDeviceMessage {
+  string device_id       = 1;
+  string model           = 2;
+  string firmware        = 3;
+  string capabilities_json = 4;
+  string status          = 5;
+  string owner           = 6;
+  double registered_at   = 7;
+}
+
+message TransitionDeviceRequest {
+  string device_id = 1;
+  string target_status = 2;
+}
+
+message AuthorizeDeviceRequest {
+  string device_id = 1;
+  string agent_id  = 2;
+  string action    = 3;
+}
+
+message ListRegisteredDevicesRequest {
+  string status = 1;
+  string owner  = 2;
+}
+
+message RegisteredDeviceList {
+  repeated RegisteredDeviceMessage devices = 1;
+}
+
+message DeviceRegistryStats {
+  int32 total_devices = 1;
+  map<string, int64> by_status = 2;
+}
+
+// =====================================================================
+// M3: Artifact Deployer Service
+// =====================================================================
+
+service ArtifactDeployerService {
+  rpc Deploy(DeployArtifactRequest) returns (DeploymentMessage);
+  rpc Rollback(RollbackDeploymentRequest) returns (DeploymentMessage);
+  rpc Get(GetDeploymentRequest) returns (DeploymentMessage);
+  rpc ListDeployments(ListDeploymentsRequest) returns (DeploymentList);
+  rpc DryRun(DeployArtifactRequest) returns (DryRunResponse);
+}
+
+message DeployArtifactRequest {
+  string device_id     = 1;
+  string artifact_id   = 2;
+  string artifact_type = 3;  // firmware|config|app
+  string version       = 4;
+  string payload_json  = 5;
+}
+
+message DeploymentMessage {
+  string deployment_id = 1;
+  string device_id     = 2;
+  string artifact_id   = 3;
+  string version       = 4;
+  string status        = 5;  // pending|deploying|completed|failed|rolled_back
+  double deployed_at   = 6;
+}
+
+message RollbackDeploymentRequest {
+  string deployment_id = 1;
+  string reason        = 2;
+}
+
+message GetDeploymentRequest {
+  string deployment_id = 1;
+}
+
+message ListDeploymentsRequest {
+  string device_id = 1;
+  string status    = 2;
+}
+
+message DeploymentList {
+  repeated DeploymentMessage deployments = 1;
+}
+
+message DryRunResponse {
+  bool   compatible = 1;
+  string message    = 2;
+  repeated string warnings = 3;
+}
+
+// =====================================================================
+// M4: On-Device Test Harness Service
+// =====================================================================
+
+service OnDeviceTestHarnessService {
+  rpc RunTest(RunDeviceTestRequest) returns (DeviceTestResultMessage);
+  rpc GetResults(GetDeviceResultsRequest) returns (DeviceTestResultList);
+  rpc ListTests(ListDeviceTestsRequest) returns (DeviceTestList);
+  rpc GetStats(sylion.common.v1.Empty) returns (DeviceTestStats);
+}
+
+message RunDeviceTestRequest {
+  string device_id  = 1;
+  string test_id    = 2;
+  string test_type  = 3;
+  string config_json = 4;
+}
+
+message DeviceTestResultMessage {
+  string result_id  = 1;
+  string device_id  = 2;
+  string test_id    = 3;
+  bool   passed     = 4;
+  string output_json = 5;
+  double duration_ms = 6;
+  double timestamp  = 7;
+}
+
+message GetDeviceResultsRequest {
+  string device_id = 1;
+  string test_id   = 2;
+  int32  limit     = 3;
+}
+
+message DeviceTestResultList {
+  repeated DeviceTestResultMessage results = 1;
+}
+
+message ListDeviceTestsRequest {
+  string device_id = 1;
+}
+
+message DeviceTestMessage {
+  string test_id    = 1;
+  string device_id  = 2;
+  string test_type  = 3;
+  string status     = 4;
+  double created_at = 5;
+}
+
+message DeviceTestList {
+  repeated DeviceTestMessage tests = 1;
+}
+
+message DeviceTestStats {
+  int32 total_tests  = 1;
+  int32 passed       = 2;
+  int32 failed       = 3;
+  double pass_rate   = 4;
+}

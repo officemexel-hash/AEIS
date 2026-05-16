@@ -1,0 +1,20 @@
+name: efficiency-audit
+version: "1.0.0"
+description: >
+  Audits SYLION code against four efficiency dimensions: bloat, performance,
+  memory, and cost. Produces a scored report with actionable recommendations.
+parallel_safe: true
+idempotent: true
+inputs:
+  module_id:
+    type: string
+    required: false
+    description: "The SYLION module identifier to audit (one of module_id or file_path required)"
+  file_path:
+    type: string
+    required: false
+    description: "Path to a specific file or directory to audit (one of module_id or file_path required)"
+outputs:
+  report:
+    type: object
+    description: Efficiency report with scores per dimension (bloat, perf, memory, cost) and overall grade

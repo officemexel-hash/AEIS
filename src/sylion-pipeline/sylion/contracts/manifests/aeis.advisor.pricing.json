@@ -1,0 +1,23 @@
+{
+  "module_id": "sylion.aeis.advisor.pricing",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.pricing.refreshed",
+    "aeis.advisor.pricing.assumption_used",
+    "aeis.advisor.pricing.provider_unavailable",
+    "aeis.advisor.pricing.adapter_failed",
+    "aeis.advisor.pricing.live_metadata_fetched",
+    "aeis.advisor.pricing.profile_updated"
+  ],
+  "events_subscribe": [],
+  "storage": {
+    "postgres_schemas": [
+      "advisor_pricing"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+name: code-bloat-detector
+version: "1.0.0"
+description: >
+  Detects code bloat in SYLION modules and files. Measures lines of code,
+  cyclomatic complexity, unused exports, and code duplication. Warns above
+  500 LoC per module and blocks above 1000 LoC.
+parallel_safe: true
+idempotent: true
+inputs:
+  path:
+    type: string
+    required: true
+    description: File or directory path to analyze
+outputs:
+  bloat_report:
+    type: object
+    description: Detailed bloat report with metrics (LoC, complexity, unused exports, duplication), findings, and verdict

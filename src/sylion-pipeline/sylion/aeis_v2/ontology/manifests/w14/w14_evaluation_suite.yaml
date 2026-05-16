@@ -1,0 +1,103 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_evaluation_suite
+  name_pl: Pakiet ewaluacyjny W14
+  name_en: W14 Evaluation Suite
+  version: v1.0
+  description_pl: 'Zestaw ewaluacyjny w stylu AIP Evals dla funkcji docelowej.
+
+    Przechowuje moduł, funkcję i bazowy bieg, a listy testów,
+
+    ewaluatorów oraz metryk pozostawia w rozszerzeniu.'
+  description_en: 'AIP Evals-like evaluation suite for a target function.
+
+    It stores target module, function, and baseline run, while test lists,
+
+    evaluators, and metrics remain in the extension payload.'
+  tags:
+  - w14
+  - testing
+  - evaluation
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: target_function
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: target_module
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: test_case_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: metric_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: baseline_run
+    target: w14_test_run
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - target_function
+    - target_module
+    - test_case_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - target_function
+    - target_module
+  actions:
+  - id: refresh_baseline_evaluation
+    description_pl: Odświeża baseline dla pakietu ewaluacyjnego po nowym przebiegu.
+    description_en: Refreshes the baseline for the evaluation suite after a new run.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.evaluation_suite.baseline_refreshed
+  - id: freeze_evaluation_suite
+    description_pl: Zamyka konfigurację evals do porównań regresyjnych.
+    description_en: Freezes the evals configuration for regression comparisons.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.evaluation_suite.frozen

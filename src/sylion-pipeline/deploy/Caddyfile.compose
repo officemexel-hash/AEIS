@@ -1,0 +1,28 @@
+{
+    auto_https off
+}
+
+:80 {
+    respond /healthz 200
+    redir https://{host}{uri} permanent
+}
+
+:443 {
+    tls /run/secrets/caddy_tls_cert /run/secrets/caddy_tls_key
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "same-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+        -Server
+    }
+
+    handle /healthz {
+        respond "ok" 200
+    }
+
+    reverse_proxy sylion-dashboard:8421
+}

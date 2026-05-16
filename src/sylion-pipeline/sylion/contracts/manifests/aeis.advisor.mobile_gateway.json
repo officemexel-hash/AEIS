@@ -1,0 +1,41 @@
+{
+  "module_id": "sylion.aeis.advisor.mobile_gateway",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.engine",
+    "sylion.aeis.advisor.actions",
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.funding"
+  ],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.mobile_gateway.request_handled",
+    "aeis.advisor.mobile_gateway.auth_failure",
+    "aeis.advisor.mobile_gateway.biometric_step_up_triggered",
+    "aeis.advisor.mobile_gateway.device_paired",
+    "aeis.advisor.mobile_gateway.device_unpaired",
+    "aeis.advisor.mobile_gateway.offline_snapshot_served"
+  ],
+  "events_subscribe": [],
+  "storage": {
+    "postgres_schemas": [],
+    "note": "stateless gateway — no own DB"
+  },
+  "golden_tests": {
+    "path": "tests/aeis/advisor/mobile_gateway/",
+    "minimum_required": [
+      "cards_endpoint_returns_paginated_list",
+      "card_detail_returns_envelope_when_card_exists",
+      "card_detail_returns_404_when_missing",
+      "card_action_accepts_when_low_risk",
+      "card_action_requires_biometric_when_d3_or_higher",
+      "auth_failure_returns_401",
+      "sync_snapshot_returns_expected_shape",
+      "unimplemented_endpoints_return_501",
+      "request_handled_event_emitted_after_successful_call"
+    ]
+  }
+}

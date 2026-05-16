@@ -1,0 +1,132 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_patch_proposal
+  name_pl: Propozycja poprawki W14
+  name_en: W14 Patch Proposal
+  version: v1.0
+  description_pl: 'Proponowana poprawka dla findingu, zawsze na gałęzi nie-main.
+
+    Dedykowane są status, autor i metryki diffu, a treść diffu,
+
+    lista plików i ocena ryzyka trafiają do rozszerzenia.'
+  description_en: 'Proposed fix for a finding, always on a non-main branch.
+
+    Status, author, and diff metrics are dedicated, while diff text,
+
+    file lists, and risk assessment remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - patch
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: status
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - draft
+    - proposed
+    - approved
+    - rejected
+    - applied
+    - reverted
+    default: draft
+  - name: diff_lines_added
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: diff_lines_removed
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: proposed_by
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: files_touched_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: finding
+    target: w14_finding
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: branch
+    target: w14_branch
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - status
+    - proposed_by
+    - files_touched_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - proposed_by
+  actions:
+  - id: approve_patch_proposal
+    description_pl: Zatwierdza propozycję poprawki do wdrożenia na branchu.
+    description_en: Approves the patch proposal for branch application.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: approved
+    - type: emit_event
+      topic: aeis.w14.patch_proposal.approved
+  - id: revert_patch_proposal
+    description_pl: Oznacza poprawkę jako cofniętą po negatywnym wyniku walidacji.
+    description_en: Marks the patch as reverted after failed validation.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: status
+      to: reverted
+    - type: emit_event
+      topic: aeis.w14.patch_proposal.reverted

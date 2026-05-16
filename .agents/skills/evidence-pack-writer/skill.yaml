@@ -1,0 +1,17 @@
+name: evidence-pack-writer
+version: 1.0.0
+description: Creates Evidence Pack for D3+ decisions
+parallel_safe: true
+idempotent: false
+inputs:
+  - name: decision_id
+    type: string
+    required: true
+  - name: decision_class
+    type: string
+    required: true
+  - name: rationale
+    type: string
+    required: true
+outputs:
+  - evidence_pack.json

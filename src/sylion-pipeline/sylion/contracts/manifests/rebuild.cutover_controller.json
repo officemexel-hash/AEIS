@@ -1,0 +1,27 @@
+{
+  "module_id": "rebuild.cutover_controller",
+  "module_kind": "K",
+  "owner_plan": "P14",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D4",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "rebuild.cutover.started",
+    "rebuild.cutover.completed",
+    "rebuild.cutover.rollback"
+  ],
+  "consumes_events": [
+    "rebuild.cft.passed"
+  ],
+  "description": "Controls cutover from old to new module implementation.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

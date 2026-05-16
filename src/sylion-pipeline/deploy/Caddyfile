@@ -1,0 +1,106 @@
+# SYLION v5.9.1 — produkcyjna konfiguracja Caddy reverse proxy
+#
+# FIXES addressed:
+#   B-03: Brak sekcji Caddy w LATEST RUNBOOK — ten plik jest gotowym
+#         artefaktem deploymentu (backport z SNAPSHOT RUNBOOK §3.5.2
+#         z rozszerzeniami: basicauth /api/metrics, CSP, Referrer-Policy same-origin,
+#         Permissions-Policy per spec zadania).
+#
+# Założenia:
+#   - uvicorn nasłuchuje lokalnie na 127.0.0.1:8421 (--workers 1, --proxy-headers)
+#   - domena sylion.example.com wskazuje na VPS (rekord A)
+#   - TLS Let's Encrypt obsługiwany automatycznie przez Caddy (ACME)
+#   - Caddy działa jako systemd service: systemctl enable --now caddy
+#   - Port 8421 MUSI być zablokowany z zewnątrz (ufw deny 8421/tcp)
+#
+# Instalacja:
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# UWAGA: Podmień admin@example.com na rzeczywisty adres e-mail przed prod.
+# UWAGA: Zmień hasło basicauth — wygeneruj: caddy hash-password
+
+sylion.example.com {
+
+    # Automatyczny TLS od Let's Encrypt (ACME HTTP-01 challenge)
+    # Podmień email — Let's Encrypt wysyła powiadomienia przed wygaśnięciem certa
+    tls admin@example.com
+
+    # Nagłówki bezpieczeństwa (OWASP baseline + CIS)
+    header {
+        # HSTS — wymuś HTTPS przez rok, włącznie z subdomenami
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+        # Zapobiegaj MIME-type sniffing
+        X-Content-Type-Options "nosniff"
+
+        # Blokuj osadzanie w iframe (clickjacking)
+        X-Frame-Options "DENY"
+
+        # Referrer — nie wyciekaj URL do zewnętrznych serwisów
+        Referrer-Policy "same-origin"
+
+        # Permissions Policy — wyłącz niepotrzebne API przeglądarki
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+        # CSP — domyślnie only same-origin; dostosuj jeśli dashboard ładuje zewnętrzne zasoby
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+
+        # Usuń nagłówek Server (nie ujawniaj wersji Caddy)
+        -Server
+    }
+
+    # Logi dostępu w formacie JSON (parsowalne przez journalctl/Loki/Promtail)
+    log {
+        output file /var/log/caddy/sylion_access.log {
+            roll_size    100MiB
+            roll_keep    10
+            roll_keep_for 720h
+        }
+        format json
+    }
+
+    # Ochrona endpointu Prometheus scrape (B-03 ext: basicauth)
+    # Wygeneruj hash hasła: caddy hash-password
+    # Przykładowy hash poniżej to "changeme" — ZMIEŃ przed deploymentem!
+    handle /api/metrics {
+        basicauth {
+            prometheus $2a$14$Zkx19XLiW6VYouLHR5NmfOFU0z2GTNmpkT/5hnNE12P3Ui.SqVvzG
+        }
+        reverse_proxy 127.0.0.1:8421
+    }
+
+    # Reverse proxy do unified runtime (python -m sylion.server) — wszystkie pozostałe ścieżki
+    reverse_proxy 127.0.0.1:8421 {
+        # Obowiązkowe nagłówki dla rate limitera (FIX-01 / B-02):
+        # uvicorn musi widzieć prawdziwe IP klienta, nie 127.0.0.1 Caddy
+        header_up X-Real-IP         {remote_host}
+        header_up X-Forwarded-For   {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host  {host}
+
+        # Backend healthcheck — Caddy sam wycofa ruch gdy backend pada
+        health_uri      /api/health
+        health_interval 30s
+        health_timeout  5s
+
+        # Timeouts dostosowane do batch processing (analiza dokumentów PDF)
+        transport http {
+            dial_timeout             10s
+            response_header_timeout  120s
+            read_timeout             300s
+            write_timeout            300s
+        }
+    }
+
+    # Limit rozmiaru requestu (upload dokumentów do analizy)
+    request_body {
+        max_size 100MB
+    }
+}
+
+# Redirect www → apex (opcjonalnie)
+www.sylion.example.com {
+    redir https://sylion.example.com{uri} permanent
+}

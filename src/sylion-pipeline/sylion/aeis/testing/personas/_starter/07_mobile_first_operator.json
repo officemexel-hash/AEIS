@@ -1,0 +1,29 @@
+{
+  "name": "mobile_first_operator",
+  "description": "Ewa - operator approving via mobile during meetings/transit.",
+  "baseline": {
+    "capability_level": "intermediate",
+    "expertise_domains": ["mobile_approval", "advisor"],
+    "error_proneness": 0.28,
+    "attention_span_min": 4,
+    "trust_in_ai_baseline": 0.75,
+    "risk_tolerance": "medium"
+  },
+  "dynamic_state_initial": {
+    "fatigue_level": 0.2,
+    "cognitive_load": 0.6,
+    "time_pressure": 0.6,
+    "trust_in_ai": 0.75,
+    "current_interruptions": 2,
+    "hours_into_shift": 3.0,
+    "consecutive_decisions_count": 1
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 0.5,
+    "hesitation_probability": 0.3,
+    "double_check_probability": 0.2,
+    "asks_help_probability": 0.0,
+    "skips_warnings_probability": 0.4,
+    "small_screen_misclick_probability": 0.15
+  }
+}

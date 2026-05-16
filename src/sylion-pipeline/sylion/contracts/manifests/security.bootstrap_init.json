@@ -1,0 +1,24 @@
+{
+  "module_id": "security.bootstrap_init",
+  "module_kind": "F",
+  "owner_plan": "P07",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D5",
+  "security_profile": "staging-strict",
+  "auth_mode": "session",
+  "execution_guard": "strict",
+  "audit_mode": "extended",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "security.bootstrap.initialized",
+    "security.bootstrap.key_rotated"
+  ],
+  "consumes_events": [],
+  "description": "Bootstrap initialization for security subsystem. First-run setup.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

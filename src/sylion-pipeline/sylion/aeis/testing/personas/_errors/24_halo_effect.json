@@ -1,0 +1,13 @@
+{
+  "error_class": "halo_effect",
+  "target_action": "approve_d4_because_team_member_drafted_it",
+  "context": "operator approves a D4 patch because a trusted team member drafted it, without independent review",
+  "timing": "during_council_vote",
+  "expected_system_response": [
+    "hide_author_until_independent_review_signed",
+    "demand_unique_rationale_per_voter"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D4",
+  "action_d_level": "D3"
+}

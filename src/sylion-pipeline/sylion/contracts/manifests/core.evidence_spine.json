@@ -1,0 +1,23 @@
+{
+  "module_id": "core.evidence_spine",
+  "module_kind": "A",
+  "owner_plan": "P02",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D0",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "evidence.appended"
+  ],
+  "consumes_events": [],
+  "description": "Immutable hash-chain audit log. SHA-256 chain with tamper-evident evidence entries.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

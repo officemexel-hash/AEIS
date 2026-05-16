@@ -1,0 +1,133 @@
+# prometheus.yml — SYLION Observability Stack
+# Prometheus 2.45+ compatible
+#
+# Usage (docker-compose):
+#   volumes:
+#     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+#     - ./rules:/etc/prometheus/rules
+#
+# Reload without restart:
+#   curl -X POST http://localhost:9090/-/reload
+
+global:
+  scrape_interval:     15s   # SRE audit recommendation: 15-second scrape interval
+  evaluation_interval: 15s   # Alert rules evaluated every 15s
+  scrape_timeout:      10s
+
+  # External labels attached to every time series and alert (useful in HA Prometheus setups)
+  external_labels:
+    environment: "production"
+    cluster:     "sylion-prod"
+    region:      "eu-central-1"
+
+# -----------------------------------------------------------------
+# Alertmanager endpoints
+# -----------------------------------------------------------------
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+      timeout: 10s
+      api_version: v2
+
+# -----------------------------------------------------------------
+# Rule files — alert rules and recording rules
+# -----------------------------------------------------------------
+rule_files:
+  - "/etc/prometheus/rules/prometheus_alerts.yml"
+  - "/etc/prometheus/rules/prometheus_recording_rules.yml"
+  - "/etc/prometheus/rules/prometheus_slo_burn.yml"
+
+# -----------------------------------------------------------------
+# Scrape configurations
+# -----------------------------------------------------------------
+scrape_configs:
+
+  # ---------------------------------------------------------------
+  # Prometheus self-monitoring
+  # ---------------------------------------------------------------
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+    scrape_interval: 30s
+
+  # ---------------------------------------------------------------
+  # SYLION Dashboard (FastAPI on port 8421)
+  # Exposes /api/metrics in Prometheus text format.
+  # No auth required (restrict with reverse proxy if needed).
+  # ---------------------------------------------------------------
+  - job_name: "sylion"
+    scrape_interval: 15s
+    scrape_timeout:  10s
+    metrics_path:    "/api/metrics"
+    honor_labels:    false
+    scheme:          "http"
+
+    static_configs:
+      - targets:
+          - "sylion-dashboard:8421"
+        labels:
+          service:     "sylion-dashboard"
+          environment: "production"
+          team:        "sylion-sre"
+
+    # Relabel: inject instance from target address
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label:  instance
+      - source_labels: [__address__]
+        target_label:  __address__
+        # Optional: override if behind a load balancer
+        # replacement: "sylion-dashboard:8421"
+
+    # Metric relabeling: drop high-cardinality noise endpoints
+    metric_relabel_configs:
+      - source_labels: [endpoint]
+        regex: "^/api/streaming/metrics.*"
+        action: drop
+      - source_labels: [endpoint]
+        regex: "^/static/.*"
+        action: drop
+
+  # ---------------------------------------------------------------
+  # SYLION multiple instances (future scale-out)
+  # Uncomment and populate when horizontal scaling is deployed.
+  # ---------------------------------------------------------------
+  # - job_name: "sylion-ha"
+  #   scrape_interval: 15s
+  #   metrics_path:    "/api/metrics"
+  #   static_configs:
+  #     - targets:
+  #         - "sylion-dashboard-1:8421"
+  #         - "sylion-dashboard-2:8421"
+  #         - "sylion-dashboard-3:8421"
+  #       labels:
+  #         service: "sylion-dashboard"
+  #         environment: "production"
+
+  # ---------------------------------------------------------------
+  # Node Exporter (host metrics: CPU, memory, disk, network)
+  # Required for sylion_disk_free_gb calculation if not exposed
+  # directly by the app (use filesystem_free_bytes from node_exp).
+  # ---------------------------------------------------------------
+  - job_name: "node-exporter"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-exporter:9100"
+        labels:
+          service:     "node-exporter"
+          environment: "production"
+
+  # ---------------------------------------------------------------
+  # Grafana self-monitoring (optional, useful for dashboard SLA)
+  # ---------------------------------------------------------------
+  - job_name: "grafana"
+    scrape_interval: 30s
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "grafana:3000"
+        labels:
+          service: "grafana"

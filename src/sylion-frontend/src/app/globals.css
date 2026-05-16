@@ -1,0 +1,413 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../styles/operator-mode.css";
+@import "../styles/technical-mode.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   SYLION AEIS v3.5 — Premium Dark Design System
+   ============================================================ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+
+  /* Sidebar */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  /* Chart palette */
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  /* Shadcn semantic */
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Radii */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* SYLION brand tokens — mapped to Tailwind utilities */
+  --color-sylion-blue: var(--accent-blue);
+  --color-sylion-amber: var(--accent-amber);
+  --color-sylion-red: var(--accent-red);
+  --color-sylion-green: var(--accent-green);
+  --color-sylion-surface: var(--bg-surface);
+  --color-sylion-surface-2: var(--bg-elevated);
+  --color-sylion-border: var(--border-default);
+  --color-sylion-glow: var(--accent-blue-dim);
+}
+
+/* ============================================================
+   Design Tokens — CSS Custom Properties
+   ============================================================ */
+
+:root {
+  /* ---- Backgrounds ---- */
+  --bg-primary: #050816;
+  --bg-secondary: #0a0f1e;
+  --bg-surface: #0f1629;
+  --bg-elevated: #141b2d;
+
+  /* ---- Borders ---- */
+  --border-subtle: rgba(148, 163, 184, 0.08);
+  --border-default: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.20);
+
+  /* ---- Accent Blue ---- */
+  --accent-blue: #2F6BFF;
+  --accent-blue-dim: rgba(47, 107, 255, 0.15);
+
+  /* ---- Accent Amber ---- */
+  --accent-amber: #F59E0B;
+  --accent-amber-dim: rgba(245, 158, 11, 0.15);
+
+  /* ---- Status ---- */
+  --accent-green: #17C964;
+  --accent-red: #F31260;
+
+  /* ---- Text ---- */
+  --text-primary: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  /* ---- Shadows ---- */
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-glow-blue: 0 0 20px rgba(47, 107, 255, 0.12), 0 0 40px rgba(47, 107, 255, 0.06);
+  --shadow-glow-amber: 0 0 20px rgba(245, 158, 11, 0.12), 0 0 40px rgba(245, 158, 11, 0.06);
+
+  /* ---- Transitions ---- */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- Shadcn semantic remapping to SYLION tokens ---- */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--bg-elevated);
+  --secondary-foreground: var(--text-secondary);
+  --muted: var(--bg-elevated);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--bg-elevated);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--accent-red);
+  --border: var(--border-default);
+  --input: var(--bg-secondary);
+  --ring: var(--accent-blue);
+  --radius: 0.625rem;
+
+  /* Chart palette */
+  --chart-1: var(--accent-blue);
+  --chart-2: var(--accent-amber);
+  --chart-3: var(--accent-green);
+  --chart-4: #8B5CF6;
+  --chart-5: #EC4899;
+
+  /* Sidebar */
+  --sidebar: var(--bg-secondary);
+  --sidebar-foreground: var(--text-secondary);
+  --sidebar-primary: var(--accent-blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--bg-elevated);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--accent-blue);
+}
+
+/* ============================================================
+   Dark mode enforcement
+   ============================================================ */
+
+html {
+  color-scheme: dark;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* ============================================================
+   Base layer
+   ============================================================ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+}
+
+/* ============================================================
+   SYLION utility classes
+   ============================================================ */
+
+@layer utilities {
+  /* ---- Glow effects ---- */
+  .glow-blue {
+    box-shadow: var(--shadow-glow-blue);
+  }
+
+  .glow-amber {
+    box-shadow: var(--shadow-glow-amber);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px rgba(243, 18, 96, 0.15);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(23, 201, 100, 0.15);
+  }
+
+  /* ---- Surface variants ---- */
+  .surface-elevated {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+  }
+
+  .surface-inset {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .surface-sunken {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* ---- Text gradients ---- */
+  .text-gradient-blue {
+    background: linear-gradient(135deg, #2F6BFF, #6D9BFF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-amber {
+    background: linear-gradient(135deg, #F59E0B, #FBBF24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-green {
+    background: linear-gradient(135deg, #17C964, #4ADE80);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-red {
+    background: linear-gradient(135deg, #F31260, #FB7185);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ---- Accent backgrounds ---- */
+  .bg-accent-blue-dim {
+    background-color: var(--accent-blue-dim);
+  }
+
+  .bg-accent-amber-dim {
+    background-color: var(--accent-amber-dim);
+  }
+
+  /* ---- Shadow utilities ---- */
+  .shadow-subtle {
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+
+  /* ---- Transition utilities ---- */
+  .transition-fast {
+    transition-duration: var(--transition-fast);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-normal {
+    transition-duration: var(--transition-normal);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ---- Border utilities ---- */
+  .border-subtle {
+    border-color: var(--border-subtle);
+  }
+
+  .border-default {
+    border-color: var(--border-default);
+  }
+
+  .border-strong {
+    border-color: var(--border-strong);
+  }
+
+  /* ---- Premium card hover ---- */
+  .card-hover {
+    transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+  }
+
+  .card-hover:hover {
+    border-color: var(--accent-blue-dim);
+    box-shadow: var(--shadow-glow-blue);
+  }
+
+  /* ---- Shimmer / skeleton loading ---- */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-elevated) 25%,
+      var(--bg-surface) 50%,
+      var(--bg-elevated) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ---- Pulse glow for live indicators ---- */
+  .pulse-glow-blue {
+    animation: pulse-glow-blue 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow-blue {
+    0%, 100% { box-shadow: 0 0 4px rgba(47, 107, 255, 0.4); }
+    50% { box-shadow: 0 0 12px rgba(47, 107, 255, 0.7); }
+  }
+
+  .pulse-glow-green {
+    animation: pulse-glow-green 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow-green {
+    0%, 100% { box-shadow: 0 0 4px rgba(23, 201, 100, 0.4); }
+    50% { box-shadow: 0 0 12px rgba(23, 201, 100, 0.7); }
+  }
+
+  .pulse-glow-red {
+    animation: pulse-glow-red 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow-red {
+    0%, 100% { box-shadow: 0 0 4px rgba(243, 18, 96, 0.4); }
+    50% { box-shadow: 0 0 12px rgba(243, 18, 96, 0.7); }
+  }
+
+  /* ---- Gradient borders ---- */
+  .border-gradient-blue {
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+  }
+
+  .border-gradient-blue::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    margin: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--accent-blue), transparent 60%);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    padding: 1px;
+  }
+
+  /* ---- Premium focus ring ---- */
+  .focus-ring-blue:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+  }
+
+  .focus-ring-amber:focus-visible {
+    outline: 2px solid var(--accent-amber);
+    outline-offset: 2px;
+  }
+
+  .help-tip-shell:hover > .help-tip-fallback,
+  .help-tip-shell:focus-within > .help-tip-fallback {
+    opacity: 1;
+  }
+
+  .help-tip-shell[data-open="true"] > .help-tip-fallback {
+    opacity: 0;
+  }
+}

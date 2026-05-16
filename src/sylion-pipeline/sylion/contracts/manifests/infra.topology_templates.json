@@ -1,0 +1,24 @@
+{
+  "module_id": "infra.topology_templates",
+  "module_kind": "J",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.worker",
+    "core.module_registry"
+  ],
+  "publishes_events": [
+    "infra.topology_generated",
+    "infra.terraform_created",
+    "infra.ansible_created"
+  ],
+  "consumes_events": [],
+  "description": "Terraform and Ansible topology template generator for distributed AEIS deployments.",
+  "version": "1.0.0"
+}

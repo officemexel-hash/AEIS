@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package sylion;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "sylion_common.proto";
+
+// ──────────────────────────────────────────────
+//  SYLION Cognitive – model router & planning
+// ──────────────────────────────────────────────
+
+// ═══════ Model Router ═══════
+
+/** Capability profile of a registered model. */
+message ModelCapabilities {
+  int32   max_context_tokens  = 1;
+  double  cost_per_1k_input   = 2;
+  double  cost_per_1k_output  = 3;
+  double  avg_latency_ms      = 4;
+  repeated string strengths   = 5;
+}
+
+message ModelEntry {
+  string              model_id     = 1;
+  string              provider     = 2;
+  string              display_name = 3;
+  ModelCapabilities   capabilities = 4;
+  bool                available    = 5;
+  google.protobuf.Timestamp registered_at = 6;
+}
+
+message RegisterModelRequest {
+  string              model_id     = 1;
+  string              provider     = 2;
+  string              display_name = 3;
+  ModelCapabilities   capabilities = 4;
+}
+
+message RegisterModelResponse {
+  ModelEntry model = 1;
+}
+
+/** Priority hint for request routing. */
+enum RoutingPriority {
+  ROUTING_PRIORITY_UNSPECIFIED = 0;
+  COST_OPTIMIZED               = 1;
+  LATENCY_OPTIMIZED             = 2;
+  QUALITY_OPTIMIZED             = 3;
+  BALANCED                      = 4;
+}
+
+message RouteRequestRequest {
+  string            prompt       = 1;
+  repeated string   required_capabilities = 2;
+  RoutingPriority   priority     = 3;
+  int32             max_tokens   = 4;
+  map<string, string> metadata   = 5;
+}
+
+message RouteRequestResponse {
+  string    selected_model = 1;
+  string    response       = 2;
+  double    cost_estimate  = 3;
+  int32     tokens_used    = 4;
+}
+
+message ListModelsRequest {
+  bool      available_only = 1;
+  string    provider_filter = 2;
+}
+
+message ListModelsResponse {
+  repeated ModelEntry models = 1;
+}
+
+message GetUsageStatsRequest {
+  string              model_id     = 1;
+  int64               since_epoch  = 2;
+}
+
+message UsageStats {
+  string    model_id       = 1;
+  int64     total_requests = 2;
+  int64     total_tokens   = 3;
+  double    total_cost     = 4;
+  double    avg_latency_ms = 5;
+  double    error_rate     = 6;
+}
+
+message GetUsageStatsResponse {
+  UsageStats stats = 1;
+}
+
+/** Model router – registers LLM/SLM models and routes requests. */
+service ModelRouterService {
+  rpc RegisterModel(RegisterModelRequest)   returns (RegisterModelResponse);
+  rpc RouteRequest(RouteRequestRequest)     returns (RouteRequestResponse);
+  rpc ListModels(ListModelsRequest)         returns (ListModelsResponse);
+  rpc GetUsageStats(GetUsageStatsRequest)   returns (GetUsageStatsResponse);
+}
+
+// ═══════ Planning ═══════
+
+/** Status of a plan. */
+enum PlanStatus {
+  PLAN_STATUS_UNSPECIFIED = 0;
+  PLAN_DRAFT              = 1;
+  PLAN_ACTIVE             = 2;
+  PLAN_COMPLETED          = 3;
+  PLAN_FAILED             = 4;
+  PLAN_CANCELLED          = 5;
+}
+
+/** Status of a task within a plan. */
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_PENDING            = 1;
+  TASK_READY              = 2;
+  TASK_IN_PROGRESS        = 3;
+  TASK_COMPLETED          = 4;
+  TASK_FAILED             = 5;
+  TASK_SKIPPED            = 6;
+}
+
+message Task {
+  string                      task_id      = 1;
+  string                      title        = 2;
+  string                      description  = 3;
+  TaskStatus                  status       = 4;
+  repeated string             depends_on   = 5;
+  string                      assigned_to  = 6;
+  google.protobuf.Timestamp   started_at   = 7;
+  google.protobuf.Timestamp   completed_at = 8;
+}
+
+message Plan {
+  string                      plan_id      = 1;
+  string                      title        = 2;
+  string                      goal         = 3;
+  PlanStatus                  status       = 4;
+  repeated Task               tasks        = 5;
+  google.protobuf.Timestamp   created_at   = 6;
+}
+
+message CreatePlanRequest {
+  string  title = 1;
+  string  goal  = 2;
+}
+
+message CreatePlanResponse {
+  Plan plan = 1;
+}
+
+message DecomposePlanRequest {
+  string  plan_id         = 1;
+  int32   max_depth       = 2;
+  int32   max_subtasks    = 3;
+}
+
+message DecomposePlanResponse {
+  Plan decomposed_plan = 1;
+}
+
+message GetNextTaskRequest {
+  string  plan_id     = 1;
+  string  assignee    = 2;
+}
+
+message GetNextTaskResponse {
+  Task task = 1;
+}
+
+message CompleteTaskRequest {
+  string  plan_id  = 1;
+  string  task_id  = 2;
+  bytes   result   = 3;
+}
+
+message CompleteTaskResponse {
+  Task        task     = 1;
+  PlanStatus  plan_status = 2;
+}
+
+/** Plan service – hierarchical plan creation and task management. */
+service PlanService {
+  rpc CreatePlan(CreatePlanRequest)       returns (CreatePlanResponse);
+  rpc DecomposePlan(DecomposePlanRequest) returns (DecomposePlanResponse);
+  rpc GetNextTask(GetNextTaskRequest)     returns (GetNextTaskResponse);
+  rpc CompleteTask(CompleteTaskRequest)   returns (CompleteTaskResponse);
+}

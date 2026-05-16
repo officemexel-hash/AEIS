@@ -1,0 +1,17 @@
+{
+  "module_id": "funding_autopilot.grant_reporter",
+  "module_kind": "F",
+  "owner_plan": "P14",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "api_key",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": ["funding_autopilot.store"],
+  "description": "Analytics and reporting for the funding pipeline: funnel metrics, financial summaries, success rates, portfolio diversification, and risk aggregation.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

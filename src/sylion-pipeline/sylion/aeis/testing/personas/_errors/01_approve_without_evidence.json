@@ -1,0 +1,14 @@
+{
+  "error_class": "gate_skip",
+  "target_action": "approve_decision_d3_without_evidence_pack",
+  "context": "D3 decision presented in HG queue without Evidence Pack attached",
+  "timing": "before_evidence_pack_finalized",
+  "expected_system_response": [
+    "block_action",
+    "show_message_evidence_pack_required",
+    "audit_log_attempt"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

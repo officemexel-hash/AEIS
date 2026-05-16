@@ -1,0 +1,490 @@
+// SYLION AEIS -- Class F: Security (9 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: AuthProvider, BootstrapInit, SessionBroker, PolicyEngine,
+//          ExecutionGuard, SecretProvider, AuditSink, PhantomWrapper, Profiles
+
+syntax = "proto3";
+
+package sylion.security.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/security/v1;securityv1";
+option java_package = "com.sylion.aeis.security.v1";
+
+// =====================================================================
+// F1: Auth Provider Service
+// =====================================================================
+
+service AuthProviderService {
+  rpc CreateUser(CreateUserRequest) returns (UserMessage);
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+  rpc GetUser(GetUserRequest) returns (UserMessage);
+  rpc ListUsers(sylion.common.v1.Empty) returns (UserList);
+  rpc CreateSession(CreateAuthSessionRequest) returns (AuthSessionMessage);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (sylion.common.v1.Status);
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string password = 2;
+  string role     = 3;
+}
+
+message UserMessage {
+  string user_id  = 1;
+  string username = 2;
+  string role     = 3;
+  bool   active   = 4;
+}
+
+message AuthenticateRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message AuthenticateResponse {
+  bool   success   = 1;
+  string token     = 2;
+  string user_id   = 3;
+  string message   = 4;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message UserList {
+  repeated UserMessage users = 1;
+}
+
+message CreateAuthSessionRequest {
+  string user_id = 1;
+}
+
+message AuthSessionMessage {
+  string session_id = 1;
+  string user_id    = 2;
+  string token      = 3;
+  double expires_at = 4;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool   valid      = 1;
+  string session_id = 2;
+  string user_id    = 3;
+}
+
+message RevokeSessionRequest {
+  string session_id = 1;
+}
+
+// =====================================================================
+// F2: Bootstrap Init Service
+// =====================================================================
+
+service BootstrapInitService {
+  rpc Bootstrap(BootstrapRequest) returns (BootstrapResponse);
+  rpc GetStatus(sylion.common.v1.Empty) returns (BootstrapStatus);
+  rpc Reset(sylion.common.v1.Empty) returns (sylion.common.v1.Status);
+}
+
+message BootstrapRequest {
+  string config_json = 1;
+}
+
+message BootstrapResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message BootstrapStatus {
+  bool   initialized   = 1;
+  string phase         = 2;
+  string message       = 3;
+}
+
+// =====================================================================
+// F3: Session Broker Service
+// =====================================================================
+
+service SessionBrokerService {
+  rpc Create(CreateSessionRequest) returns (SessionMessage);
+  rpc Validate(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc Refresh(RefreshSessionRequest) returns (SessionMessage);
+  rpc Destroy(DestroySessionRequest) returns (sylion.common.v1.Status);
+  rpc ListSessions(ListSessionsRequest) returns (SessionList);
+  rpc CleanupExpired(sylion.common.v1.Empty) returns (CleanupResponse);
+  rpc GetStats(sylion.common.v1.Empty) returns (SessionStats);
+}
+
+message CreateSessionRequest {
+  string user_id    = 1;
+  int32  ttl_seconds = 2;
+}
+
+message SessionMessage {
+  string session_id  = 1;
+  string user_id     = 2;
+  string token       = 3;
+  string status      = 4;
+  double created_at  = 5;
+  double expires_at  = 6;
+}
+
+message ValidateSessionRequest {
+  string token = 1;
+}
+
+message ValidateSessionResponse {
+  bool   valid       = 1;
+  string session_id  = 2;
+  string user_id     = 3;
+}
+
+message RefreshSessionRequest {
+  string session_id = 1;
+  int32  ttl_seconds = 2;
+}
+
+message DestroySessionRequest {
+  string session_id = 1;
+}
+
+message ListSessionsRequest {
+  string user_id = 1;
+}
+
+message SessionList {
+  repeated SessionMessage sessions = 1;
+}
+
+message CleanupResponse {
+  int32 cleaned = 1;
+}
+
+message SessionStats {
+  int32 active_sessions  = 1;
+  int32 expired_cleaned  = 2;
+}
+
+// =====================================================================
+// F4: Policy Engine Service
+// =====================================================================
+
+service PolicyEngineService {
+  rpc CreatePolicy(CreateSecPolicyRequest) returns (SecPolicyMessage);
+  rpc GetPolicy(GetSecPolicyRequest) returns (SecPolicyMessage);
+  rpc ListPolicies(ListSecPoliciesRequest) returns (SecPolicyList);
+  rpc EnablePolicy(GetSecPolicyRequest) returns (sylion.common.v1.Status);
+  rpc DisablePolicy(GetSecPolicyRequest) returns (sylion.common.v1.Status);
+  rpc Evaluate(EvaluateSecPolicyRequest) returns (EvaluateSecPolicyResponse);
+  rpc GetEvaluations(GetSecEvaluationsRequest) returns (SecEvaluationList);
+}
+
+message CreateSecPolicyRequest {
+  string policy_id   = 1;
+  string name        = 2;
+  string description = 3;
+  string rules_json  = 4;
+  string effect      = 5;  // allow|deny
+}
+
+message SecPolicyMessage {
+  string policy_id   = 1;
+  string name        = 2;
+  string description = 3;
+  string rules_json  = 4;
+  string effect      = 5;
+  bool   enabled     = 6;
+}
+
+message GetSecPolicyRequest {
+  string policy_id = 1;
+}
+
+message ListSecPoliciesRequest {
+  bool enabled_only = 1;
+}
+
+message SecPolicyList {
+  repeated SecPolicyMessage policies = 1;
+}
+
+message EvaluateSecPolicyRequest {
+  string action      = 1;
+  string resource    = 2;
+  string subject     = 3;
+  string context_json = 4;
+}
+
+message EvaluateSecPolicyResponse {
+  bool   allowed  = 1;
+  string reason   = 2;
+  string policy_id = 3;
+}
+
+message GetSecEvaluationsRequest {
+  int32 limit = 1;
+}
+
+message SecEvaluationList {
+  repeated SecEvaluationMessage evaluations = 1;
+}
+
+message SecEvaluationMessage {
+  string evaluation_id = 1;
+  string action        = 2;
+  string resource      = 3;
+  string subject       = 4;
+  bool   allowed       = 5;
+  string reason        = 6;
+  double timestamp     = 7;
+}
+
+// =====================================================================
+// F5: Execution Guard Service
+// =====================================================================
+
+service ExecutionGuardService {
+  rpc AddRule(AddGuardRuleRequest) returns (GuardRuleSummary);
+  rpc GetRule(GetGuardRuleRequest) returns (GuardRuleMessage);
+  rpc ListRules(sylion.common.v1.Empty) returns (GuardRuleList);
+  rpc Check(CheckGuardRequest) returns (CheckGuardResponse);
+  rpc GetChecks(GetGuardChecksRequest) returns (GuardCheckList);
+}
+
+message AddGuardRuleRequest {
+  string rule_id   = 1;
+  string name      = 2;
+  string condition = 3;
+  string action    = 4;  // allow|block|confirm
+}
+
+message GuardRuleSummary {
+  string rule_id = 1;
+  string name    = 2;
+}
+
+message GetGuardRuleRequest {
+  string rule_id = 1;
+}
+
+message GuardRuleMessage {
+  string rule_id   = 1;
+  string name      = 2;
+  string condition = 3;
+  string action    = 4;
+  bool   enabled   = 5;
+}
+
+message GuardRuleList {
+  repeated GuardRuleMessage rules = 1;
+}
+
+message CheckGuardRequest {
+  string operation   = 1;
+  string target      = 2;
+  string context_json = 3;
+}
+
+message CheckGuardResponse {
+  bool   allowed  = 1;
+  string action   = 2;
+  string rule_id  = 3;
+  string message  = 4;
+}
+
+message GetGuardChecksRequest {
+  int32 limit = 1;
+}
+
+message GuardCheckList {
+  repeated GuardCheckMessage checks = 1;
+}
+
+message GuardCheckMessage {
+  string check_id  = 1;
+  string operation = 2;
+  bool   allowed   = 3;
+  string rule_id   = 4;
+  double timestamp = 5;
+}
+
+// =====================================================================
+// F6: Secret Provider Service
+// =====================================================================
+
+service SecretProviderService {
+  rpc Store(StoreSecretRequest) returns (SecretSummary);
+  rpc Retrieve(GetSecretRequest) returns (SecretMessage);
+  rpc Rotate(RotateSecretRequest) returns (SecretSummary);
+  rpc Delete(GetSecretRequest) returns (sylion.common.v1.Status);
+  rpc ListSecrets(sylion.common.v1.Empty) returns (SecretList);
+  rpc CheckRotation(GetSecretRequest) returns (RotationStatus);
+}
+
+message StoreSecretRequest {
+  string secret_id = 1;
+  string value     = 2;
+  string metadata_json = 3;
+  int32  rotation_days = 4;
+}
+
+message SecretSummary {
+  string secret_id = 1;
+  bool   stored    = 2;
+}
+
+message GetSecretRequest {
+  string secret_id = 1;
+}
+
+message SecretMessage {
+  string secret_id   = 1;
+  string value       = 2;
+  string metadata_json = 3;
+  double created_at  = 4;
+  double rotated_at  = 5;
+}
+
+message RotateSecretRequest {
+  string secret_id = 1;
+  string new_value = 2;
+}
+
+message SecretList {
+  repeated string secret_ids = 1;
+}
+
+message RotationStatus {
+  string secret_id    = 1;
+  bool   needs_rotation = 2;
+  int32  days_since_rotation = 3;
+}
+
+// =====================================================================
+// F7: Audit Sink Service
+// =====================================================================
+
+service AuditSinkService {
+  rpc Log(AuditLogRequest) returns (AuditLogSummary);
+  rpc Query(AuditQueryRequest) returns (AuditEntryList);
+  rpc GetStats(sylion.common.v1.Empty) returns (AuditStats);
+  rpc Export(AuditExportRequest) returns (AuditExportResponse);
+}
+
+message AuditLogRequest {
+  string action     = 1;
+  string actor      = 2;
+  string resource   = 3;
+  string result     = 4;
+  string details_json = 5;
+}
+
+message AuditLogSummary {
+  string entry_id = 1;
+  double timestamp = 2;
+}
+
+message AuditQueryRequest {
+  string action   = 1;
+  string actor    = 2;
+  double since    = 3;
+  int32  limit    = 4;
+}
+
+message AuditEntryMessage {
+  string entry_id    = 1;
+  string action      = 2;
+  string actor       = 3;
+  string resource    = 4;
+  string result      = 5;
+  string details_json = 6;
+  double timestamp   = 7;
+}
+
+message AuditEntryList {
+  repeated AuditEntryMessage entries = 1;
+}
+
+message AuditStats {
+  int32 total_entries = 1;
+  map<string, int64> by_action = 2;
+}
+
+message AuditExportRequest {
+  string format  = 1;  // json|csv
+  double since   = 2;
+}
+
+message AuditExportResponse {
+  bytes  data     = 1;
+  string format   = 2;
+  int32  count    = 3;
+}
+
+// =====================================================================
+// F8: Phantom Wrapper Service
+// =====================================================================
+
+service PhantomWrapperService {
+  rpc RegisterRule(RegisterPhantomRuleRequest) returns (PhantomRuleSummary);
+  rpc Check(CheckPhantomRequest) returns (CheckPhantomResponse);
+  rpc GetCheck(GetPhantomCheckRequest) returns (PhantomCheckMessage);
+  rpc ListChecks(sylion.common.v1.Empty) returns (PhantomCheckList);
+  rpc GetStats(sylion.common.v1.Empty) returns (PhantomStats);
+}
+
+message RegisterPhantomRuleRequest {
+  string rule_id   = 1;
+  string name      = 2;
+  string condition = 3;
+  string action    = 4;
+}
+
+message PhantomRuleSummary {
+  string rule_id = 1;
+  string name    = 2;
+}
+
+message CheckPhantomRequest {
+  string target      = 1;
+  string operation   = 2;
+  string context_json = 3;
+}
+
+message CheckPhantomResponse {
+  bool   safe     = 1;
+  string action   = 2;
+  string rule_id  = 3;
+  string message  = 4;
+}
+
+message GetPhantomCheckRequest {
+  string check_id = 1;
+}
+
+message PhantomCheckMessage {
+  string check_id  = 1;
+  string target    = 2;
+  bool   safe      = 3;
+  string rule_id   = 4;
+  double timestamp = 5;
+}
+
+message PhantomCheckList {
+  repeated PhantomCheckMessage checks = 1;
+}
+
+message PhantomStats {
+  int32 total_checks = 1;
+  int32 blocked      = 2;
+  int32 allowed      = 3;
+}

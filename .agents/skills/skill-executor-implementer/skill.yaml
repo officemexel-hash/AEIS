@@ -1,0 +1,14 @@
+name: skill-executor-implementer
+version: 1.0.0
+description: Implements Skills Executor service
+parallel_safe: true
+idempotent: false
+inputs:
+  - name: skill_id
+    type: string
+    required: true
+  - name: parameters
+    type: object
+    required: false
+outputs:
+  - execution_result

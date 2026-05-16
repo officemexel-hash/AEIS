@@ -1,0 +1,69 @@
+{
+  "module_id": "sylion.aeis.advisor.orchestration_config",
+  "module_kind": "ADVISOR",
+  "owner_plan": "aeis.advisor",
+  "description": "Meta-orchestration controls: LLM routing matrix, Council rules, auditor cadence, fixer protocol, dispatch config, test catalog, team formation, event map, inter-model conversations.",
+  "version": "1.0.0",
+  "stage": "etap1",
+  "schema": "advisor_orchestration",
+  "depends_on": [
+    "sylion.aeis.advisor.engine",
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.role_resolver"
+  ],
+  "events_emitted": [
+    "aeis.orchestration.llm_routing.updated",
+    "aeis.orchestration.council_rules.updated",
+    "aeis.orchestration.auditor.triggered",
+    "aeis.orchestration.dispatch.updated"
+  ],
+  "events_subscribed": [],
+  "rest_prefix": "/api/v1/orchestration",
+  "endpoints": [
+    "GET  /llm-judge-routing",
+    "PUT  /llm-judge-routing",
+    "POST /llm-judge-routing/reset-cell",
+    "POST /llm-judge-routing/preset/{preset}",
+    "GET  /council-rules",
+    "PUT  /council-rules",
+    "POST /council-rules/simulate-vote",
+    "GET  /auditor-cadence",
+    "PUT  /auditor-cadence",
+    "POST /auditor-cadence/trigger-now",
+    "GET  /fixer-protocol",
+    "PUT  /fixer-protocol",
+    "GET  /dispatch-config",
+    "PUT  /dispatch-config",
+    "GET  /test-catalog",
+    "GET  /test-catalog/runs",
+    "POST /test-catalog/run-now",
+    "GET  /team-formation-rules",
+    "PUT  /team-formation-rules",
+    "POST /team-formation-rules",
+    "GET  /event-map",
+    "GET  /inter-model-conversation",
+    "PUT  /inter-model-conversation",
+    "GET  /health"
+  ],
+  "storage": {
+    "backend": "postgresql",
+    "schema": "advisor_orchestration",
+    "tables": [
+      "llm_judge_routing",
+      "council_rules",
+      "auditor_cadence",
+      "fixer_protocol",
+      "dispatch_config",
+      "test_catalog",
+      "test_catalog_runs",
+      "team_formation_rules",
+      "active_teams",
+      "event_map_cache",
+      "inter_model_conversations"
+    ]
+  },
+  "golden_tests": [
+    "tests/aeis/advisor/orchestration_config/test_orchestration_routes.py"
+  ],
+  "loc_budget": 800
+}

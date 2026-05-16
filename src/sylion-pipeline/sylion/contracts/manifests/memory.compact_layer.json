@@ -1,0 +1,27 @@
+{
+  "module_id": "memory.compact_layer",
+  "module_kind": "D",
+  "owner_plan": "P12",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "memory.compaction.started",
+    "memory.compaction.completed"
+  ],
+  "consumes_events": [
+    "memory.evidence.stored",
+    "memory.index.updated"
+  ],
+  "description": "Compaction and summarization layer for long-term memory storage.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

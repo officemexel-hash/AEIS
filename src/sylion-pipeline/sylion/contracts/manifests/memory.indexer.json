@@ -1,0 +1,27 @@
+{
+  "module_id": "memory.indexer",
+  "module_kind": "D",
+  "owner_plan": "P12",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "memory.index.updated",
+    "memory.index.rebuilt"
+  ],
+  "consumes_events": [
+    "memory.evidence.stored",
+    "memory.kanon.updated"
+  ],
+  "description": "Full-text and semantic indexing for memory retrieval.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

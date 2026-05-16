@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.preferences.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+service PreferencesService {
+  rpc GetEffective(GetEffectiveRequest) returns (PreferenceValue);
+  rpc GetExplicit(GetExplicitRequest) returns (PreferenceValue);
+  rpc Set(SetRequest) returns (SetResponse);
+  rpc Reset(ResetRequest) returns (ResetResponse);
+  rpc Disable(DisableRequest) returns (DisableResponse);
+  rpc List(ListRequest) returns (ListResponse);
+  rpc GetAudit(GetAuditRequest) returns (GetAuditResponse);
+  rpc SoftLearningTick(SoftLearningTickRequest) returns (SoftLearningTickResponse);
+  rpc RequestHardChange(RequestHardChangeRequest) returns (RequestHardChangeResponse);
+  rpc ConfirmHardChange(ConfirmHardChangeRequest) returns (ConfirmHardChangeResponse);
+  rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse);
+  rpc AddCustomCatalogEntry(AddCustomCatalogEntryRequest) returns (AddCustomCatalogEntryResponse);
+}
+
+message PreferenceValue {
+  string user_id = 1;
+  string project_type = 2;
+  string project_domain = 3;
+  string preference_key = 4;
+  google.protobuf.Value value_json = 5;
+  string set_by = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  ResolutionLevel resolution_level = 9;
+}
+
+enum ResolutionLevel {
+  RESOLUTION_LEVEL_UNSPECIFIED = 0;
+  RESOLUTION_LEVEL_SPECIFIC = 1;
+  RESOLUTION_LEVEL_TYPE_ONLY = 2;
+  RESOLUTION_LEVEL_DOMAIN_ONLY = 3;
+  RESOLUTION_LEVEL_USER_DEFAULT = 4;
+  RESOLUTION_LEVEL_SYSTEM_DEFAULT = 5;
+}
+
+message GetEffectiveRequest {
+  string user_id = 1;
+  string project_type = 2;
+  string project_domain = 3;
+  string preference_key = 4;
+}
+
+message GetExplicitRequest {
+  string user_id = 1;
+  string project_type = 2;
+  string project_domain = 3;
+  string preference_key = 4;
+}
+
+message SetRequest {
+  string user_id = 1;
+  string project_type = 2;
+  string project_domain = 3;
+  string preference_key = 4;
+  google.protobuf.Value value_json = 5;
+  string set_by = 6;
+  string reason = 7;
+}
+
+message SetResponse {
+  bool success = 1;
+  bool requires_hard_confirmation = 2;
+  string hard_change_request_id = 3;
+  string error_message = 4;
+}
+
+message ResetRequest {
+  string user_id = 1;
+  string project_type = 2;
+  string project_domain = 3;
+  string preference_key = 4;
+  string reason = 5;
+}
+
+message ResetResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message DisableRequest {
+  string user_id = 1;
+  string preference_key = 2;
+  string reason = 3;
+}
+
+message DisableResponse {
+  bool success = 1;
+  int32 levels_cleared = 2;
+}
+
+message ListRequest {
+  string user_id = 1;
+  string filter_project_type = 2;
+  string filter_project_domain = 3;
+  string filter_preference_key = 4;
+}
+
+message ListResponse {
+  repeated PreferenceValue preferences = 1;
+}
+
+message GetAuditRequest {
+  string user_id = 1;
+  google.protobuf.Timestamp since = 2;
+  int32 limit = 3;
+  string filter_preference_key = 4;
+}
+
+message GetAuditResponse {
+  repeated AuditEntry entries = 1;
+}
+
+message AuditEntry {
+  string audit_id = 1;
+  string user_id = 2;
+  string project_type = 3;
+  string project_domain = 4;
+  string preference_key = 5;
+  google.protobuf.Value old_value = 6;
+  google.protobuf.Value new_value = 7;
+  string change_type = 8;
+  string changed_by = 9;
+  google.protobuf.Timestamp changed_at = 10;
+  string reason = 11;
+}
+
+message SoftLearningTickRequest {
+  string user_id = 1;
+}
+
+message SoftLearningTickResponse {
+  int32 applied_count = 1;
+  int32 pending_hard_confirmations = 2;
+  repeated string applied_preference_keys = 3;
+}
+
+message RequestHardChangeRequest {
+  string user_id = 1;
+  string project_type = 2;
+  string project_domain = 3;
+  string preference_key = 4;
+  google.protobuf.Value proposed_value = 5;
+  string source_card_id = 6;
+  string rationale = 7;
+}
+
+message RequestHardChangeResponse {
+  string request_id = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message ConfirmHardChangeRequest {
+  string request_id = 1;
+  string operator_signature = 2;
+  bool confirmed = 3;
+}
+
+message ConfirmHardChangeResponse {
+  bool success = 1;
+  string error_message = 2;
+  PreferenceValue applied_value = 3;
+}
+
+enum CatalogType {
+  CATALOG_TYPE_UNSPECIFIED = 0;
+  CATALOG_TYPE_PROJECT_DOMAIN = 1;
+  CATALOG_TYPE_PROJECT_TYPE = 2;
+  CATALOG_TYPE_PREFERENCE_KEY = 3;
+}
+
+message GetCatalogRequest {
+  CatalogType catalog_type = 1;
+  bool include_custom = 2;
+}
+
+message GetCatalogResponse {
+  repeated CatalogEntry entries = 1;
+}
+
+message CatalogEntry {
+  string entry_id = 1;
+  string display_name = 2;
+  string description = 3;
+  bool is_system = 4;
+  bool is_immutable = 5;
+  google.protobuf.Struct metadata_json = 6;
+}
+
+message AddCustomCatalogEntryRequest {
+  CatalogType catalog_type = 1;
+  string entry_id = 2;
+  string display_name = 3;
+  string description = 4;
+  string created_by = 5;
+}
+
+message AddCustomCatalogEntryResponse {
+  bool success = 1;
+  string error_message = 2;
+  CatalogEntry entry = 3;
+}

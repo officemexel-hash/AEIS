@@ -1,0 +1,26 @@
+{
+  "module_id": "cognitive.context_builder",
+  "module_kind": "B",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cognitive.context.built"
+  ],
+  "consumes_events": [
+    "memory.kanon.read",
+    "memory.retrieval.result"
+  ],
+  "description": "Builds execution context from memory, evidence, and system state.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

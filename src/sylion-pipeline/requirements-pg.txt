@@ -1,0 +1,28 @@
+# =============================================================================
+# SYLION AEIS API — PostgreSQL + FastAPI dependencies
+# =============================================================================
+# Used by Dockerfile.api for the containerised API service.
+# This is a minimal subset of the full requirements.txt — only what the API needs.
+# =============================================================================
+
+# === Core framework ===
+fastapi==0.136.0
+uvicorn==0.34.2
+starlette==0.49.1
+pydantic==2.11.1
+pydantic-core==2.33.0
+
+# === Form/file upload ===
+python-multipart==0.0.27
+
+# === PostgreSQL async driver ===
+asyncpg==0.30.0
+
+# === SQLAlchemy with async support ===
+sqlalchemy[asyncio]==2.0.40
+
+# === NATS JetStream client ===
+nats-py==2.9.0
+
+# === Environment & config ===
+python-dotenv==1.2.2

@@ -1,0 +1,253 @@
+{
+  "class": "A",
+  "module": "core.module_registry",
+  "description": "Golden set for ModuleRegistry: register, list, get, transition (lifecycle).",
+  "tests": [
+    {
+      "id": "register_minimal",
+      "method": "register",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "module_kind": "A",
+        "owner_plan": "P01",
+        "description": "Golden test module 01"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "module_kind": "A",
+        "owner_plan": "P01",
+        "lifecycle_stage": "draft"
+      }
+    },
+    {
+      "id": "register_full_fields",
+      "method": "register",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "module_id": "golden.mod_reg_02",
+        "module_kind": "B",
+        "owner_plan": "P05",
+        "implementation_strategy": "strangler-fig",
+        "contract_version": "2.1.0",
+        "decision_class_entry": "D4",
+        "security_profile": "staging-strict",
+        "auth_mode": "jwt",
+        "execution_guard": "sandbox",
+        "audit_mode": "full",
+        "depends_on": [],
+        "description": "Golden full-field module",
+        "version": "3.0.0",
+        "milestone": "M3"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_02",
+        "module_kind": "B",
+        "owner_plan": "P05",
+        "description": "Golden full-field module",
+        "lifecycle_stage": "draft",
+        "milestone": "M3"
+      }
+    },
+    {
+      "id": "register_with_dependency",
+      "method": "register",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {
+        "module_id": "golden.mod_reg_dep",
+        "module_kind": "C",
+        "owner_plan": "P01",
+        "depends_on": ["golden.mod_reg_01"],
+        "description": "Depends on reg_01"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_dep",
+        "module_kind": "C",
+        "owner_plan": "P01",
+        "lifecycle_stage": "draft"
+      }
+    },
+    {
+      "id": "get_existing",
+      "method": "get",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {"module_id": "golden.mod_reg_01"},
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "module_kind": "A",
+        "owner_plan": "P01",
+        "lifecycle": "draft",
+        "milestone": "M0"
+      }
+    },
+    {
+      "id": "get_nonexistent",
+      "method": "get",
+      "setup": {"db_path": ":memory:"},
+      "input": {"module_id": "nonexistent.module"},
+      "expected": null
+    },
+    {
+      "id": "list_all",
+      "method": "list_modules",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {},
+      "expected_contains": {
+        "module_id": "golden.mod_reg_01",
+        "module_kind": "A"
+      }
+    },
+    {
+      "id": "list_filter_kind",
+      "method": "list_modules",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {"kind": "A"},
+      "expected_type": "list"
+    },
+    {
+      "id": "list_filter_lifecycle",
+      "method": "list_modules",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {"lifecycle": "draft"},
+      "expected_type": "list"
+    },
+    {
+      "id": "transition_draft_to_build",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "build"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "build"
+      }
+    },
+    {
+      "id": "transition_build_to_validate",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "transition_draft_to_build",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "validate"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "validate"
+      }
+    },
+    {
+      "id": "transition_validate_to_shadow",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "transition_build_to_validate",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "shadow"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "shadow"
+      }
+    },
+    {
+      "id": "transition_shadow_to_dual",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "transition_validate_to_shadow",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "dual"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "dual"
+      }
+    },
+    {
+      "id": "transition_dual_to_cutover",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "transition_shadow_to_dual",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "cutover"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "cutover"
+      }
+    },
+    {
+      "id": "transition_cutover_to_stable",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "transition_dual_to_cutover",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "stable"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "stable"
+      }
+    },
+    {
+      "id": "transition_stable_to_deprecated",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "transition_cutover_to_stable",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "target": "deprecated"
+      },
+      "expected": {
+        "module_id": "golden.mod_reg_01",
+        "lifecycle": "deprecated"
+      }
+    },
+    {
+      "id": "transition_invalid_to_stable",
+      "method": "transition",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_full_fields",
+      "input": {
+        "module_id": "golden.mod_reg_02",
+        "target": "stable"
+      },
+      "expected_error": "Invalid"
+    },
+    {
+      "id": "register_duplicate",
+      "method": "register",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "register_minimal",
+      "input": {
+        "module_id": "golden.mod_reg_01",
+        "module_kind": "A",
+        "owner_plan": "P01"
+      },
+      "expected_error": "already registered"
+    },
+    {
+      "id": "register_missing_dependency",
+      "method": "register",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "module_id": "golden.mod_orphan",
+        "module_kind": "C",
+        "owner_plan": "P01",
+        "depends_on": ["nonexistent.dep"]
+      },
+      "expected_error": "not registered"
+    }
+  ]
+}

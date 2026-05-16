@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SYLION Module Manifest v1.0.0",
+  "description": "Canonical schema for SYLION AEIS module manifests. Every module must have a valid manifest before it can register.",
+  "type": "object",
+  "required": ["module_id", "module_kind", "owner_plan"],
+  "properties": {
+    "module_id": {
+      "type": "string",
+      "pattern": "^[a-z]+\\.[a-z_]+$",
+      "description": "Canonical module ID: <package>.<name> (e.g. core.module_registry)"
+    },
+    "module_kind": {
+      "type": "string",
+      "enum": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"],
+      "description": "Module class letter (A=Core, B=Cognitive, C=Execution, D=Memory, E=Governance, F=Security, G=Efficiency, H=AEIS, I=Skills, J=Surface, K=Rebuild, L=Quality, M=Devices, N=SDR, O=Cellular)"
+    },
+    "owner_plan": {
+      "type": "string",
+      "description": "Execution plan that owns this module (P01-P20)"
+    },
+    "implementation_strategy": {
+      "type": "string",
+      "enum": ["greenfield", "wrap", "rebuild"],
+      "default": "greenfield"
+    },
+    "contract_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0"
+    },
+    "decision_class_entry": {
+      "type": "string",
+      "enum": ["D0", "D1", "D2", "D3", "D4", "D5"],
+      "default": "D3"
+    },
+    "security_profile": {
+      "type": "string",
+      "enum": ["dev-light", "test-light", "staging-strict", "prod-strict"],
+      "default": "dev-light"
+    },
+    "auth_mode": {
+      "type": "string",
+      "enum": ["bootstrap", "session", "oidc", "service"],
+      "default": "bootstrap"
+    },
+    "execution_guard": {
+      "type": "string",
+      "enum": ["off", "light", "strict"],
+      "default": "off"
+    },
+    "audit_mode": {
+      "type": "string",
+      "enum": ["basic", "extended", "signed"],
+      "default": "basic"
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "publishes_events": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "consumes_events": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "milestone": {
+      "type": "string",
+      "enum": ["M0", "M1", "M2", "M3", "M4", "M5"],
+      "default": "M0"
+    },
+    "lifecycle_stage": {
+      "type": "string",
+      "enum": ["draft", "build", "validate", "shadow", "dual", "cutover", "stable", "deprecated"],
+      "default": "draft"
+    }
+  },
+  "additionalProperties": false
+}

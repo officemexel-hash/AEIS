@@ -1,0 +1,154 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_test_run
+  name_pl: Wykonanie testu W14
+  name_en: W14 Test Run
+  version: v1.0
+  description_pl: 'Pojedyncze wykonanie suite albo case w kontekście gałęzi.
+
+    Status, koszt i trace są dedykowane do raportowania, a bogaty wynik
+
+    przechowywany jest w rozszerzeniu JSONB.'
+  description_en: 'Single execution of a suite or case in branch context.
+
+    Status, cost, and trace are dedicated for reporting, while rich results
+
+    are stored in the JSONB extension payload.'
+  tags:
+  - w14
+  - testing
+  - run
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: status
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - running
+    - passed
+    - failed
+    - skipped
+    - error
+    default: running
+  - name: duration_ms
+    type: bigint
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  - name: cost_usd
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0.0
+  - name: trace_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: evidence_pack
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: suite
+    target: w14_test_suite
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: case
+    target: w14_test_case
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: branch
+    target: w14_branch
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: charter
+    target: w14_test_charter
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - status
+    - duration_ms
+    - cost_usd
+    - trace_ref
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - trace_ref
+  actions:
+  - id: finish_test_run
+    description_pl: Kończy wykonanie testu i oznacza wynik jako passed.
+    description_en: Finishes the test run and marks the outcome as passed.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: passed
+    - type: emit_event
+      topic: aeis.w14.test_run.finished
+  - id: fail_test_run
+    description_pl: Kończy wykonanie testu z wynikiem failed.
+    description_en: Ends the test run with a failed status.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: failed
+    - type: emit_event
+      topic: aeis.w14.test_run.failed
+  - id: abort_test_run
+    description_pl: Przerywa aktywne wykonanie z nieodwracalnym skutkiem operacyjnym.
+    description_en: Aborts an active run with an irreversible operational side effect.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: status
+      to: error
+    - type: emit_event
+      topic: aeis.w14.test_run.aborted

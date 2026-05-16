@@ -1,0 +1,17 @@
+{
+  "module_id": "cognitive.idea_vault",
+  "module_kind": "B",
+  "owner_plan": "P09",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "description": "Idea vault for storing and managing creative concepts.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

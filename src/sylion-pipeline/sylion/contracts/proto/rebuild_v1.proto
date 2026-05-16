@@ -1,0 +1,286 @@
+// SYLION AEIS -- Class K: Rebuild (4 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: RebuildOrchestrator, LPWManager, CutoverController, CFTRunner
+
+syntax = "proto3";
+
+package sylion.rebuild.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/rebuild/v1;rebuildv1";
+option java_package = "com.sylion.aeis.rebuild.v1";
+
+// =====================================================================
+// K1: Rebuild Orchestrator Service
+// =====================================================================
+
+service RebuildOrchestratorService {
+  rpc CreatePlan(CreateRebuildPlanRequest) returns (RebuildPlanMessage);
+  rpc AddStep(AddRebuildStepRequest) returns (RebuildStepMessage);
+  rpc ExecutePlan(ExecuteRebuildPlanRequest) returns (ExecuteRebuildResponse);
+  rpc GetPlan(GetRebuildPlanRequest) returns (RebuildPlanMessage);
+  rpc ListPlans(ListRebuildPlansRequest) returns (RebuildPlanList);
+  rpc GetSteps(GetRebuildStepsRequest) returns (RebuildStepList);
+}
+
+message CreateRebuildPlanRequest {
+  string module_id   = 1;
+  string reason      = 2;
+  string strategy    = 3;  // rebuild|refactor|migrate
+  string proposed_by = 4;
+}
+
+message RebuildPlanMessage {
+  string plan_id     = 1;
+  string module_id   = 2;
+  string reason      = 3;
+  string strategy    = 4;
+  string status      = 5;  // draft|in_progress|completed|failed
+  string proposed_by = 6;
+  double created_at  = 7;
+}
+
+message AddRebuildStepRequest {
+  string plan_id     = 1;
+  string name        = 2;
+  string description = 3;
+  string action      = 4;
+  int32  order       = 5;
+}
+
+message RebuildStepMessage {
+  string step_id     = 1;
+  string plan_id     = 2;
+  string name        = 3;
+  string description = 4;
+  string action      = 5;
+  int32  order       = 6;
+  string status      = 7;
+}
+
+message ExecuteRebuildPlanRequest {
+  string plan_id = 1;
+}
+
+message ExecuteRebuildResponse {
+  string plan_id  = 1;
+  string status   = 2;
+  int32  steps_completed = 3;
+}
+
+message GetRebuildPlanRequest {
+  string plan_id = 1;
+}
+
+message ListRebuildPlansRequest {
+  string module_id = 1;
+  string status    = 2;
+}
+
+message RebuildPlanList {
+  repeated RebuildPlanMessage plans = 1;
+}
+
+message GetRebuildStepsRequest {
+  string plan_id = 1;
+}
+
+message RebuildStepList {
+  repeated RebuildStepMessage steps = 1;
+}
+
+// =====================================================================
+// K2: LPW Manager Service (Last Known Working)
+// =====================================================================
+
+service LPWManagerService {
+  rpc Record(RecordLPWRequest) returns (LPWMessage);
+  rpc GetLPW(GetLPWRequest) returns (LPWMessage);
+  rpc Snapshot(SnapshotLPWRequest) returns (LPWMessage);
+  rpc Restore(RestoreLPWRequest) returns (RestoreResponse);
+  rpc ListLPW(ListLPWRequest) returns (LPWList);
+  rpc GetHistory(GetLPWHistoryRequest) returns (LPWList);
+}
+
+message RecordLPWRequest {
+  string module_id   = 1;
+  string version     = 2;
+  string snapshot_json = 3;
+  string description = 4;
+}
+
+message LPWMessage {
+  string lpw_id      = 1;
+  string module_id   = 2;
+  string version     = 3;
+  string snapshot_json = 4;
+  string description = 5;
+  double timestamp   = 6;
+}
+
+message GetLPWRequest {
+  string module_id = 1;
+}
+
+message SnapshotLPWRequest {
+  string module_id = 1;
+  string description = 2;
+}
+
+message RestoreLPWRequest {
+  string lpw_id = 1;
+}
+
+message RestoreResponse {
+  bool   restored  = 1;
+  string lpw_id    = 2;
+  string module_id = 3;
+  string message   = 4;
+}
+
+message ListLPWRequest {
+  string module_id = 1;
+}
+
+message LPWList {
+  repeated LPWMessage entries = 1;
+}
+
+message GetLPWHistoryRequest {
+  string module_id = 1;
+  int32  limit     = 2;
+}
+
+// =====================================================================
+// K3: Cutover Controller Service
+// =====================================================================
+
+service CutoverControllerService {
+  rpc CreatePlan(CreateCutoverPlanRequest) returns (CutoverPlanMessage);
+  rpc Execute(ExecuteCutoverRequest) returns (CutoverResultMessage);
+  rpc Rollback(RollbackCutoverRequest) returns (CutoverResultMessage);
+  rpc RecordEvent(RecordCutoverEventRequest) returns (sylion.common.v1.Status);
+  rpc GetPlan(GetCutoverPlanRequest) returns (CutoverPlanMessage);
+  rpc ListPlans(ListCutoverPlansRequest) returns (CutoverPlanList);
+}
+
+message CreateCutoverPlanRequest {
+  string module_id   = 1;
+  string old_version = 2;
+  string new_version = 3;
+  string strategy    = 4;  // big_bang|gradual|canary
+}
+
+message CutoverPlanMessage {
+  string plan_id     = 1;
+  string module_id   = 2;
+  string old_version = 3;
+  string new_version = 4;
+  string strategy    = 5;
+  string status      = 6;  // planned|executing|completed|rolled_back
+  double created_at  = 7;
+}
+
+message ExecuteCutoverRequest {
+  string plan_id = 1;
+}
+
+message RollbackCutoverRequest {
+  string plan_id = 1;
+  string reason  = 2;
+}
+
+message CutoverResultMessage {
+  string plan_id  = 1;
+  string status   = 2;
+  string message  = 3;
+  double timestamp = 4;
+}
+
+message RecordCutoverEventRequest {
+  string plan_id = 1;
+  string event   = 2;
+  string details_json = 3;
+}
+
+message GetCutoverPlanRequest {
+  string plan_id = 1;
+}
+
+message ListCutoverPlansRequest {
+  string module_id = 1;
+  string status    = 2;
+}
+
+message CutoverPlanList {
+  repeated CutoverPlanMessage plans = 1;
+}
+
+// =====================================================================
+// K4: CFT Runner Service (Canonical Fidelity Test)
+// =====================================================================
+
+service CFTRunnerService {
+  rpc CreateSuite(CreateCFTSuiteRequest) returns (CFTSuiteMessage);
+  rpc RunTest(RunCFTTestRequest) returns (CFTTestResultMessage);
+  rpc GetResults(GetCFTResultsRequest) returns (CFTResultList);
+  rpc GetPassRate(GetPassRateRequest) returns (CFTPassRate);
+  rpc ListSuites(sylion.common.v1.Empty) returns (CFTSuiteList);
+}
+
+message CreateCFTSuiteRequest {
+  string suite_id   = 1;
+  string name       = 2;
+  string description = 3;
+  repeated string test_ids = 4;
+}
+
+message CFTSuiteMessage {
+  string suite_id   = 1;
+  string name       = 2;
+  string description = 3;
+  string status     = 4;
+  double created_at = 5;
+}
+
+message RunCFTTestRequest {
+  string suite_id   = 1;
+  string test_id    = 2;
+  string original   = 3;
+  string compacted  = 4;
+}
+
+message CFTTestResultMessage {
+  string result_id  = 1;
+  string suite_id   = 2;
+  string test_id    = 3;
+  bool   passed     = 4;
+  double fidelity   = 5;
+  string message    = 6;
+  double timestamp  = 7;
+}
+
+message GetCFTResultsRequest {
+  string suite_id = 1;
+}
+
+message CFTResultList {
+  repeated CFTTestResultMessage results = 1;
+}
+
+message GetPassRateRequest {
+  string suite_id = 1;
+}
+
+message CFTPassRate {
+  string suite_id = 1;
+  int32  total    = 2;
+  int32  passed   = 3;
+  double rate     = 4;
+}
+
+message CFTSuiteList {
+  repeated CFTSuiteMessage suites = 1;
+}

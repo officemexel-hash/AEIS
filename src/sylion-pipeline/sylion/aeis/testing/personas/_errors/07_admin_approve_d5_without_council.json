@@ -1,0 +1,16 @@
+{
+  "error_class": "authority_abuse",
+  "target_action": "admin_unilaterally_approves_d5_decision_without_council",
+  "context": "Admin user attempts to approve D5 release without opening Council session",
+  "timing": "any_d5_action_attempt",
+  "expected_system_response": [
+    "block_action",
+    "require_council_session_id_in_payload",
+    "require_critic_signature",
+    "require_sentinel_pass",
+    "audit_log_authority_abuse_attempt"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D5",
+  "action_d_level": "D2"
+}

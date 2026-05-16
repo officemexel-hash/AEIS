@@ -1,0 +1,30 @@
+# SYLION v5.9.0 — top-level runtime dependencies.
+# Source of truth. Run scripts/regen-lock.sh to produce requirements-lock.txt.
+# Pinning happens ONLY in requirements-lock.txt (hash-sealed).
+
+# Web / API
+fastapi
+uvicorn[standard]
+aiofiles
+python-multipart
+
+# Data / Validation
+pydantic
+
+# Auth / Security
+argon2-cffi
+python-dotenv
+
+# Serialization / Docs
+pyyaml
+python-docx
+pypdf
+
+# HTTP client
+httpx
+
+# AI backend
+litellm
+
+# CLI / diagnostics
+rich

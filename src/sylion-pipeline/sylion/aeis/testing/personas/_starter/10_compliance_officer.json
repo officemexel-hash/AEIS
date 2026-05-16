@@ -1,0 +1,22 @@
+{
+  "name": "compliance_officer",
+  "capability_level": "expert",
+  "expertise_domains": ["compliance", "audit", "regulation"],
+  "error_proneness": 0.05,
+  "attention_span_min": 90,
+  "trust_in_ai_baseline": 0.35,
+  "risk_tolerance": "low",
+  "dynamic_state": {
+    "fatigue_level": 0.0,
+    "load_level": 0.4,
+    "pressure_level": 0.6,
+    "trust_drift": 0.0,
+    "interruptions_last_hour": 0
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 0.9,
+    "hesitation_probability": 0.04,
+    "verifies_signatures": true,
+    "demands_evidence_chain": true
+  }
+}

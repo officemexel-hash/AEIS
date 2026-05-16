@@ -1,0 +1,188 @@
+// SYLION AEIS -- Class I: Skills (3 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: SkillsRegistry, SkillsExecutor, DemandSignalAnalyzer
+
+syntax = "proto3";
+
+package sylion.skills.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/skills/v1;skillsv1";
+option java_package = "com.sylion.aeis.skills.v1";
+
+// =====================================================================
+// I1: Skills Registry Service
+// =====================================================================
+
+service SkillsRegistryService {
+  rpc Register(RegisterSkillRequest) returns (SkillMessage);
+  rpc Publish(PublishSkillRequest) returns (SkillMessage);
+  rpc Deprecate(SkillIdRequest) returns (SkillMessage);
+  rpc Retire(SkillIdRequest) returns (SkillMessage);
+  rpc Get(SkillIdRequest) returns (SkillMessage);
+  rpc ListSkills(ListSkillsRequest) returns (SkillList);
+  rpc Search(SearchSkillsRequest) returns (SkillList);
+  rpc GetStats(sylion.common.v1.Empty) returns (SkillsStats);
+}
+
+message RegisterSkillRequest {
+  string skill_id    = 1;
+  string name        = 2;
+  string description = 3;
+  string category    = 4;
+  string version     = 5;
+  repeated string tags = 6;
+}
+
+message PublishSkillRequest {
+  string skill_id = 1;
+}
+
+message SkillIdRequest {
+  string skill_id = 1;
+}
+
+message SkillMessage {
+  string skill_id    = 1;
+  string name        = 2;
+  string description = 3;
+  string category    = 4;
+  string version     = 5;
+  string status      = 6;  // draft|published|deprecated|retired
+  repeated string tags = 7;
+  double created_at  = 8;
+}
+
+message ListSkillsRequest {
+  string category = 1;
+  string status   = 2;
+}
+
+message SkillList {
+  repeated SkillMessage skills = 1;
+}
+
+message SearchSkillsRequest {
+  string query    = 1;
+  repeated string tags = 2;
+}
+
+message SkillsStats {
+  int32 total_skills    = 1;
+  int32 published       = 2;
+  int32 deprecated      = 3;
+  map<string, int64> by_category = 4;
+}
+
+// =====================================================================
+// I2: Skills Executor Service
+// =====================================================================
+
+service SkillsExecutorService {
+  rpc Execute(ExecuteSkillRequest) returns (ExecuteSkillResponse);
+  rpc GetExecution(GetExecutionRequest) returns (SkillExecutionMessage);
+  rpc ListExecutions(ListExecutionsRequest) returns (SkillExecutionList);
+  rpc GetStats(sylion.common.v1.Empty) returns (ExecutorStats);
+}
+
+message ExecuteSkillRequest {
+  string skill_id       = 1;
+  string input_json     = 2;
+  string requested_by   = 3;
+}
+
+message ExecuteSkillResponse {
+  string execution_id = 1;
+  string status       = 2;
+  string output_json  = 3;
+  string error        = 4;
+}
+
+message GetExecutionRequest {
+  string execution_id = 1;
+}
+
+message SkillExecutionMessage {
+  string execution_id = 1;
+  string skill_id     = 2;
+  string status       = 3;
+  string output_json  = 4;
+  string error        = 5;
+  double started_at   = 6;
+  double completed_at = 7;
+}
+
+message ListExecutionsRequest {
+  string skill_id = 1;
+  string status   = 2;
+  int32  limit    = 3;
+}
+
+message SkillExecutionList {
+  repeated SkillExecutionMessage executions = 1;
+}
+
+message ExecutorStats {
+  int32 total_executions = 1;
+  int32 successful       = 2;
+  int32 failed           = 3;
+  double avg_duration_ms = 4;
+}
+
+// =====================================================================
+// I3: Demand Signal Analyzer Service
+// =====================================================================
+
+service DemandSignalAnalyzerService {
+  rpc Record(RecordSignalRequest) returns (sylion.common.v1.Status);
+  rpc Analyze(AnalyzeRequest) returns (AnalysisReport);
+  rpc GetSignals(GetSignalsRequest) returns (SignalList);
+  rpc GetLatestReport(sylion.common.v1.Empty) returns (AnalysisReport);
+  rpc GetStats(sylion.common.v1.Empty) returns (SignalStats);
+}
+
+message RecordSignalRequest {
+  string signal_type = 1;
+  string source      = 2;
+  string payload_json = 3;
+  double weight      = 4;
+}
+
+message AnalyzeRequest {
+  string category = 1;
+  double since    = 2;
+}
+
+message AnalysisReport {
+  string report_id    = 1;
+  string category     = 2;
+  map<string, double> demand_scores = 3;
+  repeated string recommendations = 4;
+  double timestamp   = 5;
+}
+
+message GetSignalsRequest {
+  string signal_type = 1;
+  int32  limit       = 2;
+}
+
+message SignalList {
+  repeated SignalMessage signals = 1;
+}
+
+message SignalMessage {
+  string signal_id   = 1;
+  string signal_type = 2;
+  string source      = 3;
+  string payload_json = 4;
+  double weight      = 5;
+  double timestamp   = 6;
+}
+
+message SignalStats {
+  int32  total_signals = 1;
+  map<string, int64> by_type = 2;
+  double latest_timestamp = 3;
+}

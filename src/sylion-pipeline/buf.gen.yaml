@@ -1,0 +1,15 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/sylion/aeis/gen
+plugins:
+  - remote: buf.build/protocolbuffers/python
+    out: sylion/contracts/generated
+  - remote: buf.build/grpc/python
+    out: sylion/contracts/generated
+  - remote: buf.build/protocolbuffers/pyi
+    out: sylion/contracts/generated
+  - remote: buf.build/grpc/pyi
+    out: sylion/contracts/generated

@@ -1,0 +1,27 @@
+{
+  "module_id": "aeis.self_explanation",
+  "module_kind": "H",
+  "owner_plan": "P16",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "aeis.explanation.generated",
+    "aeis.explanation.approved"
+  ],
+  "consumes_events": [
+    "decision.classified",
+    "governance.council.ratified"
+  ],
+  "description": "Generates human-readable explanations of system decisions and behavior.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

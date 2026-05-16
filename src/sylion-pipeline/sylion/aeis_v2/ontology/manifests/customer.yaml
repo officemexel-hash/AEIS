@@ -1,0 +1,120 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: customer
+  name_pl: Klient
+  name_en: Customer
+  version: v1.0
+  description_pl: |
+    Typ obiektu dla rekordów CRM przechowujących dane klienta,
+    status relacji oraz podstawowy kontekst organizacyjny.
+    Przeznaczony do pracy operatora i powiązań z projektami.
+  description_en: |
+    Object type for CRM customer records storing contact data,
+    relationship status, and basic organizational context.
+    Intended for operator work and project linkage.
+  tags: [crm, customer, operator, w15]
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+    - name: name
+      type: text
+      nullable: false
+      indexed: true
+      searchable: true
+    - name: email
+      type: text
+      nullable: false
+      indexed: true
+      searchable: false
+    - name: phone
+      type: text
+      nullable: true
+      indexed: false
+      searchable: false
+    - name: company
+      type: text
+      nullable: true
+      indexed: false
+      searchable: true
+    - name: status
+      type: text
+      nullable: false
+      indexed: false
+      searchable: false
+      enum: [draft, active, archived]
+      default: draft
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+      properties:
+        billing_notes:
+          type: string
+        segment:
+          type: string
+        preferred_channels:
+          type: array
+          items:
+            type: string
+  relations:
+    - name: parent_project
+      target: project
+      cardinality: one_to_many
+      on_delete: set_null
+  audit:
+    enabled: true
+    track_fields: ["name", "email", "status"]
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: ["name", "company"]
+    embeddings:
+      enabled: false
+      source_columns: ["name", "company"]
+      dim: 1024
+  actions:
+    - id: archive_customer
+      description_pl: |
+        Archiwizuje klienta i blokuje jego użycie
+        w nowych aktywnych procesach operacyjnych.
+      description_en: |
+        Archives the customer and prevents
+        new active operational usage.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: archived
+        - type: emit_event
+          topic: aeis.customer.archived
+    - id: mark_active_customer
+      description_pl: |
+        Oznacza klienta jako aktywnego i gotowego
+        do dalszej obsługi operacyjnej.
+      description_en: |
+        Marks the customer as active and ready
+        for continued operational handling.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: active
+        - type: emit_event
+          topic: aeis.customer.activated

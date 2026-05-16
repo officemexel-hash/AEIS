@@ -1,0 +1,1610 @@
+# =============================================================================
+# SYLION Agent Configuration — Panel zarządzania agentami
+#
+# Każdy agent może być:
+#   enabled: true/false  — włączony/wyłączony
+#   model: override      — nadpisanie domyślnego modelu
+#   priority: 1-10       — priorytet (wyższy = ważniejszy)
+#   params: {}           — parametry specyficzne dla agenta
+#
+# Użycie:
+#   python agent_manager.py status          — pokaż status wszystkich agentów
+#   python agent_manager.py enable <agent>  — włącz agenta
+#   python agent_manager.py disable <agent> — wyłącz agenta
+#   python agent_manager.py dashboard       — interaktywny panel
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Globalne ustawienia
+# ---------------------------------------------------------------------------
+global:
+  # Próg konsensusu dla audytu (≥N/4 modeli = ACCEPT)
+  consensus_threshold: 3
+
+  # Domyślne modele per rola
+  default_models:
+    primary: claude-sonnet       # Główny model (Coordinator, Merger, Reporter)
+    critical: claude-opus        # Krytyczne decyzje (Merger, final GO/NO-GO)
+    fast: claude-haiku           # Szybkie zadania (walidacja, formatowanie)
+    reasoning: o3                # Głęboka analiza (security, edge cases)
+    search: perplexity-sonar-pro # Wyszukiwanie w sieci (CVE, advisories)
+    audit:                       # Modele do audytu/weryfikacji (konsensus 3/5 = 60%)
+      - claude-sonnet
+      - gpt-5
+      - gemini-pro
+      - deepseek-v3
+      - grok-3
+      # NOTE: ollama-llama3 is NOT an auditor — it's a pre-filter only (Council Z5)
+    local: ollama-llama3           # Domyślny lokalny model (Ollama, pre-filter only)
+
+  # Multi-Model Verification
+  verification:
+    enabled: true              # Włącz weryfikację wyników przez wiele modeli
+    min_agreement: 0.66        # Minimum zgodności (2/3)
+    verify_count: 3            # Ile modeli weryfikuje każdy wynik
+    verify_critical_only: false # Weryfikuj tylko krytyczne findings
+    search_before_verify: true  # Szukaj w sieci przed weryfikacją
+    search_models:              # Modele do wyszukiwania (równolegle)
+      - perplexity-sonar-pro
+      - grok-3
+
+  # Agent Learning / Memory
+  learning:
+    enabled: true              # Agenci pamiętają wyniki między sesjami
+    memory_dir: "memory/"      # Katalog z pamięcią agentów
+    remember_false_positives: true   # Pamiętaj false positives
+    remember_true_positives: true    # Pamiętaj potwierdzone findings
+    remember_patterns: true          # Pamiętaj wzorce kodu
+    max_memory_entries: 1000         # Limit wpisów per agent
+    inject_memory_to_prompt: true    # Wstrzykuj pamięć do promptów
+
+  # Tryby pipeline'u
+  modes:
+    dry_run: false           # Bez deploymentu i patchowania
+    audit_only: false        # Tylko etapy 1-4 (bez patchy)
+    skip_devices: false      # Pomiń deploy na urządzenia
+    skip_sdr: false          # Pomiń testy SDR
+    skip_security: false     # Pomiń Red/Blue Team
+
+  # Timeout per agent (sekundy)
+  default_timeout: 1800      # 30 min
+
+  # Max równoległych agentów
+  max_concurrency: 8
+
+# ---------------------------------------------------------------------------
+# STAGE 1: PREPARE
+# ---------------------------------------------------------------------------
+agents:
+  # === COORDINATOR ===
+  coordinator:
+    enabled: true
+    stage: 0                 # Meta-agent, działa przez cały pipeline
+    role: "Orkiestrator pipeline'u"
+    model: claude-opus       # Najlepszy model do krytycznych decyzji
+    fallback_model: claude-sonnet
+    priority: 10
+    description: "Zarządza 30+ agentami, podejmuje decyzje GO/NO-GO"
+    learning: true           # Pamięta wyniki poprzednich pipeline'ów
+    params:
+      retry_failed_stages: true
+      max_retries: 2
+    book_refs: ["KS-*"]
+    allowed_actions: ["file_read", "file_write_result", "http_health"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2", "VPS"]
+    security_impact: critical
+    produces_artifacts:
+      - pipeline.log
+      - signals/*.json
+    acceptance_tests:
+      - "All stages complete or explicitly skipped"
+      - "GO/NO-GO decision recorded per stage"
+      - "No unresolved CRITICAL findings"
+
+  # === STAGE 1: PREPARE ===
+  ksiega_analyst:
+    enabled: true
+    stage: 1
+    role: "Analiza Księgi"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 9
+    description: >-
+      Parsuje Księgę 3.4, ekstrahuje wymagania bezpieczeństwa.
+      Produkuje requirements.json — DERIVED ARTIFACT (artefakt pochodny).
+      Źródło normatywne: Księga SYLION 3.4 FIXED (chroniona przez BookGuardian).
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [gpt-5, gemini-pro]  # Weryfikuj wymagania przez 2 inne modele
+    params:
+      ksiega_path: null
+      max_requirements: 500
+
+    book_refs: ["KS-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build", "file_write"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - requirements.json
+    acceptance_tests:
+      - "requirements.json is valid JSON array"
+      - "Each requirement has: id, category, priority, description, verification"
+      - "At least 50 requirements extracted"
+  build_agent:
+    enabled: true
+    stage: 1
+    role: "Kompilacja binarek"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 8
+    description: "go build: sylion-server, sylion-verify, sylionctl, sylion-relay"
+    declared_files: []             # Build agent reads code, produces binaries — no source modifications
+    params:
+      targets:
+        - { binary: "sylion-server",  arch: "amd64" }
+        - { binary: "sylion-verify",  arch: "amd64" }
+        - { binary: "sylionctl",      arch: "amd64" }
+        - { binary: "sylion-relay",   arch: "amd64" }
+        - { binary: "sylion-relay",   arch: "arm64" }
+      run_tests: true
+      run_vet: true
+    book_refs: ["KS-BUILD-*", "KS-SEC-BINARY-*"]
+    allowed_actions: ["file_read", "file_write_result", "go_build", "go_test", "go_vet"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: medium
+    produces_artifacts:
+      - build/amd64/sylion-server
+      - build/amd64/sylion-verify
+      - build/amd64/sylionctl
+      - build/arm64/sylion-relay
+      - build_status.json
+    acceptance_tests:
+      - "All binaries compile without errors"
+      - "go vet passes"
+      - "go test passes"
+      - "Binary sizes within expected range"
+
+  # === STAGE 2: AUDIT (×4) ===
+  auditor_claude:
+    enabled: true
+    stage: 2
+    role: "Audytor"
+    model: claude-sonnet
+    fallback_model: claude-opus
+    priority: 8
+    description: "Audyt bezpieczeństwa — Claude Sonnet 4"
+    group: auditors
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [gpt-5, gemini-pro, grok-3]  # Każdy finding weryfikowany przez 3 modele
+    online_search:
+      enabled: true          # Szukaj CVE/advisories dla findings
+      models: [perplexity-sonar-pro, grok-3]
+    params:
+      strengths: "Logic flow, crypto implementation, auth patterns"
+      focus_areas: ["auth", "crypto", "session"]
+
+    book_refs: ["KS-SEC-*", "KS-AUTH-*", "KS-CRYPTO-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - audit_claude.json
+    acceptance_tests:
+      - "JSON array of findings with required fields"
+      - "Each finding has file, line, severity, confidence"
+      - "Confidence scores between 0.0-1.0"
+  auditor_gpt:
+    enabled: true
+    stage: 2
+    role: "Audytor"
+    model: gpt-5
+    fallback_model: gpt-4.1
+    priority: 8
+    description: "Audyt bezpieczeństwa — GPT-5"
+    group: auditors
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [claude-sonnet, gemini-pro, deepseek-v3]
+    online_search:
+      enabled: true
+      models: [perplexity-sonar-pro, grok-3]
+    params:
+      strengths: "API security, input validation, injection patterns"
+      focus_areas: ["api", "input_validation", "injection"]
+
+    book_refs: ["KS-SEC-*", "KS-API-*", "KS-INPUT-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - audit_gpt.json
+    acceptance_tests:
+      - "JSON array of findings with required fields"
+      - "Each finding has file, line, severity, confidence"
+      - "Confidence scores between 0.0-1.0"
+  auditor_gemini:
+    enabled: true
+    stage: 2
+    role: "Audytor"
+    model: gemini-pro
+    fallback_model: gemini-flash
+    priority: 8
+    description: "Audyt bezpieczeństwa — Gemini 2.5 Pro"
+    group: auditors
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [claude-sonnet, gpt-5, grok-3]
+    online_search:
+      enabled: true
+      models: [perplexity-sonar, grok-3-mini]
+    params:
+      strengths: "Concurrency, race conditions, resource management"
+      focus_areas: ["concurrency", "race_conditions", "resources"]
+
+    book_refs: ["KS-SEC-*", "KS-CONCURRENCY-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - audit_gemini.json
+    acceptance_tests:
+      - "JSON array of findings with required fields"
+      - "Each finding has file, line, severity, confidence"
+      - "Confidence scores between 0.0-1.0"
+  auditor_deepseek:
+    enabled: true
+    stage: 2
+    role: "Audytor"
+    model: deepseek-v3
+    fallback_model: deepseek-r1
+    priority: 8
+    description: "Audyt bezpieczeństwa — DeepSeek V3"
+    group: auditors
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [claude-sonnet, gpt-5, gemini-pro]
+    params:
+      strengths: "Memory safety, buffer handling, error paths"
+      focus_areas: ["memory", "errors", "edge_cases"]
+
+    book_refs: ["KS-SEC-*", "KS-MEMORY-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - audit_deepseek.json
+    acceptance_tests:
+      - "JSON array of findings with required fields"
+      - "Each finding has file, line, severity, confidence"
+      - "Confidence scores between 0.0-1.0"
+  auditor_grok:
+    enabled: true
+    stage: 2
+    role: "Audytor"
+    model: grok-3
+    fallback_model: grok-3-mini
+    priority: 8
+    description: "Audyt bezpieczeństwa — Grok 3 (z wyszukiwaniem)"
+    group: auditors
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [claude-sonnet, gpt-5, deepseek-v3]
+    online_search:
+      enabled: true
+      models: [perplexity-sonar-pro]
+    params:
+      strengths: "Web-augmented analysis, CVE knowledge, real-time threat intel"
+      focus_areas: ["known_vulns", "cve_matching", "supply_chain"]
+    book_refs: ["KS-SEC-*", "KS-CVE-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - audit_grok.json
+    acceptance_tests:
+      - "JSON array of findings with required fields"
+      - "Each finding has file, line, severity, confidence"
+      - "CVE references validated where applicable"
+
+  # === STAGE 3: CROSS-VERIFY (×4) ===
+  verifier_claude:
+    enabled: true
+    stage: 3
+    role: "Weryfikator krzyżowy"
+    model: claude
+    priority: 7
+    description: "Weryfikuje findings z audytów GPT/Gemini/DeepSeek"
+    group: verifiers
+
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - verify_claude.json
+    acceptance_tests:
+      - "Each finding has verdict: CONFIRMED/DISPUTED/INCONCLUSIVE"
+      - "Confidence and reasoning provided for each verdict"
+  verifier_gpt:
+    enabled: true
+    stage: 3
+    role: "Weryfikator krzyżowy"
+    model: gpt
+    priority: 7
+    description: "Weryfikuje findings z audytów Claude/Gemini/DeepSeek"
+    group: verifiers
+
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - verify_gpt.json
+    acceptance_tests:
+      - "Each finding has verdict: CONFIRMED/DISPUTED/INCONCLUSIVE"
+      - "Confidence and reasoning provided for each verdict"
+  verifier_gemini:
+    enabled: true
+    stage: 3
+    role: "Weryfikator krzyżowy"
+    model: gemini
+    priority: 7
+    description: "Weryfikuje findings z audytów Claude/GPT/DeepSeek"
+    group: verifiers
+
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - verify_gemini.json
+    acceptance_tests:
+      - "Each finding has verdict: CONFIRMED/DISPUTED/INCONCLUSIVE"
+      - "Confidence and reasoning provided for each verdict"
+  verifier_deepseek:
+    enabled: true
+    stage: 3
+    role: "Weryfikator krzyżowy"
+    model: deepseek
+    priority: 7
+    description: "Weryfikuje findings z audytów Claude/GPT/Gemini"
+    group: verifiers
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - verify_deepseek.json
+    acceptance_tests:
+      - "Each finding has verdict: CONFIRMED/DISPUTED/INCONCLUSIVE"
+      - "Confidence and reasoning provided for each verdict"
+
+  # === STAGE 4: MERGE ===
+  merger:
+    enabled: true
+    stage: 4
+    role: "Scalanie i decyzje"
+    model: claude
+    priority: 9
+    description: "Deduplikuje findings, stosuje próg konsensusu, decyduje ACCEPT/REVIEW/SKIP"
+    params:
+      consensus_threshold: 3  # Nadpisuje globalne jeśli ustawione
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2"]
+    security_impact: critical
+    produces_artifacts:
+      - merged_findings.json
+    acceptance_tests:
+      - "Deduplicated findings with ACCEPT/REVIEW/SKIP decisions"
+      - "Consensus counts per finding"
+      - "No ACCEPT without >=3/4 agreement"
+
+  # === STAGE 5: PATCH (×4) ===
+  patcher_1:
+    enabled: true
+    stage: 5
+    role: "Generator patchy"
+    model: claude
+    priority: 6
+    description: "Patchuje findings partycja 1/4"
+    group: patchers
+    declared_files: []             # Populated dynamically from merged findings
+
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write", "file_write_result", "go_build", "go_test", "go_vet"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - patches_1.json
+    acceptance_tests:
+      - "Each patch has unified diff + test"
+      - "go vet passes after patch"
+      - "go test passes after patch"
+  patcher_2:
+    enabled: true
+    stage: 5
+    role: "Generator patchy"
+    model: claude
+    priority: 6
+    description: "Patchuje findings partycja 2/4"
+    group: patchers
+    declared_files: []
+
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write", "file_write_result", "go_build", "go_test", "go_vet"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - patches_2.json
+    acceptance_tests:
+      - "Each patch has unified diff + test"
+      - "go vet passes after patch"
+      - "go test passes after patch"
+  patcher_3:
+    enabled: true
+    stage: 5
+    role: "Generator patchy"
+    model: claude
+    priority: 6
+    description: "Patchuje findings partycja 3/4"
+    group: patchers
+    declared_files: []
+
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write", "file_write_result", "go_build", "go_test", "go_vet"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - patches_3.json
+    acceptance_tests:
+      - "Each patch has unified diff + test"
+      - "go vet passes after patch"
+      - "go test passes after patch"
+  patcher_4:
+    enabled: true
+    stage: 5
+    role: "Generator patchy"
+    model: claude
+    priority: 6
+    description: "Patchuje findings partycja 4/4"
+    group: patchers
+    declared_files: []
+    book_refs: ["KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write", "file_write_result", "go_build", "go_test", "go_vet"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - patches_4.json
+    acceptance_tests:
+      - "Each patch has unified diff + test"
+      - "go vet passes after patch"
+      - "go test passes after patch"
+
+  # === STAGE 6: DEPLOY ===
+  pixel_deployer:
+    enabled: true
+    stage: 6
+    role: "Deployer Pixel"
+    model: claude
+    priority: 7
+    description: "ADB push/sideload na Pixel z GrapheneOS"
+    params:
+      device_serial: null    # Automatyczne wykrywanie
+      grapheneos_ota: true
+      adb_timeout: 120
+
+    book_refs: ["KS-DEPLOY-PIXEL-*", "KS-SEC-DEPLOY-*"]
+    allowed_actions: ["file_read", "file_write_result", "adb_push", "adb_shell_check", "http_health"]
+    forbidden_actions: ["ssh_deploy", "go_build", "file_write"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: critical
+    produces_artifacts:
+      - pixel_status.json
+    acceptance_tests:
+      - "ADB connection verified"
+      - "Binary pushed and executable"
+      - "Health check passes on device"
+  router_deployer:
+    enabled: true
+    stage: 6
+    role: "Deployer Router"
+    model: claude
+    priority: 7
+    description: "SSH/SCP deploy na router OpenWrt"
+    params:
+      router_ip: "192.168.1.1"
+      router_user: "root"
+      backup_before_deploy: true
+    book_refs: ["KS-DEPLOY-ROUTER-*", "KS-SEC-DEPLOY-*"]
+    allowed_actions: ["file_read", "file_write_result", "ssh_deploy", "ssh_check", "http_health"]
+    forbidden_actions: ["adb_push", "go_build", "file_write"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: critical
+    produces_artifacts:
+      - router_status.json
+    acceptance_tests:
+      - "SSH connection verified"
+      - "Binary deployed and permissions set"
+      - "Service restarted successfully"
+      - "Health check passes on router"
+
+  # === STAGE 7: TEST (×4) ===
+  tester_unit:
+    enabled: true
+    stage: 7
+    role: "Tester"
+    model: gpt
+    priority: 6
+    description: "go test z pokryciem kodu"
+    group: testers
+    params:
+      min_coverage: 60
+      timeout: 600
+
+    book_refs: ["KS-TEST-*"]
+    allowed_actions: ["file_read", "file_write_result", "go_test"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: low
+    produces_artifacts:
+      - unit_results.json
+      - coverage.out
+    acceptance_tests:
+      - "All tests pass"
+      - "Coverage >= 60% for critical packages"
+  tester_integration:
+    enabled: true
+    stage: 7
+    role: "Tester"
+    model: gpt
+    priority: 6
+    description: "Testy integracyjne Pixel↔Router↔Server"
+    group: testers
+
+    book_refs: ["KS-TEST-*", "KS-DEPLOY-*"]
+    allowed_actions: ["file_read", "file_write_result", "adb_shell_check", "ssh_check", "http_health"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: medium
+    produces_artifacts:
+      - integration_results.json
+    acceptance_tests:
+      - "Pixel->Router->Server flow works"
+      - "Failover and auto-reconnect verified"
+  tester_e2e:
+    enabled: true
+    stage: 7
+    role: "Tester"
+    model: claude
+    priority: 6
+    description: "End-to-end: rejestracja → sesja → wiadomość → weryfikacja"
+    group: testers
+
+    book_refs: ["KS-TEST-*", "KS-SEC-*"]
+    allowed_actions: ["file_read", "file_write_result", "adb_shell_check", "ssh_check", "http_health"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: medium
+    produces_artifacts:
+      - e2e_results.json
+    acceptance_tests:
+      - "Full registration->session->message->verify flow"
+      - "E2E encryption verified"
+  tester_regression:
+    enabled: true
+    stage: 7
+    role: "Tester"
+    model: gemini
+    priority: 5
+    description: "Porównanie z poprzednią wersją, benchmarki"
+    group: testers
+    book_refs: ["KS-TEST-*"]
+    allowed_actions: ["file_read", "file_write_result", "go_test", "git_status"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: low
+    produces_artifacts:
+      - regression_results.json
+    acceptance_tests:
+      - "No regressions vs previous version"
+      - "Benchmark results within tolerance"
+
+  # === STAGE 8: SECURITY (×4) ===
+  red_team_network:
+    enabled: true
+    stage: 8
+    role: "Red Team"
+    model: claude
+    priority: 7
+    description: "Ataki sieciowe: nmap, MITM, replay, DNS spoofing"
+    group: red_team
+    params:
+      attack_types: ["recon", "mitm", "replay", "dns_spoof", "dos"]
+      local_only: true       # Tylko lokalne urządzenia
+
+    book_refs: ["KS-SEC-NET-*", "KS-SEC-PENTEST-*"]
+    allowed_actions: ["file_read", "file_write_result", "adb_shell_check", "ssh_check", "http_health"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: critical
+    produces_artifacts:
+      - red_network.json
+    acceptance_tests:
+      - "All attack scenarios documented"
+      - "Exploitable vulnerabilities flagged CRITICAL"
+      - "Only local devices attacked"
+  red_team_app:
+    enabled: true
+    stage: 8
+    role: "Red Team"
+    model: gpt
+    priority: 7
+    description: "Ataki na aplikację: fuzzing, auth bypass, injection"
+    group: red_team
+    params:
+      attack_types: ["fuzzing", "auth_bypass", "injection", "privilege_esc"]
+      local_only: true
+
+    book_refs: ["KS-SEC-APP-*", "KS-SEC-PENTEST-*"]
+    allowed_actions: ["file_read", "file_write_result", "http_health"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: critical
+    produces_artifacts:
+      - red_app.json
+    acceptance_tests:
+      - "Fuzzing, auth bypass, injection scenarios executed"
+      - "Exploitable vulnerabilities flagged CRITICAL"
+      - "Only local endpoints tested"
+  blue_team_monitor:
+    enabled: true
+    stage: 8
+    role: "Blue Team"
+    model: gemini
+    priority: 7
+    description: "Monitoring logów, detekcja anomalii, TTD"
+    group: blue_team
+
+    book_refs: ["KS-SEC-MONITOR-*"]
+    allowed_actions: ["file_read", "file_write_result", "ssh_check", "adb_shell_check", "http_health"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - blue_monitor.json
+    acceptance_tests:
+      - "Log anomalies correlated with Red Team attacks"
+      - "TTD (time to detect) measured for each attack"
+  blue_team_hardener:
+    enabled: true
+    stage: 8
+    role: "Blue Team"
+    model: claude
+    priority: 7
+    description: "Rekomendacje hardeningu: firewall, TLS, permissions"
+    group: blue_team
+    book_refs: ["KS-SEC-HARDEN-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - blue_hardening.json
+    acceptance_tests:
+      - "Firewall, TLS, OS hardening recommendations provided"
+      - "Each recommendation has priority and effort estimate"
+
+  # === STAGE 8.5: SDR (×3) ===
+  sdr_monitor:
+    enabled: true
+    stage: 8.5
+    role: "SDR Monitor"
+    model: claude
+    priority: 6
+    description: "Pasywne przechwytywanie IMSI/IMEI przez HackRF One"
+    group: sdr
+    params:
+      device: "hackrf"
+      mode: "passive"        # Tylko odbiór
+      bands: ["GSM900", "GSM1800", "LTE800", "LTE2600"]
+      capture_duration: 300  # 5 minut per skan
+
+    book_refs: ["KS-SDR-*", "KS-SEC-RF-*"]
+    allowed_actions: ["file_read", "file_write_result", "hackrf_scan"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - sdr_passive_scan.json
+      - sdr_capture.pcap
+    acceptance_tests:
+      - "IMSI/IMEI capture attempts logged"
+      - "Bands scanned: GSM900, GSM1800, LTE800, LTE2600"
+  rf_red_team:
+    enabled: true
+    stage: 8.5
+    role: "RF Red Team"
+    model: gpt
+    priority: 6
+    description: "Aktywny pentest z rogue BTS (LimeSDR + srsRAN)"
+    group: sdr
+    params:
+      device: "limesdr"
+      bts_mode: "zmq"       # DOMYŚLNIE symulacja! Zmień na "rf" tylko w klatce
+      tx_gain: -10           # dBm — minimum
+      scenarios: ["imsi_capture", "downgrade_4g_2g", "traffic_injection", "dos_sim"]
+      faraday_required: true # Wymaga potwierdzenia klatki dla mode=rf
+
+    book_refs: ["KS-SDR-*", "KS-SEC-RF-*"]
+    allowed_actions: ["file_read", "file_write_result", "srsran_zmq"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1"]
+    security_impact: critical
+    produces_artifacts:
+      - rf_red_team_results.json
+    acceptance_tests:
+      - "Rogue BTS scenarios executed in ZMQ mode"
+      - "Faraday cage confirmed for RF mode"
+      - "IMSI capture, downgrade, injection scenarios documented"
+  rf_blue_team:
+    enabled: true
+    stage: 8.5
+    role: "RF Blue Team"
+    model: gemini
+    priority: 6
+    description: "Detekcja fałszywych BTS, monitoring cell ID, TTD"
+    group: sdr
+    params:
+      device: "hackrf"
+      detection_methods: ["cell_id_change", "signal_strength", "sib_anomaly", "encryption_downgrade"]
+    book_refs: ["KS-SDR-*", "KS-SEC-RF-*"]
+    allowed_actions: ["file_read", "file_write_result", "hackrf_scan"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: high
+    produces_artifacts:
+      - rf_blue_team_results.json
+    acceptance_tests:
+      - "Fake BTS detection methods tested"
+      - "Cell ID change, signal strength anomaly detected"
+
+  # === PION D: STREAMING (5 agentów — pixel streaming stack) ===
+  stream_architect:
+    enabled: true
+    stage: 6.5               # After deploy, before test
+    role: "Architekt pixel streamingu"
+    model: claude-opus
+    fallback_model: claude-sonnet
+    priority: 8
+    description: >-
+      Główny architekt Pionu D Streaming Stack. Produkuje
+      STREAMING-ARCHITECTURE.md, SESSION-FLOW.md, TRUST-BOUNDARIES.md,
+      ADR-STREAM-001-codec-baseline.md. H.264 + Opus + WebRTC.
+    group: streaming
+    learning: true
+    book_refs: ["KS-STREAM-*", "KS-SEC-*"]
+    allowed_actions: ["file_write_result", "file_read"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - STREAMING-ARCHITECTURE.md
+      - SESSION-FLOW.md
+      - TRUST-BOUNDARIES.md
+      - ADR-STREAM-001-codec-baseline.md
+    acceptance_tests:
+      - "Dokument zawiera hardware acceleration policy"
+      - "Dokument zawiera latency budget"
+      - "Dokument zawiera TURN strategy"
+      - "Dokument zawiera codec selection rationale"
+      - "Dokument zawiera mobile UX failure modes"
+      - "Dokument zawiera audio/video sync mechanism"
+    params:
+      codec_baseline: H.264
+      audio_codec: Opus
+      transport: WebRTC
+      rtc_data_channel: true
+      focus_areas:
+        - hardware_acceleration_policy
+        - latency_budget
+        - turn_strategy
+        - codec_selection
+        - mobile_ux_failure_modes
+        - audio_video_sync
+
+  stream_encoder:
+    enabled: true
+    stage: 6.5
+    role: "Encoder streaming"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 7
+    description: >-
+      Konfiguracja enkodera H.264/Opus. Profil enkodowania per urządzenie
+      (Pixel 8 → hw encoder, laptop → sw fallback). Bitrate ladders,
+      keyframe intervals, ABR logic.
+    group: streaming
+    book_refs: ["KS-STREAM-ENC-*"]
+    allowed_actions: ["file_write_result", "file_read"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: medium
+    produces_artifacts:
+      - ENCODER-PROFILE.md
+      - bitrate_ladder.json
+    acceptance_tests:
+      - "Profile zdefiniowane dla Pixel 8 (hw) i laptop (sw)"
+      - "Bitrate ladder ma min 3 poziomy"
+    params:
+      hw_encoder_pixel: true
+      sw_fallback: true
+      min_bitrate_kbps: 500
+      max_bitrate_kbps: 8000
+
+  stream_transport:
+    enabled: true
+    stage: 6.5
+    role: "Transport streaming"
+    model: gpt-5
+    fallback_model: claude-sonnet
+    priority: 7
+    description: >-
+      WebRTC transport layer: ICE, STUN/TURN config, DTLS-SRTP,
+      RTCDataChannel for control, SRTP key rotation, jitter buffer tuning.
+    group: streaming
+    book_refs: ["KS-STREAM-TRANS-*", "KS-SEC-TRANSPORT-*"]
+    allowed_actions: ["file_write_result", "file_read"]
+    forbidden_actions: ["adb_push", "ssh_deploy"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - TRANSPORT-CONFIG.md
+      - ice_config.json
+    acceptance_tests:
+      - "DTLS-SRTP skonfigurowany"
+      - "TURN fallback zdefiniowany"
+      - "Jitter buffer tuning opisany"
+    params:
+      stun_servers: ["stun:stun.l.google.com:19302"]
+      turn_strategy: relay_fallback
+      dtls_srtp: true
+      srtp_key_rotation: true
+
+  capture_agent:
+    enabled: true
+    stage: 6.5
+    role: "Capture backend streaming"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 7
+    description: >-
+      Screen/camera capture backends for pixel streaming.
+      SurfaceFlinger capture on Pixel 8 (hw), Pipewire/GStreamer
+      fallback on laptop. Frame pacing, resolution negotiation.
+    group: streaming
+    book_refs: ["KS-STREAM-CAP-*"]
+    allowed_actions: ["file_write_result", "file_read", "adb_shell_check"]
+    forbidden_actions: ["ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: medium
+    produces_artifacts:
+      - CAPTURE-BACKENDS.md
+      - capture_config.json
+    acceptance_tests:
+      - "SurfaceFlinger backend defined for Pixel 8"
+      - "Fallback sw capture defined for laptop"
+      - "Frame pacing strategy documented"
+      - "Resolution negotiation flow documented"
+    params:
+      pixel_backend: surfaceflinger
+      laptop_backend: pipewire
+      max_resolution: "1920x1080"
+      target_fps: 30
+
+  input_protocol_agent:
+    enabled: true
+    stage: 6.5
+    role: "Input protocol streaming"
+    model: gpt-5
+    fallback_model: claude-sonnet
+    priority: 7
+    description: >-
+      RTCDataChannel-based input protocol: touch, keyboard, mouse events.
+      Binary protocol spec, latency requirements, security (signed events,
+      replay protection). Mobile-first: touch gestures, virtual keyboard.
+    group: streaming
+    book_refs: ["KS-STREAM-INPUT-*", "KS-SEC-INPUT-*"]
+    allowed_actions: ["file_write_result", "file_read"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2"]
+    security_impact: high
+    produces_artifacts:
+      - DATACHANNEL-PROTOCOL.md
+      - input_event_schema.json
+    acceptance_tests:
+      - "Binary protocol spec complete"
+      - "Touch/keyboard/mouse event types defined"
+      - "Replay protection mechanism documented"
+      - "Latency budget for input < 50ms"
+    params:
+      channel_label: "sylion-input"
+      ordered: true
+      max_retransmits: 3
+      input_latency_budget_ms: 50
+
+  mobile_ux_agent:
+    enabled: true
+    stage: 6.5
+    role: "Mobile UX streaming"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 6
+    description: >-
+      Pixel-specific UX for streaming: adaptive bitrate based on
+      network conditions, reconnect UX, quality indicator overlay,
+      battery-aware encoding, thermal throttling response.
+    group: streaming
+    book_refs: ["KS-STREAM-UX-*", "KS-MOBILE-*"]
+    allowed_actions: ["file_write_result", "file_read"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: low
+    produces_artifacts:
+      - PIXEL-UX-SPEC.md
+      - adaptive_bitrate_policy.json
+    acceptance_tests:
+      - "Reconnect UX flow documented"
+      - "Battery-aware encoding policy defined"
+      - "Thermal throttling response documented"
+      - "Quality indicator overlay spec present"
+    params:
+      reconnect_timeout_sec: 5
+      quality_indicator: true
+      battery_threshold_pct: 20
+
+  stream_security_verifier:
+    enabled: true
+    stage: 7.5               # Runs alongside stream_tester
+    role: "Security verifier streaming"
+    model: claude-opus
+    fallback_model: claude-sonnet
+    priority: 8
+    description: >-
+      Security review of entire streaming stack: SRTP key management,
+      DTLS certificate validation, DataChannel authentication,
+      capture permission model, input event signing.
+    group: streaming
+    book_refs: ["KS-SEC-STREAM-*", "KS-SEC-TRANSPORT-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["G1", "G2"]
+    security_impact: critical
+    produces_artifacts:
+      - STREAMING-SECURITY-REVIEW.md
+    acceptance_tests:
+      - "SRTP key rotation mechanism reviewed"
+      - "DTLS certificate validation checked"
+      - "DataChannel auth mechanism reviewed"
+      - "Input event signing verified"
+      - "No CRITICAL findings unresolved"
+    params:
+      review_scope:
+        - srtp_key_management
+        - dtls_cert_validation
+        - datachannel_auth
+        - capture_permissions
+        - input_event_signing
+
+  audio_agent:
+    enabled: true
+    stage: 6.5
+    role: "Audio streaming"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 6
+    description: >-
+      Opus audio encoding pipeline: echo cancellation, noise suppression,
+      comfort noise generation, DTX (discontinuous transmission),
+      audio/video synchronization, lip sync.
+    group: streaming
+    book_refs: ["KS-STREAM-AUDIO-*"]
+    allowed_actions: ["file_write_result", "file_read"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: low
+    produces_artifacts:
+      - AUDIO-PIPELINE.md
+      - audio_config.json
+    acceptance_tests:
+      - "Opus codec configuration defined"
+      - "Echo cancellation strategy documented"
+      - "A/V sync mechanism specified"
+      - "DTX policy documented"
+    params:
+      codec: opus
+      sample_rate: 48000
+      channels: 1
+      dtx: true
+      echo_cancellation: true
+      noise_suppression: true
+
+  stream_tester:
+    enabled: true
+    stage: 7.5               # After regular tests, tests streaming specifically
+    role: "Tester streaming"
+    model: gpt-5
+    fallback_model: claude-sonnet
+    priority: 6
+    description: >-
+      Testy Pionu D: latency measurement (P50/P95/P99), frame drop rate,
+      audio/video sync drift, reconnection time, TURN fallback time.
+    group: streaming
+    book_refs: ["KS-STREAM-TEST-*"]
+    allowed_actions: ["file_write_result", "file_read", "http_health", "adb_shell_check"]
+    forbidden_actions: ["ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1"]
+    security_impact: low
+    produces_artifacts:
+      - streaming_test_results.json
+      - latency_report.md
+    acceptance_tests:
+      - "P95 latency < 150ms"
+      - "Frame drop rate < 1%"
+      - "A/V sync drift < 50ms"
+      - "Reconnection time < 3s"
+    params:
+      latency_targets:
+        p50_ms: 80
+        p95_ms: 150
+        p99_ms: 300
+      max_frame_drop_pct: 1.0
+      max_av_sync_drift_ms: 50
+      max_reconnection_sec: 3.0
+
+  stream_monitor:
+    enabled: true
+    stage: 0                 # Meta-agent — continuous monitoring
+    role: "Monitor streaming"
+    model: claude-haiku
+    fallback_model: claude-sonnet
+    priority: 5
+    description: >-
+      Ciągły monitoring Pionu D: WebRTC stats, bitrate trends, latency anomalies,
+      TURN usage alerts, encoder health. Dashboard-ready JSON output.
+    group: streaming
+    book_refs: ["KS-STREAM-MON-*"]
+    allowed_actions: ["file_write_result", "file_read", "http_health"]
+    forbidden_actions: ["adb_push", "ssh_deploy", "go_build", "file_write"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: low
+    produces_artifacts:
+      - streaming_metrics.json
+      - streaming_alerts.jsonl
+    acceptance_tests:
+      - "Metryki zawierają bitrate, latency, frame_drop"
+      - "Alerty generowane przy przekroczeniu progów"
+    params:
+      poll_interval_sec: 30
+      alert_thresholds:
+        latency_p95_ms: 200
+        frame_drop_pct: 2.0
+        bitrate_drop_pct: 50
+
+  # === BOOK GUARDIAN (Stage 0 — Księga read-only protection) ===
+  book_guardian:
+    enabled: true
+    stage: 0                 # Meta-agent — checks at every stage boundary
+    role: "Strażnik Księgi (BookGuardian)"
+    model: null              # No LLM needed — pure SHA-256 logic
+    priority: 10
+    description: >-
+      Read-only protection for Księga SYLION 3.4 FIXED. Computes baseline
+      SHA-256 at pipeline start, re-hashes at every stage boundary. On drift:
+      CRITICAL escalation + pipeline HALT. NEVER modifies Księga.
+    group: support
+    book_refs: ["*"]         # Guards the entire Księga
+    allowed_actions: ["file_read"]
+    forbidden_actions: ["file_write", "file_write_result", "adb_push", "ssh_deploy"]
+    requires_human_gate: false    # Auto-escalates on drift (CRITICAL)
+    tier_scope: ["*"]
+    security_impact: critical
+    produces_artifacts:
+      - baseline.json
+      - drift_log.jsonl
+      - audit_log.jsonl
+    acceptance_tests:
+      - "Drift detection on file modification"
+      - "Drift detection on file deletion"
+      - "CRITICAL escalation to Human Gate"
+    params:
+      auto_halt_on_drift: true
+      watchdog_interval_sec: 3600    # Standalone watchdog mode interval
+
+  # === BUDGET GUARD (Stage 0 — global daily cost cap) ===
+  budget_guard:
+    enabled: true
+    stage: 0
+    role: "Strażnik budżetu (BudgetGuard)"
+    model: null
+    priority: 10
+    description: >-
+      Global daily API cost cap. Records cost after each agent run, halts
+      pipeline on budget exceeded. Warns at configurable threshold (default 80%).
+      Persists daily state across restarts.
+    group: support
+    book_refs: []
+    allowed_actions: ["file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy"]
+    requires_human_gate: false    # Auto-escalates on exceed (CRITICAL)
+    tier_scope: ["*"]
+    security_impact: medium
+    produces_artifacts:
+      - budget_YYYY-MM-DD.json
+    acceptance_tests:
+      - "Budget exceeded halts pipeline"
+      - "Warning at threshold"
+      - "Persistence across restarts"
+    params:
+      max_cost_usd_per_day: 50.0
+      warning_threshold: 0.80
+
+  # === STAGE 9: REPORT ===
+  reporter:
+    enabled: true
+    stage: 9
+    role: "Reporter"
+    model: claude-sonnet
+    fallback_model: gpt-5
+    priority: 8
+    description: "Raport końcowy: audit_report.md, CHANGELOG, traceability matrix"
+    learning: true
+    multi_verify:
+      enabled: true
+      models: [gpt-5, gemini-pro]  # Weryfikacja raportu
+    params:
+      include_sdr: true
+      include_security: true
+      format: "markdown"
+      generate_changelog: true
+      generate_traceability: true
+    book_refs: ["KS-*"]
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["G1", "G2"]
+    security_impact: medium
+    produces_artifacts:
+      - audit_report.md
+      - changelog_fragment.md
+      - traceability_update.json
+    acceptance_tests:
+      - "Report contains executive summary"
+      - "Traceability matrix: Księga->Finding->Patch->Test"
+      - "All CRITICAL findings listed"
+
+  # === FILE VERIFIER (Stage 0 — anti-hallucination guard) ===
+  file_verifier:
+    enabled: true
+    stage: 0                 # Meta-agent — works across all stages
+    role: "Weryfikator plików (Anti-Hallucination Guard)"
+    model: claude-sonnet
+    priority: 9
+    description: >-
+      SHA-256 file verification layer. Snapshots declared files before each
+      agent iteration, re-hashes after, detects hallucinated changes.
+      Blocks agent on mismatch and escalates to Human Gate (CRITICAL).
+    group: support
+    params:
+      fail_closed: true            # Block on hallucination (true) or warn only (false)
+      auto_escalate: true          # Auto-escalate to Human Gate on CRITICAL
+      verify_checksums: true       # Verify SHA-256 checksums
+      max_files_per_snapshot: 500  # Max files in directory-wide snapshot
+      monitored_extensions:        # File extensions to monitor in broad snapshots
+        - ".go"
+        - ".yaml"
+        - ".yml"
+        - ".json"
+        - ".toml"
+        - ".mod"
+        - ".sum"
+        - ".sh"
+        - ".py"
+    book_refs: ["KS-SEC-INTEGRITY-*"]
+    allowed_actions: ["file_read", "file_verification"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["*"]
+    security_impact: critical
+    produces_artifacts:
+      - file_verification_log.jsonl
+    acceptance_tests:
+      - "SHA-256 mismatch detected on file modification"
+      - "CRITICAL escalation on hallucinated change"
+      - "Audit log contains all verification events"
+
+  # === SUPERVISOR (Stage 0 — meta-agent nadzorujący cały pipeline) ===
+  supervisor:
+    enabled: true
+    stage: 0                 # Meta-agent — działa nad całym pipeline'em
+    role: "Nadzorca (Supervisor)"
+    model: claude-opus       # Najlepszy model do nadzoru i decyzji
+    fallback_model: claude-sonnet
+    priority: 10
+    description: >-
+      Nadzorca wszystkich agentów. Prowadzi checklistę, wymusza Human Gate
+      przed każdą akcją, pilnuje Deterministic Runner (tylko pre-approved
+      scenariusze). LLM NIGDY nie wydaje raw shell — generuje parametry
+      do pre-approved scenariuszy. Musi pytać o zgodę.
+    learning: true
+    params:
+      human_gate:
+        enabled: true
+        auto_approve_safe: false      # Nawet bezpieczne komendy wymagają zatwierdzenia
+        timeout: 300                  # 5 min na odpowiedź administratora
+        escalate_on_timeout: true     # Eskalacja jeśli brak odpowiedzi
+        approval_log: "logs/human_gate.jsonl"  # Audit log zatwierdzeń
+      safe_runner:
+        enabled: true
+        allow_raw_shell: false        # NIGDY raw shell bez zgody
+        whitelisted_scenarios:
+          - adb_push                  # ADB push binarek na Pixel
+          - adb_shell_check           # ADB sprawdzenie statusu
+          - ssh_deploy                # SSH/SCP deploy na router
+          - ssh_check                 # SSH sprawdzenie statusu
+          - go_build                  # go build z ograniczonymi flagami
+          - go_test                   # go test
+          - go_vet                    # go vet
+          - hackrf_scan               # HackRF pasywne skanowanie
+          - srsran_zmq                # srsRAN w trybie ZeroMQ (symulacja)
+          - http_health               # HTTP health check
+          - file_read                 # Odczyt plików (read-only)
+          - file_write_result         # Zapis wyników do results/
+          - git_status                # git status/log/diff (read-only)
+          - file_verification         # SHA-256 file verification (read-only)
+        blocked_patterns:             # Zawsze blokowane wzorce
+          - "rm -rf /"
+          - "dd if=/dev/"
+          - "mkfs."
+          - ":(){ :|:& };:"
+          - "> /dev/sd"
+          - "chmod -R 777"
+          - "curl.*| bash"
+          - "wget.*| sh"
+      checklist:
+        auto_generate: true           # Generuj checklistę po każdym podsumowaniu
+        persist: true                 # Zapisz checklistę między sesjami
+        checklist_path: "logs/checklist.json"
+      loop_guard:
+        max_iterations: 5              # Max iteracji na plik/finding
+        similarity_threshold: 0.7      # Próg podobieństwa diff (0-1) — powyżej = pętla
+        context_window_size: 50        # Rozmiar rolling window kontekstu
+        snapshot_interval: 10          # Co ile operacji rób migawkę
+        escalation_timeout: 120        # Timeout na decyzję przy pętli (sekundy)
+        auto_switch_model: false       # Auto-przełączanie modelu przy pętli
+      file_verification:
+        enabled: true                  # SHA-256 anti-hallucination guard
+        fail_closed: true              # Block agent on SHA mismatch
+        auto_escalate: true            # Auto-escalate CRITICAL to Human Gate
+        verify_checksums: true         # Verify file checksums before/after
+      monitoring:
+        watch_interval: 30            # Co 30s sprawdzaj status agentów
+        alert_on_failure: true        # Alarmuj natychmiast przy błędach
+        alert_on_timeout: true        # Alarmuj przy przekroczeniu timeout
+        max_agent_runtime: 3600       # Max 1h per agent
+    book_refs: ["KS-*"]
+    allowed_actions: ["file_read", "file_write_result", "http_health", "git_status"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: true
+    tier_scope: ["*"]
+    security_impact: critical
+    produces_artifacts:
+      - supervisor_checklist.json
+      - supervisor_summaries.json
+      - human_gate.jsonl
+    acceptance_tests:
+      - "Checklist generated after each stage"
+      - "Human Gate approval for every action"
+      - "All escalations logged"
+
+  # === SUPPORT AGENTS (Stage 0 — dostępni dla wszystkich) ===
+  search_agent:
+    enabled: true
+    stage: 0                 # Wspomagający — wywoływany przez inne agenty
+    role: "Wyszukiwarka online"
+    model: perplexity-sonar-pro
+    fallback_model: grok-3
+    priority: 5
+    description: "Równoległe wyszukiwanie: Perplexity + Grok (CVE, advisories, best practices)"
+    group: support
+    params:
+      search_models: [perplexity-sonar-pro, grok-3, grok-3-mini]
+      parallel: true           # Szukaj we wszystkich modelach równocześnie
+      cache_results: true      # Cache wyników szukania
+      cache_ttl: 3600          # 1h cache
+      search_types:
+        - cve_lookup           # Szukaj CVE dla znalezionych podatności
+        - dependency_audit     # Sprawdź zależności
+        - best_practices       # Aktualne best practices
+        - threat_intel         # Najnowsze zagrożenia
+        - sdr_documentation    # Dokumentacja srsRAN, gr-gsm, LimeSDR
+
+    book_refs: []
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["*"]
+    security_impact: low
+    produces_artifacts:
+      - search_cache.json
+    acceptance_tests:
+      - "CVE lookups return valid results"
+      - "Results cached with TTL"
+  reasoning_agent:
+    enabled: true
+    stage: 0                 # Wspomagający — głęboka analiza
+    role: "Głęboki reasoning"
+    model: o3                # OpenAI o3 — model rozumowania
+    fallback_model: deepseek-r1
+    priority: 5
+    description: "Głęboka analiza logiczna dla złożonych problemów (o3 / DeepSeek R1)"
+    group: support
+    params:
+      use_for:
+        - complex_findings     # Skomplikowane findings wymagające głębokiego rozumowania
+        - consensus_conflicts  # Sprzeczne opinie między modelami
+        - architecture_review  # Przegląd architektury
+
+# ---------------------------------------------------------------------------
+# Predefiniowane profile (zestawy konfiguracji)
+# ---------------------------------------------------------------------------
+    book_refs: []
+    allowed_actions: ["file_read", "file_write_result"]
+    forbidden_actions: ["file_write", "adb_push", "ssh_deploy", "go_build"]
+    requires_human_gate: false
+    tier_scope: ["*"]
+    security_impact: low
+    produces_artifacts:
+      - reasoning_analysis.json
+    acceptance_tests:
+      - "Analysis contains structured reasoning chain"
+      - "Conclusion with confidence level"
+
+  # ---------------------------------------------------------------------------
+  # LOCAL MODEL AGENTS (Ollama)
+  # ---------------------------------------------------------------------------
+
+  # === OLLAMA LOCAL LEARNER ===
+  ollama_local_learner:
+    enabled: true
+    stage: 0                     # Meta-agent, can run at any stage
+    role: "Lokalny agent uczący się — Ollama"
+    model: ollama-llama3
+    fallback_model: claude-haiku # Cloud fallback if Ollama unavailable
+    priority: 3
+    description: >-
+      Agent wykorzystujący lokalny model Ollama do nauki wzorców kodu,
+      zapamiętywania false-positives, cache'owania powtarzalnych audytów
+      i wstępnej filtracji finding'ów ZANIM trafią do modeli chmurowych.
+      Zero kosztów API, pełna prywatność danych.
+    learning: true
+    params:
+      # Learning configuration
+      memory_backend: "local_json"       # Local JSON files (no cloud dependency)
+      memory_file: "memory/ollama_learner.json"
+      learning_rate: 0.8                 # How quickly it adapts to confirmed patterns
+      confidence_threshold: 0.7          # Min confidence to auto-apply learned pattern
+      max_learned_patterns: 5000
+
+      # Pre-filter mode — runs before cloud models to reduce API cost
+      pre_filter:
+        enabled: true
+        cache_ttl_hours: 72              # Cache pre-filter results for 72h
+        auto_approve_trivial: true       # Auto-approve trivial findings (formatting, typos)
+        auto_reject_known_fp: true       # Auto-reject known false positives
+
+      # Human Gate integration
+      human_gate:
+        require_for_new_patterns: true   # Ask human to confirm new learned patterns
+        require_for_contradictions: true # Ask human when local model contradicts cloud models
+        auto_approve_safe: false         # Never auto-approve without human confirmation
+
+      # Ollama-specific settings
+      ollama:
+        check_health_on_start: true      # Ping http://localhost:11434/api/tags on startup
+        timeout_seconds: 120             # Longer timeout for local inference
+        num_ctx: 8192                    # Intentionally low — full ctx (131k) requires ~16GB RAM
+        temperature: 0.1                 # Low temperature for deterministic audit results
+        fallback_to_cloud: true          # Fall back to cloud model if Ollama is down
+
+    book_refs: ["KS-*"]
+    allowed_actions:
+      - file_read
+      - memory_read
+      - memory_write
+    forbidden_actions:
+      - adb_push
+      - ssh_deploy
+      - go_build
+      - file_write_result          # Cannot write to pipeline results directly
+    requires_human_gate: true      # Always confirm before acting on learned patterns
+    tier_scope: ["G1", "G2"]
+    security_impact: low           # Local-only, no external API calls
+    produces_artifacts:
+      - memory/ollama_learner.json
+      - signals/local_pre_filter.json
+    acceptance_tests:
+      - "Ollama server responds to health check or graceful fallback"
+      - "Pre-filter reduces cloud API calls by >20% on repeat audits"
+      - "No false negatives — never filters out true critical findings"
+
+profiles:
+  # Szybki audyt — tylko analiza kodu, bez urządzeń
+  quick_audit:
+    description: "Szybki audyt kodu bez deploymentu i testów sprzętowych"
+    overrides:
+      global.modes.skip_devices: true
+      global.modes.skip_sdr: true
+      global.modes.skip_security: true
+      pixel_deployer.enabled: false
+      router_deployer.enabled: false
+      tester_integration.enabled: false
+      tester_e2e.enabled: false
+      red_team_network.enabled: false
+      red_team_app.enabled: false
+      blue_team_monitor.enabled: false
+      blue_team_hardener.enabled: false
+      sdr_monitor.enabled: false
+      rf_red_team.enabled: false
+      rf_blue_team.enabled: false
+
+  # Pełny pipeline z urządzeniami, bez SDR
+  full_no_sdr:
+    description: "Pełny pipeline bez testów SDR (brak HackRF/LimeSDR)"
+    overrides:
+      sdr_monitor.enabled: false
+      rf_red_team.enabled: false
+      rf_blue_team.enabled: false
+      global.modes.skip_sdr: true
+
+  # Tylko testy bezpieczeństwa (Red/Blue + SDR)
+  security_only:
+    description: "Tylko testy bezpieczeństwa — wymaga wcześniejszego deploymentu"
+    overrides:
+      ksiega_analyst.enabled: false
+      build_agent.enabled: false
+      auditor_claude.enabled: false
+      auditor_gpt.enabled: false
+      auditor_gemini.enabled: false
+      auditor_deepseek.enabled: false
+      verifier_claude.enabled: false
+      verifier_gpt.enabled: false
+      verifier_gemini.enabled: false
+      verifier_deepseek.enabled: false
+      merger.enabled: false
+      patcher_1.enabled: false
+      patcher_2.enabled: false
+      patcher_3.enabled: false
+      patcher_4.enabled: false
+      pixel_deployer.enabled: false
+      router_deployer.enabled: false
+      tester_unit.enabled: false
+      tester_regression.enabled: false
+
+  # Tryb SDR — tylko testy RF
+  sdr_only:
+    description: "Tylko testy SDR (HackRF + LimeSDR)"
+    overrides:
+      ksiega_analyst.enabled: false
+      build_agent.enabled: false
+      auditor_claude.enabled: false
+      auditor_gpt.enabled: false
+      auditor_gemini.enabled: false
+      auditor_deepseek.enabled: false
+      verifier_claude.enabled: false
+      verifier_gpt.enabled: false
+      verifier_gemini.enabled: false
+      verifier_deepseek.enabled: false
+      merger.enabled: false
+      patcher_1.enabled: false
+      patcher_2.enabled: false
+      patcher_3.enabled: false
+      patcher_4.enabled: false
+      pixel_deployer.enabled: false
+      router_deployer.enabled: false
+      tester_unit.enabled: false
+      tester_integration.enabled: false
+      tester_e2e.enabled: false
+      tester_regression.enabled: false
+      red_team_network.enabled: false
+      red_team_app.enabled: false
+      blue_team_monitor.enabled: false
+      blue_team_hardener.enabled: false
+
+  # Minimalny — 2 modele zamiast 4
+  minimal:
+    description: "Minimalny audyt z 2 modelami (Claude + GPT)"
+    overrides:
+      auditor_gemini.enabled: false
+      auditor_deepseek.enabled: false
+      verifier_gemini.enabled: false
+      verifier_deepseek.enabled: false
+      global.consensus_threshold: 2
+
+  # Pełny pipeline z pełnym nadzorem supervisora
+  supervised:
+    description: "Pełny pipeline z aktywnym Supervisorem, Human Gate i Safe Runner"
+    overrides:
+      supervisor.enabled: true
+      supervisor.params.human_gate.auto_approve_safe: false
+      supervisor.params.safe_runner.allow_raw_shell: false
+
+  # Pipeline bez nadzoru (szybszy, mniej interaktywny)
+  unsupervised:
+    description: "Pipeline bez Supervisora — szybszy, bez Human Gate (NIEBEZPIECZNE)"
+    overrides:
+      supervisor.enabled: false

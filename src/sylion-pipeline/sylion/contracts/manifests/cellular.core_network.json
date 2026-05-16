@@ -1,0 +1,26 @@
+{
+  "module_id": "cellular.core_network",
+  "module_kind": "O",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cellular.core.attached",
+    "cellular.core.session"
+  ],
+  "consumes_events": [
+    "cellular.ue.attached"
+  ],
+  "description": "Core network emulation: AMF, SMF, UPF, and subscriber management.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

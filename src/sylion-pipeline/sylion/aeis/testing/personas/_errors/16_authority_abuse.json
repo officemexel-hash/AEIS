@@ -1,0 +1,14 @@
+{
+  "error_class": "authority_abuse",
+  "target_action": "admin_force_skip_council_for_d5",
+  "context": "admin uses elevated rights to bypass Council on a D5 decision",
+  "timing": "during_release_promotion",
+  "expected_system_response": [
+    "block_action",
+    "alert_council_guardian",
+    "audit_with_authority_abuse_flag"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D5",
+  "action_d_level": "D4"
+}

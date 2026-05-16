@@ -1,0 +1,168 @@
+# SYLION AEIS v3.5 — Continuous Integration
+#
+# Triggers: every push (all branches) and every pull_request targeting main/develop/release/*
+# Jobs: lint (ruff), type-check (mypy), security-static (bandit, safety), tests + coverage
+#
+# Coverage threshold: 75% (hard fail below)
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main", "develop", "release/**"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  # ── 1. Lint ──────────────────────────────────────────────────────────────────
+  lint:
+    name: Ruff — lint & format check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check
+        run: ruff check . --output-format=github
+
+      - name: Run ruff format check
+        run: ruff format --check .
+
+  # ── 2. Type checking ─────────────────────────────────────────────────────────
+  type-check:
+    name: mypy — static type checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies + mypy
+        run: |
+          pip install -r requirements.in
+          pip install mypy types-PyYAML types-aiofiles
+
+      - name: Run mypy
+        run: mypy . --ignore-missing-imports --exclude '(tests/|\.github/)' --non-interactive
+
+  # ── 3. Tests + Coverage ──────────────────────────────────────────────────────
+  test:
+    name: pytest — unit tests + coverage ≥75%
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.in
+          pip install pytest pytest-cov pytest-asyncio pyyaml grpcio grpcio-tools
+
+      - name: Run pytest with coverage
+        run: |
+          pytest tests/ \
+            --cov=sylion \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --cov-fail-under=75 \
+            -v \
+            --tb=short
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 30
+
+      - name: Coverage summary comment (PR only)
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('coverage.xml')) return;
+            const xml = fs.readFileSync('coverage.xml', 'utf8');
+            const match = xml.match(/line-rate="([\d.]+)"/);
+            if (!match) return;
+            const pct = (parseFloat(match[1]) * 100).toFixed(1);
+            const icon = parseFloat(pct) >= 75 ? '✅' : '❌';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ${icon} Coverage: **${pct}%** (threshold: 75%)`
+            });
+
+  # ── 4. Security — bandit + safety ────────────────────────────────────────────
+  security-static:
+    name: bandit + safety — static security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install scanners
+        run: pip install bandit safety
+
+      - name: bandit — Python AST security scan
+        run: |
+          bandit -r . \
+            --exclude ./.github,./tests,__pycache__ \
+            -ll \
+            -f json \
+            -o bandit-report.json || true
+          bandit -r . \
+            --exclude ./.github,./tests,__pycache__ \
+            -ll
+
+      - name: safety — dependency vulnerability check
+        run: |
+          safety check \
+            --file requirements.in \
+            --output text \
+            --policy-file .safety-policy.yml 2>/dev/null || \
+          safety check --file requirements.in --output text
+
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 30

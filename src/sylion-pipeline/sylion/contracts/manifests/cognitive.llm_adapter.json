@@ -1,0 +1,26 @@
+{
+  "module_id": "cognitive.llm_adapter",
+  "module_kind": "B",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cognitive.llm.request",
+    "cognitive.llm.response"
+  ],
+  "consumes_events": [
+    "cognitive.model.selected"
+  ],
+  "description": "Unified adapter for LLM providers (OpenAI, Anthropic, local). Token tracking.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

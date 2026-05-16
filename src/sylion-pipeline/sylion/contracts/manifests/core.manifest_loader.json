@@ -1,0 +1,22 @@
+{
+  "module_id": "core.manifest_loader",
+  "module_kind": "A",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D0",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.module_registry",
+    "core.contract_registry"
+  ],
+  "publishes_events": [],
+  "consumes_events": [],
+  "description": "Parse and validate module.yaml manifests against canonical schema.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

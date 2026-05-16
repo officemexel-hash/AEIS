@@ -1,0 +1,111 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_test_case
+  name_pl: Przypadek testowy W14
+  name_en: W14 Test Case
+  version: v1.0
+  description_pl: 'Pojedynczy przypadek testowy związany z wymaganiem i ewaluatorem.
+
+    Do kolumn trafiają pola często filtrowane, a payload wejściowy,
+
+    wyniki oczekiwane i tagi pozostają w rozszerzeniu JSONB.'
+  description_en: 'Single test case tied to a requirement and evaluator.
+
+    Frequently queried fields become dedicated columns, while input payload,
+
+    expected results, and tags stay in the JSONB extension.'
+  tags:
+  - w14
+  - testing
+  - case
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: evaluator
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: enabled
+    type: boolean
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    default: true
+  - name: real_example
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: requirement
+    target: w14_requirement
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: suite
+    target: w14_test_suite
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: persona
+    target: w14_human_persona
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - evaluator
+    - enabled
+    - real_example
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - evaluator
+  actions:
+  - id: disable_test_case
+    description_pl: Wyłącza przypadek testowy z harmonogramu wykonania.
+    description_en: Disables the test case from the execution schedule.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: enabled
+      to: false
+    - type: emit_event
+      topic: aeis.w14.test_case.disabled
+  - id: enable_test_case
+    description_pl: Przywraca przypadek testowy do aktywnego zestawu.
+    description_en: Restores the test case to the active suite.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: enabled
+      to: true
+    - type: emit_event
+      topic: aeis.w14.test_case.enabled

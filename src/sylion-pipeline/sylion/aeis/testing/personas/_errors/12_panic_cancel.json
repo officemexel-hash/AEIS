@@ -1,0 +1,14 @@
+{
+  "error_class": "panic_cancel",
+  "target_action": "abort_release_during_rollback_window",
+  "context": "operator panics and tries to cancel a rollback that is already mid-flight",
+  "timing": "during_rollback",
+  "expected_system_response": [
+    "block_action",
+    "explain_rollback_phase",
+    "offer_safe_pause_button"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D4",
+  "action_d_level": "D3"
+}

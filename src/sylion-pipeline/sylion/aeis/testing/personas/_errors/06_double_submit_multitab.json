@@ -1,0 +1,15 @@
+{
+  "error_class": "multi_tab_confusion",
+  "target_action": "submit_same_action_twice_in_two_tabs",
+  "context": "Operator submitted in tab A (revision 7 -> 8). In tab B (still rev 7), clicks Submit",
+  "timing": "after_revision_change_in_other_tab",
+  "expected_system_response": [
+    "return_409_conflict",
+    "show_message_revision_changed",
+    "force_refresh_in_stale_tab",
+    "preserve_idempotency_via_idempotency_key"
+  ],
+  "severity_if_system_allows_error": "D3",
+  "simulated_target_d_level": "D2",
+  "action_d_level": "D2"
+}

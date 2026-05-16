@@ -1,0 +1,223 @@
+# alertmanager.yml — SYLION AlertManager Routing Config
+# AlertManager 0.26+ compatible
+#
+# Routing:
+#   critical  →  PagerDuty (immediate page, 5-minute repeat)
+#   warning   →  Slack #sylion-alerts (15-minute repeat)
+#   info      →  Email (team distribution list, 1-hour repeat)
+#
+# Required environment variables (inject via Docker/Kubernetes secrets):
+#   PAGERDUTY_ROUTING_KEY   — PagerDuty Events API v2 routing key
+#   SLACK_WEBHOOK_URL       — Slack incoming webhook URL
+#   SMTP_AUTH_PASSWORD      — SMTP password for email sender account
+#
+# Usage (docker-compose):
+#   volumes:
+#     - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+#   environment:
+#     - PAGERDUTY_ROUTING_KEY=${PAGERDUTY_ROUTING_KEY}
+#     - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+#     - SMTP_AUTH_PASSWORD=${SMTP_AUTH_PASSWORD}
+
+global:
+  # How long to wait before re-sending a resolved notification
+  resolve_timeout: 5m
+
+  # SMTP defaults for email receiver
+  smtp_smarthost:       "smtp.example.com:587"
+  smtp_from:            "alertmanager@sylion.example.com"
+  smtp_auth_username:   "alertmanager@sylion.example.com"
+  smtp_auth_password:   "${SMTP_AUTH_PASSWORD}"
+  smtp_require_tls:     true
+
+  # Slack global webhook (overridden per-receiver as needed)
+  slack_api_url:        "${SLACK_WEBHOOK_URL}"
+
+  # HTTP client config (for webhook and PagerDuty calls)
+  http_config:
+    follow_redirects: true
+
+# -----------------------------------------------------------------
+# Templates
+# -----------------------------------------------------------------
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# -----------------------------------------------------------------
+# Root routing tree
+# -----------------------------------------------------------------
+route:
+  # Default receiver when no child route matches
+  receiver: "email-info"
+
+  # Group alerts by these labels to reduce noise
+  group_by:
+    - "alertname"
+    - "severity"
+    - "job"
+
+  # Wait this long to buffer alerts of the same group before sending
+  group_wait:      30s
+
+  # Wait this long before sending a new group notification after the first
+  group_interval:  5m
+
+  # Repeat notifications at this interval if alert is still firing
+  repeat_interval: 4h
+
+  routes:
+    # ----------------------------------------------------------------
+    # CRITICAL → PagerDuty (immediate page)
+    # ----------------------------------------------------------------
+    - receiver: "pagerduty-critical"
+      match:
+        severity: critical
+      continue: false   # Do not fall through to other routes
+      group_wait:      10s
+      group_interval:  1m
+      repeat_interval: 5m
+
+    # ----------------------------------------------------------------
+    # WARNING → Slack #sylion-alerts
+    # ----------------------------------------------------------------
+    - receiver: "slack-warning"
+      match:
+        severity: warning
+      continue: false
+      group_wait:      30s
+      group_interval:  5m
+      repeat_interval: 15m
+
+    # ----------------------------------------------------------------
+    # INFO → Email (low urgency, batched)
+    # ----------------------------------------------------------------
+    - receiver: "email-info"
+      match:
+        severity: info
+      continue: false
+      group_wait:      2m
+      group_interval:  10m
+      repeat_interval: 1h
+
+    # ----------------------------------------------------------------
+    # Watchdog (heartbeat alert — silenced by default, used to verify
+    # the Prometheus → AlertManager pipeline is alive)
+    # ----------------------------------------------------------------
+    - receiver: "null"
+      match:
+        alertname: Watchdog
+
+# -----------------------------------------------------------------
+# Inhibition rules
+# -----------------------------------------------------------------
+inhibit_rules:
+  # If a critical alert is firing, suppress the corresponding warning
+  # for the same alertname + job combination to reduce noise.
+  - source_match:
+      severity: "critical"
+    target_match:
+      severity: "warning"
+    equal:
+      - "alertname"
+      - "job"
+      - "instance"
+
+# -----------------------------------------------------------------
+# Receivers
+# -----------------------------------------------------------------
+receivers:
+
+  # ----------------------------------------------------------------
+  # Null receiver (swallows alerts — used for Watchdog)
+  # ----------------------------------------------------------------
+  - name: "null"
+
+  # ----------------------------------------------------------------
+  # PagerDuty — critical alerts
+  # ----------------------------------------------------------------
+  - name: "pagerduty-critical"
+    pagerduty_configs:
+      - routing_key:   "${PAGERDUTY_ROUTING_KEY}"
+        severity:      "critical"
+        description:   "{{ .CommonAnnotations.summary }}"
+        details:
+          firing:      "{{ .Alerts.Firing | len }}"
+          resolved:    "{{ .Alerts.Resolved | len }}"
+          alertname:   "{{ .CommonLabels.alertname }}"
+          job:         "{{ .CommonLabels.job }}"
+          environment: "{{ .CommonLabels.environment }}"
+          description: "{{ .CommonAnnotations.description }}"
+          runbook_url: "{{ .CommonAnnotations.runbook_url }}"
+        # Link to Grafana dashboard for this alert
+        links:
+          - href:  "{{ .CommonAnnotations.runbook_url }}"
+            text:  "Runbook"
+          - href:  "http://grafana:3000/d/sylion-overview-v1"
+            text:  "Grafana Overview"
+
+  # ----------------------------------------------------------------
+  # Slack — warning alerts
+  # ----------------------------------------------------------------
+  - name: "slack-warning"
+    slack_configs:
+      - api_url:  "${SLACK_WEBHOOK_URL}"
+        channel:  "#sylion-alerts"
+        username: "AlertManager"
+        icon_emoji: ":warning:"
+        send_resolved: true
+        color:    '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+        title:    '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+        title_link: "http://grafana:3000/d/sylion-overview-v1"
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Severity:* `{{ .Labels.severity }}`
+          *Job:* `{{ .Labels.job }}`
+          *Instance:* `{{ .Labels.instance }}`
+          {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        actions:
+          - type:  button
+            text:  "Grafana"
+            url:   "http://grafana:3000/d/sylion-overview-v1"
+          - type:  button
+            text:  "Silence"
+            url:   "http://alertmanager:9093/#/silences/new?filter={alertname%3D\"{{ .CommonLabels.alertname }}\"}"
+
+  # ----------------------------------------------------------------
+  # Email — info alerts
+  # ----------------------------------------------------------------
+  - name: "email-info"
+    email_configs:
+      - to:           "sylion-sre@example.com"
+        send_resolved: true
+        headers:
+          Subject: "[SYLION {{ .Status | toUpper }}] {{ .CommonLabels.alertname }} — {{ .CommonAnnotations.summary }}"
+        html: |-
+          <!DOCTYPE html>
+          <html>
+          <head><style>
+            body { font-family: Arial, sans-serif; font-size: 14px; color: #333; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .firing { color: #d32f2f; }
+            .resolved { color: #388e3c; }
+          </style></head>
+          <body>
+            <h2 class="{{ .Status }}">{{ .Status | toUpper }}: {{ .CommonLabels.alertname }}</h2>
+            <p>{{ .CommonAnnotations.description }}</p>
+            <table>
+              <tr><th>Label</th><th>Value</th></tr>
+              {{ range .CommonLabels.SortedPairs }}
+              <tr><td>{{ .Name }}</td><td>{{ .Value }}</td></tr>
+              {{ end }}
+            </table>
+            <br/>
+            {{ if .CommonAnnotations.runbook_url }}
+            <a href="{{ .CommonAnnotations.runbook_url }}">View Runbook</a> |
+            {{ end }}
+            <a href="http://grafana:3000/d/sylion-overview-v1">Open Grafana</a>
+          </body>
+          </html>

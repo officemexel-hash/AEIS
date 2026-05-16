@@ -1,0 +1,10 @@
+# =============================================================================
+# SYLION AEIS — Kubernetes namespace
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sylion
+  labels:
+    app.kubernetes.io/part-of: sylion-aeis
+    app.kubernetes.io/managed-by: kustomize

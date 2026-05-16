@@ -1,0 +1,354 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.funding.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "sylion/aeis/advisor/v1;advisorv1";
+
+// Funding gRPC contract. The Python service (funding/service.py) implements
+// this surface; codegen stubs land in `_generated/funding_pb2*.py` once
+// `python -m grpc_tools.protoc` runs over this folder.
+
+service FundingService {
+  // Companies
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc AttachPerson(AttachPersonRequest) returns (AttachPersonResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+
+  // Grants
+  rpc LoadGrantManually(LoadGrantManuallyRequest) returns (LoadGrantManuallyResponse);
+  rpc ListGrants(ListGrantsRequest) returns (ListGrantsResponse);
+
+  // Scoring
+  rpc ComputeScoring(ComputeScoringRequest) returns (ScoringResult);
+  rpc GetScoringHistory(GetScoringHistoryRequest) returns (GetScoringHistoryResponse);
+
+  // Matching
+  rpc ListEligibleGrants(ListEligibleGrantsRequest) returns (ListEligibleGrantsResponse);
+  rpc ListMatchingIdeas(ListMatchingIdeasRequest) returns (ListMatchingIdeasResponse);
+  rpc SuggestGapClosure(SuggestGapClosureRequest) returns (SuggestGapClosureResponse);
+
+  // Simulation
+  rpc SimulateScenario(SimulateScenarioRequest) returns (SimulateScenarioResponse);
+
+  // Consortium
+  rpc SuggestConsortium(SuggestConsortiumRequest) returns (SuggestConsortiumResponse);
+
+  // Card / research
+  rpc BuildFundingCard(BuildFundingCardRequest) returns (BuildFundingCardResponse);
+  rpc InitiateResearch(InitiateResearchRequest) returns (InitiateResearchResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Common
+// ---------------------------------------------------------------------------
+
+message Money {
+  string amount = 1;
+  string currency = 2;
+}
+
+message Company {
+  string company_id = 1;
+  string operator_id = 2;
+  bool is_own = 3;
+  string legal_name = 4;
+  string legal_form = 5;
+  string registration_number = 6;
+  string tax_id = 7;
+  string statistical_id = 8;
+  repeated string pkd_codes = 9;
+  string country = 10;
+  string region = 11;
+  string size_category = 12;
+  int32 employee_count = 13;
+  double annual_revenue_usd = 14;
+  string founding_date = 15;
+  bool is_msme = 16;
+  string description = 17;
+  google.protobuf.Value rd_budget_history = 18;
+  google.protobuf.Value innovation_certifications = 19;
+}
+
+message CompanyPerson {
+  string person_id = 1;
+  string company_id = 2;
+  string full_name = 3;
+  string role = 4;
+  double ownership_pct = 5;
+  string experience_summary = 6;
+  int32 experience_years = 7;
+  google.protobuf.Value qualifications = 8;
+  string team_role = 9;
+  bool is_kp = 10;
+}
+
+message GrantProgram {
+  string program_id = 1;
+  string program_code = 2;
+  string display_name = 3;
+  string source = 4;
+  string country = 5;
+  string region = 6;
+  string managing_body = 7;
+  string description = 8;
+  double amount_min_usd = 9;
+  double amount_max_usd = 10;
+  google.protobuf.Timestamp call_open_at = 11;
+  google.protobuf.Timestamp call_close_at = 12;
+  string source_url = 13;
+  google.protobuf.Value source_documents = 14;
+  string scoring_profile_id = 15;
+  google.protobuf.Value custom_criteria = 16;
+  bool is_active = 17;
+  bool is_user_loaded = 18;
+  string loaded_by = 19;
+}
+
+message IdeaContext {
+  string idea_id = 1;
+  string title = 2;
+  string description = 3;
+  string domain = 4;
+  repeated string keywords = 5;
+  double rd_share_pct = 6;
+  string target_country = 7;
+  string target_region = 8;
+  bool requires_consortium = 9;
+  int32 expected_duration_months = 10;
+  double target_budget_usd = 11;
+}
+
+message ComponentScore {
+  string component_id = 1;
+  string component_name = 2;
+  double weight_in_grant = 3;
+  double score = 4;
+  double hard_floor = 5;
+  bool floor_breached = 6;
+  string explanation = 7;
+  repeated string driving_factors = 8;
+}
+
+message ScoringResult {
+  string scoring_id = 1;
+  string operator_id = 2;
+  string company_id = 3;
+  string idea_id = 4;
+  string program_id = 5;
+  string scoring_profile_id = 6;
+  double total_score = 7;
+  repeated ComponentScore component_breakdown = 8;
+  bool eligibility_floor_breached = 9;
+  string triggering_event = 10;
+  google.protobuf.Timestamp computed_at = 11;
+}
+
+message RecommendedAction {
+  string action_id = 1;
+  string description = 2;
+  string difficulty = 3;
+  google.protobuf.Duration estimated_time = 4;
+  Money estimated_cost = 5;
+  double expected_score_delta = 6;
+  bool requires_third_party = 7;
+  string third_party_type = 8;
+}
+
+message ConsortiumSuggestion {
+  string suggestion_id = 1;
+  string entity_type = 2;
+  string suggested_name = 3;
+  repeated string required_qualifications = 4;
+  string region_constraint = 5;
+  string rationale = 6;
+}
+
+message SimulationChange {
+  string field_path = 1;
+  string from_value = 2;
+  string to_value = 3;
+  string explanation = 4;
+}
+
+message SimulationScenario {
+  string scenario_id = 1;
+  string label = 2;
+  string mode = 3;  // static | dynamic | auto_generated
+  repeated SimulationChange changes = 4;
+  double resulting_eligibility_score = 5;
+  repeated ComponentScore resulting_breakdown = 6;
+  Money cost_to_implement = 7;
+  google.protobuf.Duration time_to_implement = 8;
+}
+
+// ---------------------------------------------------------------------------
+// Requests / responses
+// ---------------------------------------------------------------------------
+
+message CreateCompanyRequest {
+  string operator_id = 1;
+  Company company = 2;
+}
+message CreateCompanyResponse {
+  string company_id = 1;
+}
+
+message UpdateCompanyRequest {
+  string company_id = 1;
+  google.protobuf.Value patch = 2;
+}
+message UpdateCompanyResponse {
+  Company company = 1;
+}
+
+message AttachPersonRequest {
+  string company_id = 1;
+  CompanyPerson person = 2;
+}
+message AttachPersonResponse {
+  string person_id = 1;
+}
+
+message ListCompaniesRequest {
+  string operator_id = 1;
+}
+message ListCompaniesResponse {
+  repeated Company companies = 1;
+}
+
+message LoadGrantManuallyRequest {
+  string operator_id = 1;
+  string display_name = 2;
+  string source = 3;
+  string country = 4;
+  string region = 5;
+  string description = 6;
+  double amount_max_usd = 7;
+  google.protobuf.Value custom_criteria = 8;
+  google.protobuf.Value profile_overrides = 9;
+}
+message LoadGrantManuallyResponse {
+  GrantProgram grant = 1;
+  string profile_id = 2;
+}
+
+message ListGrantsRequest {
+  string country = 1;
+  string region = 2;
+}
+message ListGrantsResponse {
+  repeated GrantProgram grants = 1;
+}
+
+message ComputeScoringRequest {
+  string operator_id = 1;
+  string company_id = 2;
+  string program_id = 3;
+  string profile_id = 4;
+  IdeaContext idea = 5;
+  string triggering_event = 6;
+}
+
+message GetScoringHistoryRequest {
+  string company_id = 1;
+  string idea_id = 2;
+  string program_id = 3;
+  int32 limit = 4;
+}
+message GetScoringHistoryResponse {
+  repeated ScoringResult entries = 1;
+}
+
+message GrantMatch {
+  GrantProgram grant = 1;
+  ScoringResult scoring = 2;
+}
+
+message ListEligibleGrantsRequest {
+  string operator_id = 1;
+  string company_id = 2;
+  IdeaContext idea = 3;
+  repeated string countries = 4;
+}
+message ListEligibleGrantsResponse {
+  repeated GrantMatch matches = 1;
+}
+
+message IdeaMatch {
+  IdeaContext idea = 1;
+  ScoringResult scoring = 2;
+}
+
+message ListMatchingIdeasRequest {
+  string operator_id = 1;
+  string program_id = 2;
+  string company_id = 3;
+  repeated IdeaContext candidate_ideas = 4;
+}
+message ListMatchingIdeasResponse {
+  repeated IdeaMatch matches = 1;
+}
+
+message SuggestGapClosureRequest {
+  string operator_id = 1;
+  string company_id = 2;
+  IdeaContext idea = 3;
+  string program_id = 4;
+}
+message SuggestGapClosureResponse {
+  ScoringResult scoring = 1;
+  repeated string gaps_to_qualify = 2;
+  repeated RecommendedAction recommended_actions = 3;
+  bool eligibility_floor_breached = 4;
+}
+
+message SimulateScenarioRequest {
+  string operator_id = 1;
+  string company_id = 2;
+  string program_id = 3;
+  IdeaContext idea = 4;
+  string mode = 5;  // static | dynamic | auto
+  google.protobuf.Value operator_changes = 6;
+}
+message SimulateScenarioResponse {
+  repeated SimulationScenario scenarios = 1;
+}
+
+message SuggestConsortiumRequest {
+  string operator_id = 1;
+  string program_id = 2;
+  string company_id = 3;
+  repeated string requirements = 4;
+}
+message SuggestConsortiumResponse {
+  repeated ConsortiumSuggestion suggestions = 1;
+}
+
+message BuildFundingCardRequest {
+  string operator_id = 1;
+  string company_id = 2;
+  string program_id = 3;
+  IdeaContext idea = 4;
+  string suggestion_type = 5;
+  bool include_simulations = 6;
+}
+message BuildFundingCardResponse {
+  // Mirrors AdvisorCardEnvelope (header + funding body) — encoded as struct
+  // for now to avoid double-import of the engine proto package.
+  google.protobuf.Value envelope = 1;
+}
+
+message InitiateResearchRequest {
+  string operator_id = 1;
+  string query = 2;
+  string scope = 3;
+  int32 projected_tokens = 4;
+}
+message InitiateResearchResponse {
+  string log_id = 1;
+}

@@ -1,0 +1,52 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+SETUP_TOKEN.txt
+.env
+dashboard/hmac_key.bin
+venv/
+.venv/
+workspace_uploads/
+*.bak.*
+
+# Patch/editor artefacts
+*.orig
+*.rej
+*.fixed
+*.bak
+*~
+.#*
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+
+# Type checker
+.dmypy.json
+dmypy.json
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Runtime / transient test DBs (non-fixture)
+dashboard/test_*.db
+tests/test_*.db
+
+# v6.0.0 T-10: sensitive runtime files
+dashboard/hmac_key.bin
+dashboard/INITIAL_PASSWORD.txt

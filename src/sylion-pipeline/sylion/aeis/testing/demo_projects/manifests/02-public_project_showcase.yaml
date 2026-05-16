@@ -1,0 +1,42 @@
+project_id: "proj_demo_02_public_project_showcase"
+name: "Public Project Showcase Portal"
+type: "web-portal"
+target_d_level: "D3"
+domain: "public_facing"
+
+description: |
+  Public web portal showcasing AEIS-generated projects (case studies, metrics).
+  Read-only for public; auth-gated submit form for project owners.
+
+required_personas:
+  - "viewer_curious"
+  - "auditor"
+
+domain_specific_human_errors:
+  - error_class: "permission_overreach"
+    target_action: "viewer_attempts_edit_project_data"
+    severity_if_system_allows_error: "D3"
+  - error_class: "bypass_attempt"
+    target_action: "scrape_internal_endpoints_via_seo_bot"
+    severity_if_system_allows_error: "D3"
+  - error_class: "permission_overreach"
+    target_action: "idor_attempt_with_other_project_id"
+    severity_if_system_allows_error: "D4"
+
+required_test_classes: ["T0", "T2", "T3", "T5", "T6", "T8", "T10", "T15"]
+
+release_blockers:
+  - "Any IDOR vulnerability"
+  - "Missing rate limiting on contact form"
+  - "PII exposure in public endpoints"
+  - "SEO scrape detection bypass"
+
+expected_modules: 6
+expected_api_endpoints: 8
+expected_ui_pages: 4
+
+success_criteria:
+  - "PRODUCTION_RELEASED status reached"
+  - "Security audit pass (T10)"
+  - "Minimum 5 lessons_learned recorded"
+  - "All public endpoints documented in OpenAPI"

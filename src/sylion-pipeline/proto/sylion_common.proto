@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package sylion;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// ──────────────────────────────────────────────
+//  SYLION Common – shared message types
+// ──────────────────────────────────────────────
+
+/** Unique identifier for an AEIS module. */
+message ModuleId {
+  string module_id    = 1;
+  string module_kind  = 2;
+  string owner_plan   = 3;
+}
+
+/** A single entry in the cryptographic evidence spine. */
+message EvidenceEntry {
+  string                        evidence_id    = 1;
+  string                        topic          = 2;
+  bytes                         payload        = 3;
+  string                        source_module  = 4;
+  google.protobuf.Timestamp     timestamp      = 5;
+  bytes                         hash           = 6;
+  bytes                         previous_hash  = 7;
+}
+
+/** Governance decision classification D0-D5. */
+enum DecisionClass {
+  DECISION_CLASS_UNSPECIFIED = 0;
+  D0_ROUTINE                 = 1;
+  D1_LOW_RISK                = 2;
+  D2_MODERATE                = 3;
+  D3_SIGNIFICANT             = 4;
+  D4_HIGH_RISK               = 5;
+  D5_CRITICAL                = 6;
+}
+
+/** Status of a decision throughout its lifecycle. */
+enum DecisionStatus {
+  DECISION_STATUS_UNSPECIFIED = 0;
+  PROPOSED                    = 1;
+  UNDER_REVIEW                = 2;
+  APPROVED                    = 3;
+  REJECTED                    = 4;
+  IMPLEMENTED                 = 5;
+  ROLLED_BACK                 = 6;
+}
+
+/** A governance decision record. */
+message Decision {
+  string                    decision_id    = 1;
+  string                    title          = 2;
+  DecisionClass             decision_class = 3;
+  DecisionStatus            status         = 4;
+  string                    proposed_by    = 5;
+  repeated string           blast_radius   = 6;
+  google.protobuf.Timestamp created_at     = 7;
+}
+
+/** Contract type enum. */
+enum ContractType {
+  CONTRACT_TYPE_UNSPECIFIED = 0;
+  SYNC                      = 1;
+  ASYNC                     = 2;
+  EVENT                     = 3;
+  STREAM                    = 4;
+}
+
+/** Contract status enum. */
+enum ContractStatus {
+  CONTRACT_STATUS_UNSPECIFIED = 0;
+  ACTIVE                      = 1;
+  DEPRECATED                  = 2;
+  REVOKED                     = 3;
+}
+
+/** Inter-module contract definition. */
+message Contract {
+  string              name          = 1;
+  ContractType        contract_type = 2;
+  string              version       = 3;
+  string              producer      = 4;
+  repeated string     consumers     = 5;
+  bool                breaking      = 6;
+  ContractStatus      status        = 7;
+}

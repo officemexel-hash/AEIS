@@ -1,0 +1,17 @@
+{
+  "module_id": "security.audit_query",
+  "module_kind": "F",
+  "owner_plan": "P13",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "description": "Audit query engine for security log analysis.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

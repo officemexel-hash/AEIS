@@ -1,0 +1,60 @@
+# Phase 3 W3.4 -- Promtail config for SYLION log shipping to Loki.
+#
+# Targets:
+#   - Docker container stdout/stderr (json-file driver -> /var/log/...)
+#   - Sylion application JSON log lines
+#
+# PII redaction happens at the Sylion application boundary
+# (see sylion/observability/pii_redactor.py). Promtail receives already-
+# redacted records; it does not need to re-scrub.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+
+  # -------------------------------------------------------------
+  # Sylion application JSON logs (mounted into /var/log/sylion).
+  # -------------------------------------------------------------
+  - job_name: sylion-app
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: sylion-app
+          service: sylion-aeis
+          __path__: /var/log/sylion/*.log
+
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            service: service
+            timestamp: timestamp
+      - labels:
+          level:
+          service:
+      - timestamp:
+          source: timestamp
+          format: Unix
+
+  # -------------------------------------------------------------
+  # Docker container stdout/stderr (when run via docker compose).
+  # -------------------------------------------------------------
+  - job_name: docker
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: docker
+          __path__: /var/log/containers/*.log
+
+    pipeline_stages:
+      - docker: {}
+      - labels:
+          stream:

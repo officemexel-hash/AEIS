@@ -1,0 +1,28 @@
+{
+  "name": "operator_beginner",
+  "description": "Anna - first time using AEIS. Cautious but easily confused.",
+  "baseline": {
+    "capability_level": "beginner",
+    "expertise_domains": [],
+    "error_proneness": 0.45,
+    "attention_span_min": 12,
+    "trust_in_ai_baseline": 0.7,
+    "risk_tolerance": "low"
+  },
+  "dynamic_state_initial": {
+    "fatigue_level": 0.0,
+    "cognitive_load": 0.3,
+    "time_pressure": 0.0,
+    "trust_in_ai": 0.7,
+    "current_interruptions": 0,
+    "hours_into_shift": 0.0,
+    "consecutive_decisions_count": 0
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 2.5,
+    "hesitation_probability": 0.6,
+    "double_check_probability": 0.8,
+    "asks_help_probability": 0.5,
+    "skips_warnings_probability": 0.05
+  }
+}

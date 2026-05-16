@@ -1,0 +1,41 @@
+{
+  "module_id": "container.docker_manager",
+  "module_kind": "A",
+  "owner_plan": "P31",
+  "implementation_strategy": "greenfield (post-v3.5)",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "description": "Metadata registry for Docker containers, images and Kubernetes pods/deployments. SQLite-backed CRUD bookkeeping only — does NOT execute Docker daemon or Kubernetes API calls. See scope_narrowing_note.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft",
+  "scope_narrowing_note": {
+    "decision": "CONTAINER-D3-001",
+    "decision_class": "D3",
+    "decided_at": "2026-04-26",
+    "council_session": "c79c0ab1db2a47faa1eeba740756c9ed",
+    "verdict": "approved_unanimous_9_0",
+    "scope_allowed": [
+      "SQLite-backed CRUD for planned/declared Docker containers, images, K8s pods, deployments",
+      "REST API mirroring CRUD operations under /api/v1/container/*",
+      "Light event emission for registry changes",
+      "Bookkeeping role in project_mode worker registration"
+    ],
+    "scope_explicitly_forbidden": [
+      "Direct Docker daemon control (docker.from_env())",
+      "Direct Kubernetes API control (kubernetes.client)",
+      "Subprocess invocations of docker/kubectl/helm/compose/crictl",
+      "Production orchestration claims in docs/UI/manifest",
+      "Privileged container operations",
+      "Cluster credentials handling"
+    ],
+    "expand_path": "If real container orchestration is needed later, open separate D3 decision CONTAINER-EXPAND-001 with proper budget, RBAC, audit_sink, and orchestration adapters.",
+    "evidence_pack": ".audit/2026-04-26/final/CONTAINER_D3_EVIDENCE_PACK.md",
+    "voting_report": ".audit/2026-04-26/final/COUNCIL_VOTING_REPORT.md"
+  }
+}

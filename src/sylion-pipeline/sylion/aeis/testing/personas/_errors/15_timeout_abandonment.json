@@ -1,0 +1,14 @@
+{
+  "error_class": "timeout_abandonment",
+  "target_action": "leave_partially_filled_d3_form",
+  "context": "operator walks away mid-form; session times out without saving",
+  "timing": "during_form_fill",
+  "expected_system_response": [
+    "auto_save_draft",
+    "warn_before_session_expiry",
+    "require_re_authentication_to_resume"
+  ],
+  "severity_if_system_allows_error": "D3",
+  "simulated_target_d_level": "D2",
+  "action_d_level": "D1"
+}

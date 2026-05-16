@@ -1,0 +1,34 @@
+# Customer demo rows - SYLION v2 ontology demo data
+# Source: docs/v2/_drafts/ollama_batch/05_customer_demos.yaml (curated by v2 cron)
+# Type definition: ../customer.yaml
+# Notes: Polish names for operator UX; statuses match customer.yaml spec.
+---
+id: c001
+name_pl: Jan Kowalski
+email: jan.kowalski@example.com
+status: active
+city: Warszawa
+---
+id: c002
+name_pl: Anna Nowak
+email: anna.nowak@example.com
+status: inactive
+city: Kraków
+---
+id: c003
+name_pl: Piotr Wiśniewski
+email: piotr.wisniewski@example.com
+status: active
+city: Gdańsk
+---
+id: c004
+name_pl: Marta Zielińska
+email: marta.zielinska@example.com
+status: inactive
+city: Poznań
+---
+id: c005
+name_pl: Krzysztof Lewandowski
+email: krzysztof.lewandowski@example.com
+status: active
+city: Wrocław

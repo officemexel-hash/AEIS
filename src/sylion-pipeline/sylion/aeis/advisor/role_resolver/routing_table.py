@@ -1,0 +1,73 @@
+"""Default LLM routing matrix per role × risk_level."""
+
+from __future__ import annotations
+
+DEFAULT_ROUTING_BY_PURPOSE = {
+    "rationale_generation": {
+        "low": "qwen2.5:7b-instruct",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-sonnet-4-6",
+        "critical": "claude-opus-4-7",
+    },
+    "alternatives_ranking": {
+        "low": "qwen2.5:72b-instruct",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-opus-4-7",
+        "critical": "claude-opus-4-7",
+    },
+    "risk_assessment": {
+        "low": "claude-sonnet-4-6",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-opus-4-7",
+        "critical": "claude-opus-4-7",
+    },
+    "funding_scoring": {
+        "low": "gemini-2.5-pro",
+        "medium": "gemini-2.5-pro",
+        "high": ["claude-opus-4-7", "gemini-2.5-pro"],   # ensemble
+        "critical": ["claude-opus-4-7", "gpt-5"],         # cross-validate
+    },
+    "consortium_matching": {
+        "low": "claude-sonnet-4-6",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-opus-4-7",
+        "critical": "claude-opus-4-7",
+    },
+}
+
+DEFAULT_ROUTING_BY_ROLE = {
+    "planner": {
+        "low": "claude-sonnet-4-6",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-opus-4-7",
+        "critical": "claude-opus-4-7",
+    },
+    "worker": {
+        "low": "qwen2.5:72b-instruct",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-sonnet-4-6",
+        "critical": "claude-opus-4-7",
+    },
+    "critic": {
+        "low": "claude-sonnet-4-6",
+        "medium": "claude-sonnet-4-6",
+        "high": "claude-opus-4-7",
+        "critical": "claude-opus-4-7",
+    },
+    "governance": {
+        "low": "claude-sonnet-4-6",
+        "medium": "claude-opus-4-7",
+        "high": "claude-opus-4-7",
+        "critical": "claude-opus-4-7",
+    },
+    "local_verifier": {
+        "low": "qwen2.5:7b-instruct",
+        "medium": "qwen2.5:72b-instruct",
+        "high": "qwen2.5:72b-instruct",
+        "critical": "qwen2.5:72b-instruct",
+    },
+}
+
+RISK_LEVELS = ["low", "medium", "high", "critical"]
+ROLES = list(DEFAULT_ROUTING_BY_ROLE.keys())
+PURPOSES = list(DEFAULT_ROUTING_BY_PURPOSE.keys())

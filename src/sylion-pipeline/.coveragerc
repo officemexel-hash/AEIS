@@ -1,0 +1,9 @@
+[run]
+omit =
+    sylion/aeis/advisor/_generated/*
+    */grpc_server.py
+    */_db.py
+
+[report]
+precision = 2
+fail_under = 80

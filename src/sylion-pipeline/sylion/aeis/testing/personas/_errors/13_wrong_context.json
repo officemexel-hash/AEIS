@@ -1,0 +1,14 @@
+{
+  "error_class": "wrong_context",
+  "target_action": "approve_d4_with_d2_role_session",
+  "context": "operator with D2 role still authenticated tries to approve a D4 decision",
+  "timing": "during_review",
+  "expected_system_response": [
+    "block_action_with_rbac",
+    "show_required_role",
+    "log_permission_overreach_attempt"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D4",
+  "action_d_level": "D3"
+}

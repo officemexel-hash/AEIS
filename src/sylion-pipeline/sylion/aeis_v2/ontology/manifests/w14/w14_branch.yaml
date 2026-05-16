@@ -1,0 +1,135 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_branch
+  name_pl: Gałąź W14
+  name_en: W14 Branch
+  version: v1.0
+  description_pl: 'Ogólna gałąź dla napraw, testów, releasu i symulacji.
+
+    Typ, stan i wersje SoT/masterplanu są dedykowane do śledzenia,
+
+    a dodatkowy kontekst techniczny pozostaje w rozszerzeniu.'
+  description_en: 'Generic branch for repair, testing, release, and simulation work.
+
+    Type, state, and SoT/masterplan versions are dedicated for tracking,
+
+    while extra technical context stays in the extension.'
+  tags:
+  - w14
+  - testing
+  - branch
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: branch_type
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - simulation
+    - repair
+    - test
+    - release
+    default: test
+  - name: parent_branch_ref
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  - name: project_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: sot_version
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: masterplan_version
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: state
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - open
+    - merged
+    - discarded
+    default: open
+  - name: created_by
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations: []
+  audit:
+    enabled: true
+    track_fields:
+    - branch_type
+    - state
+    - project_ref
+    - created_by
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - project_ref
+  actions:
+  - id: merge_branch
+    description_pl: Oznacza gałąź jako scaloną po zakończeniu walidacji.
+    description_en: Marks the branch as merged after validation completes.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: state
+      to: merged
+    - type: emit_event
+      topic: aeis.w14.branch.merged
+  - id: discard_branch
+    description_pl: Odrzuca gałąź i blokuje jej dalsze użycie operacyjne.
+    description_en: Discards the branch and blocks further operational use.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: state
+      to: discarded
+    - type: emit_event
+      topic: aeis.w14.branch.discarded

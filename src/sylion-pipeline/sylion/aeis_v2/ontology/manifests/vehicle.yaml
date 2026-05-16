@@ -1,0 +1,102 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: vehicle
+  name_pl: Pojazd
+  name_en: Vehicle
+  version: v1.0
+  description_pl: |
+    Typ obiektu dla pojazdów używanych w procesach inspekcyjnych,
+    rejestrze floty i historii eksploatacyjnej.
+    Umożliwia powiązanie właściciela oraz danych identyfikacyjnych.
+  description_en: |
+    Object type for vehicles used in inspection workflows,
+    fleet registry, and usage history.
+    Supports owner linkage and core identification data.
+  tags: [fleet, inspection, vehicle, w15]
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+    - name: vin
+      type: text
+      nullable: false
+      indexed: true
+      searchable: false
+      unique: true
+    - name: plate
+      type: text
+      nullable: false
+      indexed: true
+      searchable: true
+    - name: make
+      type: text
+      nullable: false
+      indexed: false
+      searchable: true
+    - name: model
+      type: text
+      nullable: false
+      indexed: false
+      searchable: true
+    - name: year
+      type: integer
+      nullable: false
+      indexed: false
+      searchable: false
+    # owner_id generowany przez relację `owner` poniżej (FK na customer).
+    - name: mileage_km
+      type: bigint
+      nullable: true
+      indexed: false
+      searchable: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+      properties:
+        registration_country:
+          type: string
+        last_service_at:
+          type: string
+          format: date-time
+        equipment:
+          type: array
+          items:
+            type: string
+  relations:
+    - name: owner
+      target: customer
+      cardinality: many_to_one
+      on_delete: restrict
+  audit:
+    enabled: true
+    track_fields: ["vin", "plate", "owner_id", "mileage_km"]
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: ["plate", "make", "model"]
+    embeddings:
+      enabled: false
+      source_columns: ["make", "model"]
+      dim: 1024
+  actions:
+    - id: register_vehicle
+      description_pl: |
+        Rejestruje pojazd w runtime ontologii
+        i emituje zdarzenie wejścia do rejestru.
+      description_en: |
+        Registers the vehicle in the ontology runtime
+        and emits an onboarding registry event.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: emit_event
+          topic: aeis.vehicle.registered

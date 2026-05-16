@@ -1,0 +1,433 @@
+// SYLION AEIS -- Class D: Memory (7 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: KanonAccess, CompactLayer, EvidenceStore,
+//          Indexer, Retrieval, SelfModelStore, KBAdapter
+
+syntax = "proto3";
+
+package sylion.memory.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/memory/v1;memoryv1";
+option java_package = "com.sylion.aeis.memory.v1";
+
+// =====================================================================
+// D1: Kanon Access Service
+// =====================================================================
+
+service KanonAccessService {
+  rpc LoadText(LoadTextRequest) returns (LoadTextResponse);
+  rpc StoreSection(StoreSectionRequest) returns (SectionSummary);
+  rpc GetSection(GetSectionRequest) returns (KanonSectionMessage);
+  rpc Search(KanonSearchRequest) returns (KanonSectionList);
+  rpc ListSections(ListSectionsRequest) returns (KanonSectionList);
+  rpc GetFullText(sylion.common.v1.Empty) returns (FullTextResponse);
+}
+
+message LoadTextRequest {
+  string raw_text = 1;
+}
+
+message LoadTextResponse {
+  int32  sections_loaded = 1;
+  repeated string section_ids = 2;
+}
+
+message StoreSectionRequest {
+  string section_id   = 1;
+  string title        = 2;
+  string content      = 3;
+  string chapter      = 4;
+  int32  section_number = 5;
+}
+
+message SectionSummary {
+  string section_id = 1;
+  string hash       = 2;
+}
+
+message GetSectionRequest {
+  string section_id = 1;
+}
+
+message KanonSectionMessage {
+  string section_id    = 1;
+  string title         = 2;
+  string content       = 3;
+  string chapter       = 4;
+  int32  section_number = 5;
+  string hash          = 6;
+}
+
+message KanonSearchRequest {
+  string query_text = 1;
+  int32  limit      = 2;
+}
+
+message ListSectionsRequest {
+  string chapter = 1;  // optional filter
+}
+
+message KanonSectionList {
+  repeated KanonSectionMessage sections = 1;
+}
+
+message FullTextResponse {
+  string text = 1;
+}
+
+// =====================================================================
+// D2: Compact Layer Service
+// =====================================================================
+
+service CompactLayerService {
+  rpc Compact(CompactRequest) returns (CompactResponse);
+  rpc ComputeFidelity(ComputeFidelityRequest) returns (FidelityResponse);
+  rpc RecordCompaction(RecordCompactionRequest) returns (CompactionSummary);
+  rpc GetStats(sylion.common.v1.Empty) returns (CompactionStats);
+  rpc ListRecords(ListCompactionRecordsRequest) returns (CompactionRecordList);
+}
+
+message CompactRequest {
+  string text = 1;
+}
+
+message CompactResponse {
+  string compacted       = 1;
+  int32  original_size   = 2;
+  int32  compact_size    = 3;
+  double ratio           = 4;
+  double fidelity_score  = 5;
+}
+
+message ComputeFidelityRequest {
+  string original  = 1;
+  string compacted = 2;
+}
+
+message FidelityResponse {
+  double fidelity = 1;
+}
+
+message RecordCompactionRequest {
+  string original  = 1;
+  string compacted = 2;
+  double fidelity  = 3;
+}
+
+message CompactionSummary {
+  string record_id      = 1;
+  double ratio          = 2;
+  double fidelity_score = 3;
+}
+
+message CompactionStats {
+  int32  total_records = 1;
+  double avg_ratio     = 2;
+  double min_fidelity  = 3;
+  double max_fidelity  = 4;
+  double avg_fidelity  = 5;
+}
+
+message ListCompactionRecordsRequest {
+  int32 limit = 1;
+}
+
+message CompactionRecordList {
+  repeated CompactionRecordMessage records = 1;
+}
+
+message CompactionRecordMessage {
+  string record_id     = 1;
+  string original_hash = 2;
+  string compact_hash  = 3;
+  int32  original_size = 4;
+  int32  compact_size  = 5;
+  double ratio         = 6;
+  double fidelity_score = 7;
+  double created_at    = 8;
+}
+
+// =====================================================================
+// D3: Evidence Store Service
+// =====================================================================
+
+service EvidenceStoreService {
+  rpc Store(StoreEvidenceRequest) returns (StoreEvidenceResponse);
+  rpc Retrieve(GetEvidenceRequest) returns (EvidenceMessage);
+  rpc QueryByType(QueryByTypeRequest) returns (EvidenceList);
+  rpc QueryByPack(QueryByPackRequest) returns (EvidenceList);
+  rpc Delete(GetEvidenceRequest) returns (sylion.common.v1.Status);
+  rpc GetStats(sylion.common.v1.Empty) returns (EvidenceStoreStats);
+}
+
+message StoreEvidenceRequest {
+  string evidence_id   = 1;
+  string pack_id       = 2;
+  string artefact_type = 3;
+  string name          = 4;
+  string content       = 5;
+  string metadata_json = 6;
+}
+
+message StoreEvidenceResponse {
+  string evidence_id  = 1;
+  string content_hash = 2;
+}
+
+message GetEvidenceRequest {
+  string evidence_id = 1;
+}
+
+message EvidenceMessage {
+  string evidence_id    = 1;
+  string pack_id        = 2;
+  string artefact_type  = 3;
+  string name           = 4;
+  string content        = 5;
+  string content_hash   = 6;
+  string metadata_json  = 7;
+  double created_at     = 8;
+}
+
+message QueryByTypeRequest {
+  string artefact_type = 1;
+  int32  limit         = 2;
+}
+
+message QueryByPackRequest {
+  string pack_id = 1;
+  int32  limit   = 2;
+}
+
+message EvidenceList {
+  repeated EvidenceMessage items = 1;
+}
+
+message EvidenceStoreStats {
+  int32 total_evidence = 1;
+  map<string, int64> by_type = 2;
+  int32 total_queries = 3;
+}
+
+// =====================================================================
+// D4: Indexer Service
+// =====================================================================
+
+service IndexerService {
+  rpc IndexSection(IndexSectionRequest) returns (IndexSectionResponse);
+  rpc RemoveSection(RemoveSectionRequest) returns (sylion.common.v1.Status);
+  rpc Search(SearchIndexRequest) returns (SearchResultList);
+  rpc GetStats(sylion.common.v1.Empty) returns (IndexStats);
+}
+
+message IndexSectionRequest {
+  string section_id = 1;
+  string title      = 2;
+  string content    = 3;
+}
+
+message IndexSectionResponse {
+  string section_id   = 1;
+  int32  unique_terms = 2;
+  int32  word_count   = 3;
+}
+
+message RemoveSectionRequest {
+  string section_id = 1;
+}
+
+message SearchIndexRequest {
+  string query = 1;
+  int32  limit = 2;
+}
+
+message SearchResultMessage {
+  string section_id = 1;
+  string title      = 2;
+  double score      = 3;
+}
+
+message SearchResultList {
+  repeated SearchResultMessage results = 1;
+}
+
+message IndexStats {
+  int32  unique_terms     = 1;
+  int32  total_postings   = 2;
+  int32  indexed_sections = 3;
+  double avg_word_count   = 4;
+}
+
+// =====================================================================
+// D5: Retrieval Service
+// =====================================================================
+
+service RetrievalService {
+  rpc Retrieve(RetrieveRequest) returns (RetrievalResultList);
+  rpc GetContext(GetContextRequest) returns (ContextResponse);
+}
+
+message RetrieveRequest {
+  string query      = 1;
+  int32  limit      = 2;
+  double min_score  = 3;
+}
+
+message RetrievalResultMessage {
+  string section_id = 1;
+  string title      = 2;
+  double score      = 3;
+  string snippet    = 4;
+}
+
+message RetrievalResultList {
+  repeated RetrievalResultMessage results = 1;
+}
+
+message GetContextRequest {
+  string query       = 1;
+  int32  max_tokens  = 2;
+}
+
+message ContextResponse {
+  string context = 1;
+}
+
+// =====================================================================
+// D6: Self-Model Store Service
+// =====================================================================
+
+service SelfModelStoreService {
+  rpc Initialize(InitializeModelRequest) returns (SelfModelMessage);
+  rpc Update(UpdateModelRequest) returns (SelfModelMessage);
+  rpc Get(GetModelRequest) returns (SelfModelMessage);
+  rpc Snapshot(SnapshotRequest) returns (SnapshotSummary);
+  rpc GetHistory(GetHistoryRequest) returns (SnapshotList);
+  rpc GetLatest(GetModelRequest) returns (SnapshotMessage);
+}
+
+message InitializeModelRequest {
+  string model_id       = 1;
+  string capabilities_json = 2;
+  string constraints_json  = 3;
+}
+
+message SelfModelMessage {
+  string model_id          = 1;
+  int32  version           = 2;
+  string capabilities_json = 3;
+  string constraints_json  = 4;
+  string health            = 5;
+  int32  autonomy_level    = 6;
+  double updated_at        = 7;
+  double created_at        = 8;
+}
+
+message UpdateModelRequest {
+  string model_id          = 1;
+  string capabilities_json = 2;
+  string constraints_json  = 3;
+  string health            = 4;
+  int32  autonomy_level    = 5;
+}
+
+message GetModelRequest {
+  string model_id = 1;
+}
+
+message SnapshotRequest {
+  string model_id = 1;
+  string reason   = 2;
+}
+
+message SnapshotSummary {
+  string snapshot_id = 1;
+  string model_id    = 2;
+  int32  version     = 3;
+  double timestamp   = 4;
+}
+
+message GetHistoryRequest {
+  string model_id = 1;
+  int32  limit    = 2;
+}
+
+message SnapshotMessage {
+  string snapshot_id = 1;
+  string model_id    = 2;
+  int32  version     = 3;
+  string data_json   = 4;
+  string reason      = 5;
+  double timestamp   = 6;
+}
+
+message SnapshotList {
+  repeated SnapshotMessage snapshots = 1;
+}
+
+// =====================================================================
+// D7: KB Adapter Service
+// =====================================================================
+
+service KBAdapterService {
+  rpc RegisterSource(RegisterSourceRequest) returns (KBSourceMessage);
+  rpc GetSource(GetSourceRequest) returns (KBSourceMessage);
+  rpc ListSources(ListSourcesRequest) returns (KBSourceList);
+  rpc Query(KBQueryRequest) returns (KBQueryResultList);
+  rpc Index(IndexRequest) returns (KBSourceMessage);
+  rpc GetStats(sylion.common.v1.Empty) returns (KBStats);
+}
+
+message RegisterSourceRequest {
+  string source_id   = 1;
+  string name        = 2;
+  string source_type = 3;
+  string path        = 4;
+  string config_json = 5;
+}
+
+message KBSourceMessage {
+  string source_id    = 1;
+  string name         = 2;
+  string source_type  = 3;
+  string path         = 4;
+  string config_json  = 5;
+  bool   active       = 6;
+  double last_indexed = 7;
+}
+
+message GetSourceRequest {
+  string source_id = 1;
+}
+
+message ListSourcesRequest {
+  bool active_only = 1;
+}
+
+message KBSourceList {
+  repeated KBSourceMessage sources = 1;
+}
+
+message KBQueryRequest {
+  string source_id  = 1;
+  string query_text = 2;
+  int32  limit      = 3;
+}
+
+message KBQueryResultList {
+  repeated map<string, string> results = 1;
+}
+
+message IndexRequest {
+  string source_id = 1;
+}
+
+message KBStats {
+  int32  total_sources   = 1;
+  int32  active_sources  = 2;
+  int32  total_queries   = 3;
+  double avg_latency_ms  = 4;
+}

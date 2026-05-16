@@ -1,0 +1,17 @@
+{
+  "module_id": "funding_autopilot.browser_automation",
+  "module_kind": "F",
+  "owner_plan": "P14",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "api_key",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": ["funding_autopilot.store", "funding_autopilot.governance_bridge"],
+  "description": "Playwright-based portal automation for form filling, draft saving, and final submission on EU and national funding portals.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "validate"
+}

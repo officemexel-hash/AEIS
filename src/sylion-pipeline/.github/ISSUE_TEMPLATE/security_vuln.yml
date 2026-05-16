@@ -1,0 +1,109 @@
+name: Security Vulnerability
+description: Report a security vulnerability (submitted privately to the security team)
+title: "[SECURITY] "
+labels: ["security", "priority:critical"]
+assignees:
+  - sylion-sre
+
+# NOTE: This template is intentionally public-facing for discoverability,
+# but reporters are STRONGLY encouraged to use GitHub's private vulnerability
+# reporting feature instead:
+# https://github.com/<org>/<repo>/security/advisories/new
+#
+# For CRITICAL / zero-day vulnerabilities, email security@sylion.example.com directly.
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Security Vulnerability Report
+
+        > **Prefer private disclosure:** Use [GitHub Private Vulnerability Reporting](../../security/advisories/new)
+        > or email **security@sylion.example.com** (PGP key: `docs/SECURITY_PGP.asc`).
+        >
+        > **Do NOT include CVE details, exploit code, or proof-of-concept in a PUBLIC issue.**
+        > This form is for coordinated disclosure only.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Estimated severity (CVSS)
+      options:
+        - Critical (CVSS ≥ 9.0)
+        - High (CVSS 7.0–8.9)
+        - Medium (CVSS 4.0–6.9)
+        - Low (CVSS < 4.0)
+        - Unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Vulnerability category
+      options:
+        - Authentication / authorisation bypass
+        - Injection (SQL, command, SSTI, etc.)
+        - Sensitive data exposure
+        - Secrets / credentials leak
+        - Dependency CVE (upstream library)
+        - Insecure configuration / default
+        - SSRF / CSRF
+        - DoS / resource exhaustion
+        - Privilege escalation
+        - Supply-chain / build pipeline
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Affected SYLION version(s)
+      placeholder: "e.g. 5.9.1, 5.9.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Vulnerability description
+      description: |
+        **Keep this vague if filing publicly.**
+        A brief, non-exploitable description. Sensitive details go in a private advisory.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential impact
+      description: What can an attacker achieve? What data or systems are at risk?
+    validations:
+      required: true
+
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Suggested mitigation / workaround
+      description: If you have a fix or workaround in mind, describe it here.
+
+  - type: input
+    id: cve
+    attributes:
+      label: CVE / advisory reference (if applicable)
+      placeholder: "e.g. CVE-2024-XXXXX or GHSA-xxxx-xxxx-xxxx"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Reporter checklist
+      options:
+        - label: I have NOT published exploit details publicly
+          required: true
+        - label: I have redacted all actual credentials / tokens from this report
+          required: true
+        - label: I understand the SYLION security policy and responsible disclosure timeline (docs/INCIDENT_RESPONSE.md)
+          required: false
+        - label: I consent to being credited in the security advisory (if desired, add name in description)
+          required: false

@@ -1,0 +1,419 @@
+# prometheus_alerts.yml — G-03 patch: Prometheus alert rules for Sylion.
+#
+# Gap addressed: G-03 (brak Prometheus alert rules)
+#
+# Deploy:
+#   1. Place this file on the Prometheus server (or in a ConfigMap).
+#   2. Reference from prometheus.yml:
+#        rule_files:
+#          - /etc/prometheus/rules/sylion_alerts.yml
+#   3. Reload Prometheus: kill -HUP <pid>  OR  curl -X POST http://prometheus:9090/-/reload
+#
+# Routing (Alertmanager):
+#   All alerts carry severity label and team=sylion-sre label.
+#   Map to on-call rotation via alertmanager.yml receiver rules.
+#
+# Custom metrics assumed exposed by Sylion's GET /api/metrics endpoint
+# (or scraped via the prometheus_client sidecar):
+#
+#   sylion_wal_size_mb              — WAL file size in MB
+#   sylion_backup_age_hours         — Hours since last successful backup
+#   sylion_disk_free_gb             — Free disk space on data volume in GB
+#   sylion_circuit_breaker_state    — 0=CLOSED, 1=HALF_OPEN, 2=OPEN  {provider,state}
+#   request_count_total             — Counter of HTTP requests {endpoint,status}
+#
+# If Sylion uses the in-process dict metrics (see app.py _metrics_request_count),
+# add a /metrics Prometheus-format endpoint and configure a scrape job:
+#   - job_name: sylion_aeis_runtime
+#     static_configs:
+#       - targets: ['localhost:8421']
+#     metrics_path: /api/metrics/prometheus
+
+groups:
+
+  # -------------------------------------------------------------------------
+  - name: sylion.database
+    rules:
+
+      # G-03a — WAL file has grown beyond 1 GB (unflushed writes / checkpoint lag)
+      - alert: SylionWalLarge
+        expr: sylion_wal_size_mb > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+          gap: G-03
+        annotations:
+          summary: "Sylion WAL exceeds 1 GB"
+          description: >
+            The SQLite WAL file is {{ $value | humanize }}MB (threshold: 1000 MB).
+            This indicates checkpoint lag — the WAL is not being flushed to the
+            main database file. Run: PRAGMA wal_checkpoint(TRUNCATE) or
+            increase checkpoint frequency. Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-wal-large"
+
+      # G-03b — Last successful backup is older than 25 hours
+      - alert: SylionBackupStale
+        expr: sylion_backup_age_hours > 25
+        for: 2m
+        labels:
+          severity: critical
+          team: sylion-sre
+          gap: G-03
+        annotations:
+          summary: "Sylion backup is stale (> 25 h)"
+          description: >
+            The most recent Sylion backup is {{ $value | humanizeTimestamp }}h old
+            (threshold: 25 h). Check backup job logs and verify storage target
+            is reachable. Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-backup-stale"
+
+  # -------------------------------------------------------------------------
+  - name: sylion.api
+    rules:
+
+      # High 5xx error rate over 5-minute window
+      - alert: SylionHighErrorRate
+        expr: |
+          rate(request_count_total{status=~"5.."}[5m])
+          /
+          rate(request_count_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          team: sylion-sre
+        annotations:
+          summary: "Sylion 5xx error rate > 5%"
+          description: >
+            The 5-minute error rate for {{ $labels.endpoint }} is
+            {{ $value | humanizePercentage }} (threshold: 5%).
+            Check application logs for stack traces.
+            Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-high-error-rate"
+
+      # Alternative form when using in-process counters exposed as gauge sums
+      # (uncomment if Sylion does not expose a Prometheus counter directly)
+      # - alert: SylionHighErrorRateGauge
+      #   expr: |
+      #     sum(sylion_request_count{status=~"5.."}) by (endpoint)
+      #     /
+      #     sum(sylion_request_count) by (endpoint) > 0.05
+      #   for: 3m
+      #   labels:
+      #     severity: critical
+      #     team: sylion-sre
+
+  # -------------------------------------------------------------------------
+  - name: sylion.infrastructure
+    rules:
+
+      # Low disk space on data/storage volume
+      - alert: SylionLowDiskSpace
+        expr: sylion_disk_free_gb < 5
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+        annotations:
+          summary: "Sylion data volume has < 5 GB free"
+          description: >
+            Free disk space on the Sylion data volume is {{ $value }}GB
+            (threshold: 5 GB). Immediate action required to prevent write
+            failures. Consider pruning old backups or expanding the volume.
+            Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-low-disk"
+
+      # Escalation: critically low disk space
+      - alert: SylionCriticalDiskSpace
+        expr: sylion_disk_free_gb < 1
+        for: 1m
+        labels:
+          severity: critical
+          team: sylion-sre
+        annotations:
+          summary: "Sylion data volume critically low (< 1 GB)"
+          description: >
+            Free disk space is {{ $value }}GB. Writes will fail imminently.
+            Emergency: expand volume or delete non-essential data now.
+            Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-critical-disk"
+
+  # -------------------------------------------------------------------------
+  - name: sylion.llm_resilience
+    rules:
+
+      # Circuit breaker is OPEN for any LLM provider
+      # sylion_circuit_breaker_state{state="OPEN"} == 2 by our encoding
+      - alert: SylionCircuitBreakerOpen
+        expr: sylion_circuit_breaker_state{state="OPEN"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: sylion-sre
+        annotations:
+          summary: "LLM circuit breaker OPEN for {{ $labels.provider }}"
+          description: >
+            The circuit breaker for LLM provider '{{ $labels.provider }}' has
+            been in OPEN state for > 1 minute. All calls to this provider are
+            being short-circuited to Ollama local fallback.
+            Investigate upstream provider status and API key validity.
+            Manual reset: POST /api/circuit-breakers/{{ $labels.provider }}/reset
+            Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-circuit-breaker"
+
+      # Circuit breaker HALF_OPEN (informational — recovering)
+      - alert: SylionCircuitBreakerHalfOpen
+        expr: sylion_circuit_breaker_state{state="HALF_OPEN"} > 0
+        for: 5m
+        labels:
+          severity: info
+          team: sylion-sre
+        annotations:
+          summary: "LLM circuit breaker HALF_OPEN for {{ $labels.provider }} > 5 min"
+          description: >
+            Provider '{{ $labels.provider }}' has been in HALF_OPEN state for
+            > 5 minutes. Recovery probes are not succeeding. Check provider
+            health and consider manual reset.
+            Instance: {{ $labels.instance }}.
+          runbook_url: "https://wiki.internal/runbooks/sylion-circuit-breaker"
+
+  # =========================================================================
+  # Phase 3 W3.2 — per-layer latency, governance + memory + skills + funding
+  # =========================================================================
+  - name: sylion.latency
+    rules:
+
+      - alert: SylionGovernanceLatencyP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(aeis_pipeline_duration_seconds_bucket{layer="governance"}[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: governance
+        annotations:
+          summary: "Governance p95 > 500ms for 5 minutes"
+          description: >
+            Governance plane p95 latency is {{ $value | humanizeDuration }}.
+            Threshold: 500ms. Check council decide queue, ticket store, and
+            audit chain for contention.
+          runbook_url: "/docs/phase3/runbooks/governance_p95.md"
+
+      - alert: SylionMemoryLatencyP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(aeis_pipeline_duration_seconds_bucket{layer="memory"}[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: memory
+        annotations:
+          summary: "Memory plane p95 > 500ms for 5 minutes"
+          description: >
+            Memory plane p95 latency is {{ $value | humanizeDuration }}.
+            Likely candidates: SQLite WAL contention, missing indexes,
+            embedding service slow.
+          runbook_url: "/docs/phase3/runbooks/memory_p95.md"
+
+      - alert: SylionSkillsLatencyP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(aeis_skill_execution_duration_seconds_bucket[5m]))
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: skills
+        annotations:
+          summary: "Skill execution p95 > 1s for 5 minutes"
+          description: >
+            Skill runtime p95 latency is {{ $value | humanizeDuration }}.
+            Threshold: 1s. Check skill registry, sandbox capacity, and
+            external tool calls.
+          runbook_url: "/docs/phase3/runbooks/skills_p95.md"
+
+      - alert: SylionFundingLatencyP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(aeis_pipeline_duration_seconds_bucket{layer="funding"}[5m]))
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: funding
+        annotations:
+          summary: "Funding portal p95 > 2s for 5 minutes"
+          description: >
+            Funding plane p95 latency is {{ $value | humanizeDuration }}.
+            External portal latency expected; threshold raised to 2s.
+            Check portal health and rate limit headroom.
+          runbook_url: "/docs/phase3/runbooks/funding_p95.md"
+
+  # =========================================================================
+  # Phase 3 W3.2 — saturation / queue depth / pool health
+  # =========================================================================
+  - name: sylion.saturation
+    rules:
+
+      - alert: SylionCouncilQueueDepth
+        expr: aeis_worker_pool_size{pool="council"} > 100
+        for: 2m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: governance
+        annotations:
+          summary: "Council decision queue exceeds 100"
+          description: >
+            Pending council decisions: {{ $value }}. Likely cause: model
+            provider slow or rate-limited. Inspect council/decide latency
+            and circuit breakers.
+          runbook_url: "/docs/phase3/runbooks/council_queue.md"
+
+      - alert: SylionWorkerPoolOrphans
+        expr: aeis_worker_pool_orphans_total > 0
+        for: 3m
+        labels:
+          severity: warning
+          team: sylion-sre
+        annotations:
+          summary: "Worker pool reports orphan workers"
+          description: >
+            {{ $value }} orphan workers detected. Restart sweep should reclaim
+            them automatically; investigate if persistent.
+          runbook_url: "/docs/phase3/runbooks/worker_orphans.md"
+
+      - alert: SylionRateLimitExcessive
+        expr: |
+          sum by (tier) (rate(aeis_http_requests_total{status="429"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: api
+        annotations:
+          summary: "High 429 rate (> 10 rps) on tier {{ $labels.tier }}"
+          description: >
+            Rate limit responses exceed 10/s sustained. Could indicate abuse,
+            mis-tuned client, or under-sized tier. Review request log.
+          runbook_url: "/docs/phase3/runbooks/rate_limit_abuse.md"
+
+      - alert: SylionRedisUnavailable
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: sylion-sre
+          layer: infrastructure
+        annotations:
+          summary: "Redis cache unavailable"
+          description: >
+            Redis is down. Cache-backed rate limiting falls back to local
+            counters; cache hit ratio drops to 0%; latency p95 spikes.
+          runbook_url: "/docs/phase3/runbooks/redis_down.md"
+
+      - alert: SylionDbPoolExhausted
+        expr: |
+          (aeis_db_pool_in_use / aeis_db_pool_size) > 0.9
+        for: 3m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: infrastructure
+        annotations:
+          summary: "DB connection pool > 90% in-use"
+          description: >
+            DB connection pool is {{ $value | humanizePercentage }}
+            saturated. Risk of connection waits and timeouts. Inspect
+            slow queries and pool size.
+          runbook_url: "/docs/phase3/runbooks/db_pool_exhausted.md"
+
+  # =========================================================================
+  # Phase 3 W3.2 — security / integrity / governance evidence
+  # =========================================================================
+  - name: sylion.security
+    rules:
+
+      - alert: SylionAuditChainBroken
+        expr: aeis_audit_chain_valid == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sylion-sre
+          layer: governance
+        annotations:
+          summary: "Audit chain integrity FAILED"
+          description: >
+            SHA-256 audit chain replay returned valid=False. Tamper or DB
+            corruption suspected. Lock writes and run forensic export
+            immediately.
+          runbook_url: "/docs/phase3/runbooks/audit_chain_broken.md"
+
+      - alert: SylionSecurityProfileSwapsHigh
+        expr: |
+          sum(rate(aeis_security_profile_swaps_total[15m])) > 0.5
+        for: 5m
+        labels:
+          severity: info
+          team: sylion-sre
+          layer: governance
+        annotations:
+          summary: "Security profile swaps elevated (> 0.5/s for 5m)"
+          description: >
+            Profile swaps are running hot — possible attack response or
+            mis-tuned auto-swapper. Inspect security_audit log.
+
+      - alert: SylionMobilePushFailureRate
+        expr: |
+          sum(rate(aeis_mobile_notifications_sent_total{outcome="error"}[10m]))
+          /
+          (sum(rate(aeis_mobile_notifications_sent_total[10m])) + 1e-9) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: sylion-sre
+          layer: operator_mobile
+        annotations:
+          summary: "Mobile push failure rate > 10% for 10 minutes"
+          description: >
+            Operator mobile push deliveries failing for {{ $value | humanizePercentage }}
+            of attempts. Captcha/2FA handoff blocked.
+          runbook_url: "/docs/phase3/runbooks/mobile_push_failures.md"
+
+  # =========================================================================
+  # Phase 3 W3.2 — scrape / availability
+  # =========================================================================
+  - name: sylion.availability
+    rules:
+
+      - alert: SylionInstanceDown
+        expr: up{job="sylion"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: sylion-sre
+        annotations:
+          summary: "Sylion instance {{ $labels.instance }} is DOWN"
+          description: >
+            Prometheus has been unable to scrape {{ $labels.instance }} for
+            2 minutes. Verify process is running and metrics endpoint
+            responds.
+          runbook_url: "/docs/phase3/runbooks/instance_down.md"
+
+      - alert: SylionScrapeStale
+        expr: time() - timestamp(up{job="sylion"}) > 300
+        for: 1m
+        labels:
+          severity: warning
+          team: sylion-sre
+        annotations:
+          summary: "Stale scrape: {{ $labels.instance }} not updated in 5 min"
+          description: >
+            Last successful scrape is older than 5 minutes. Could indicate a
+            slow scrape, network issue, or paused scheduler.

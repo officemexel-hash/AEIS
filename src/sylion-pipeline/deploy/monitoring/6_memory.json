@@ -1,0 +1,56 @@
+{
+  "__inputs": [{"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus"}],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"}
+  ],
+  "title": "SYLION — Memory plane",
+  "uid": "sylion-memory",
+  "description": "Phase 3 W3.1 — memory plane (evidence appended, search throughput, latency, cache).",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 38,
+  "tags": ["sylion", "phase3", "memory"],
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Memory plane latency percentiles",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 0, "w": 16, "h": 8},
+      "id": 1,
+      "targets": [
+        {"expr": "sylion:latency:p50{layer=\"memory\"}", "refId": "A", "legendFormat": "p50"},
+        {"expr": "sylion:latency:p95{layer=\"memory\"}", "refId": "B", "legendFormat": "p95"},
+        {"expr": "sylion:latency:p99{layer=\"memory\"}", "refId": "C", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Evidence appends / 5m",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 4},
+      "id": 2,
+      "targets": [{"expr": "sum(increase(aeis_memory_evidence_appended_total[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Search calls / 5m",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 16, "y": 4, "w": 8, "h": 4},
+      "id": 3,
+      "targets": [{"expr": "sum(increase(aeis_memory_search_total[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Cache hit ratio",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+      "id": 4,
+      "targets": [
+        {"expr": "sylion:cache_hit_ratio", "refId": "A", "legendFormat": "{{namespace}}"}
+      ]
+    }
+  ]
+}

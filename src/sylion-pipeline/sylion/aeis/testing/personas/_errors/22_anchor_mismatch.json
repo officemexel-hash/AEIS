@@ -1,0 +1,14 @@
+{
+  "error_class": "anchor_mismatch",
+  "target_action": "anchor_decision_to_outdated_metric",
+  "context": "operator anchors approval to a metric value from last release that no longer applies",
+  "timing": "during_council_vote",
+  "expected_system_response": [
+    "show_metric_freshness_indicator",
+    "warn_when_anchor_metric_stale",
+    "demand_explicit_re_anchor_rationale"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D3"
+}

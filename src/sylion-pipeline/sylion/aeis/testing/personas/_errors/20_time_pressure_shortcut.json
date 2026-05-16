@@ -1,0 +1,13 @@
+{
+  "error_class": "time_pressure_shortcut",
+  "target_action": "skip_diff_review_under_deadline",
+  "context": "operator under tight deadline approves a 200-LOC diff without reading it",
+  "timing": "before_release_deadline",
+  "expected_system_response": [
+    "require_minimum_review_time_for_diff_size",
+    "show_unread_diff_warning"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

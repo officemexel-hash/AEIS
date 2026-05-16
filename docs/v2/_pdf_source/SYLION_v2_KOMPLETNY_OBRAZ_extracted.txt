@@ -1,0 +1,471 @@
+Ignoring wrong pointing object 9 0 (offset 0)
+Ignoring wrong pointing object 12 0 (offset 0)
+Ignoring wrong pointing object 19 0 (offset 0)
+Ignoring wrong pointing object 44 0 (offset 0)
+Ignoring wrong pointing object 46 0 (offset 0)
+=== PAGE 1 ===
+SYLION AEIS v2 — Kompletny obraz architektury
+Status: konsolidacja rozmowy z 27.04.2026 Autor: Claude (orchestrator) dla Roberta Cel
+dokumentu: zebrać w jednym miejscu wszystkie decyzje, chartami i otwarte pytania
+dotyczące rozszerzenia AEIS o warstwy v2 (W15-W18 + rozszerzenia istniejących
+warstw)
+Spis treści
+1. Streszczenie wykonawcze
+2. Decyzje już podjęte
+3. Charter W15 — Ontology Runtime Plane
+4. Charter W16 — Operational Apps Builder Plane
+5. Charter W17 — Deployment Plane (hybrid)
+6. Migration Plan v1 → v2
+7. W18 — Operator Terminal Plane (mini-charter)
+8. Rozszerzenia istniejących warstw (W7, W11, W13, W17)
+9. Otwarte pytania wymagające decyzji
+10. Trzy alternatywne ścieżki dalej
+11. Lokalizacja plików deliverables
+1. Streszczenie wykonawcze
+SYLION AEIS v2 to ewolucja istniejącego systemu AEIS v1 (81 modułów backend, 6298
+testów, 14 sprintów hardeningu) o cztery nowe planes architektoniczne, inspirowane Palantir
+Foundry/Workshop/Apollo, ale dostosowane do single-user / Robert-only DNA platformy.
+Cztery nowe warstwy (jeśli wszystkie zaakceptowane):
+Warstwa Inspiracja Cel jednym zdaniem
+
+=== PAGE 2 ===
+W15 Ontology
+Runtime
+Palantir Foundry /
+OSDK
+Definiowanie dowolnych typów obiektów przez
+YAML zamiast kodu
+W16 Operational
+Apps Builder
+Palantir
+Workshop / Slate
+Budowanie aplikacji operacyjnych przez
+deklaratywny manifest
+W17 Deployment
+Plane
+Palantir Apollo
+(lekkie)
+Zarządzanie wieloma instancjami SYLION
+(hybrid local+central)
+W18 Operator
+Terminal
+(NEW, brak
+odpowiednika)
+Pełen interaktywny terminal z observability
+federacji agentów
+Świadomie pominięte: Policy/Security plane (decyzja: “system jest tylko dla mnie”).
+Uwaga: ta decyzja wymaga re-evaluation w kontekście zespołu 10 osób (sekcja 9).
+Skala (estymacja solo, wymagana aktualizacja dla zespołu):
+W15-W17: 12-15 miesięcy
+W15-W18 + rozszerzenia: 18-22 miesięcy
+Z zespołem 10 osób: prawdopodobnie 5-8 miesięcy (subliniowe skalowanie)
+2. Decyzje już podjęte
+W trakcie rozmowy podjęte zostały następujące decyzje architektoniczne:
+2.1 Strategia migracji
+In-place upgrade, nie fork repo
+Wersjonowanie: AEIS v1 → v2.0 (W15 done) → v2.5 (W16 done) → v3.0 (W17 done)
+W18 mógłby być v3.5 lub równolegle
+2.2 W14 Testing Ontology
+Wariant A: lift to W15 (refactor + migracja danych)
+W14 nazwa zostaje, ale staje się domain wrapperem na W15
+Migracja: SQLite → PostgreSQL, 25 obiektów testing, side-by-side validation
+2.3 Multi-tenant
+Świadomie odrzucone: SYLION jest dla Roberta
+
+=== PAGE 3 ===
+Brak tenant_id, brak row-level security per tenant
+Hybrid local+central jako kompromis dla multi-node single-user
+2.4 Local-first
+Zachowane: każda local instance działa standalone offline
+Central plane (W17) opcjonalny, dodaje multi-node management
+2.5 Tech stack (delegowane do Claude)
+Storage: PostgreSQL 15+ (porzucenie SQLite W14)
+Backend: FastAPI (kontynuacja)
+Frontend: Next.js 16 + React 19 + shadcn/ui
+Ontology storage: hybrid columns + JSONB extension
+Apps builder: własny React-based (nie Budibase/ToolJet)
+Workflow engine: Python transitions library (nie Temporal)
+Deployment: docker-compose + Caddy reverse proxy (nie Kubernetes)
+Policy engine: minimal JSON rules (nie OPA/rego)
+2.6 Hierarchical Swarm Build (HSB)
+Odrzucone w wiadomości “Do tego porzucam pomysł HSB, zbuduję w15-w18
+standardowo”
+Status quo: iteracyjny rozwój sprawdzonym sposobem
+HSB pozostaje jako koncept — może wrócić jako framework dla zespołu (sekcja 9)
+2.7 Zespół
+Aktualizacja: 10 osób w zespole, 7 seniorów
+Wymaga re-evaluation kilku wcześniejszych decyzji (sekcja 9)
+3. Charter W15 — Ontology Runtime Plane
+Pełny dokument: CHARTER_W15_ontology_runtime.md (22 KB, 13 sekcji) D-level: D5
+(krytyczna) Estymacja solo: 16-19 tygodni
+
+=== PAGE 4 ===
+3.1 Cel
+Generalna warstwa modelu danych — Robert definiuje dowolne typy obiektów (Customer,
+Vehicle, Inspection, …) przez manifesty YAML, system generuje DDL, REST API, Python SDK
+automatycznie.
+3.2 Scope IN
+Object Type Registry — manifesty YAML, schema versioning
+Object Storage Engine — PostgreSQL hybrid (dedicated columns + JSONB ext)
+Object Query API — REST + gRPC + OSDK Python auto-generated
+Action Types — funkcje transformujące obiekty z D-level mapping i HG integration
+Lineage & Events — hash-chained DAG operacji per obiekt
+Search & Index — pg_trgm, B-tree, opcjonalny pgvector
+W14 Migration — 25 obiektów testing → W15
+Branches & Sandboxing — z W14 §12, podniesione do W15
+3.3 Scope OUT
+Multi-tenant, ACL per object, markings, OPA/rego
+GraphQL (REST + gRPC + OSDK wystarczą)
+Apache AGE / dedicated graph DB
+Real-time WebSocket subscriptions
+CRDT / multi-master replication
+3.4 4 exit gates (G1-G4)
+1. G1 Foundation (week 4): schema compiler MVP, 1 example type działa
+2. G2 Core (week 8): wszystkie functional SC, 5 example types
+3. G3 Migration (week 12): W14 zmigrowane do W15, zero regression
+4. G4 Production-ready (week 16): wszystkie SC, Self-Audit green
+3.5 20 Success Criteria
+Functional (8), Performance (4), Reliability (4), DX (4) — szczegóły w pełnym charterze.
+
+=== PAGE 5 ===
+3.6 Top 3 ryzyka
+1. Manifest schema zbyt restrykcyjny — niektóre W14 obiekty się nie wpasują
+2. Migracja SQLite→PG traci dane
+3. Performance JSONB extension fields gorsze niż oczekiwane
+4. Charter W16 — Operational Apps Builder Plane
+Pełny dokument: CHARTER_W16_apps_builder.md (21 KB, 13 sekcji) D-level: D4
+Estymacja solo: 16-20 tygodni Depends on: W15 G2
+4.1 Cel
+Builder aplikacji który pozwala zbudować pełen system (formularze + dashboardy +
+workflow + automatyzacje) przez manifest YAML, używając obiektów z W15. Nowa app w 4h
+zamiast tygodni.
+4.2 Scope IN
+App Manifest Format — apps/{name}/app.yaml
+App Runtime Engine — Next.js, hot-reload, dynamic routing
+Component Library — 20-30 high-level widgets (ObjectListView, ObjectFormEditor,
+KpiCard, ChartWidget, AdvisorCardFeed, …)
+Forms — auto-gen z W15 manifest + customization
+Dashboards — grid layout z widgets, data binding do OSDK
+Workflows — state machines + UI per state
+Automations — event-driven + cron
+Builder UI — drag-drop, live preview, hot-reload
+Custom Code Escape Hatch — własne React + Python validators
+4.3 Scope OUT
+Multi-user collaborative editing
+Complex BPMN workflows
+iOS/Android app generation
+
+=== PAGE 6 ===
+Pixel-perfect WYSIWYG editor
+Drag-drop database designer (ontology przez W15 manifesty, nie GUI)
+4.4 4 exit gates
+1. G1 Foundation (week 4): app compiler, 5 widgets, 1 example app
+2. G2 Component Library (week 8): 20+ widgets, 3 example apps
+3. G3 Workflows + Automations (week 12)
+4. G4 Builder UI + Production (week 16)
+4.5 Top 3 ryzyka
+1. Component library za mała dla typical apps
+2. Custom code escape hatch używany za często
+3. Builder UI sam jest skomplikowanym appem do utrzymania
+5. Charter W17 — Deployment Plane (hybrid)
+Pełny dokument: CHARTER_W17_deployment_plane.md (22 KB, 13 sekcji) D-level: D5
+Estymacja solo: 16-20 tygodni Depends on: W15 G2, W16 G2
+5.1 Cel
+Lekki control plane do zarządzania wieloma instancjami SYLION (laptop, VPS, fabryka
+klienta). Hybrid: local instance działa standalone, opcjonalnie rejestruje się w central plane.
+5.2 Scope IN
+Local Mode — docker-compose, self-contained, offline-capable
+Central Plane — opt-in, lekki FastAPI service, Robert hostuje
+Node Registry — manifest, heartbeat, tags, lifecycle states
+Version Manifest — semver per moduł, build artifacts
+Rollout Strategy — blue-green, pre-flight checks, multi-node cascade
+Rollback — automatic na fail w <60s
+Health Monitoring — /health/aggregate, central plane scrape
+
+=== PAGE 7 ===
+Policy-as-Code — minimal JSON rules
+Configuration Management — per-node overlays, secrets
+Audit Trail — hash-chained jak Evidence Spine
+Multi-Environment — dev/staging/prod jako YAML
+5.3 Scope OUT
+Multi-tenant
+Kubernetes Operators (overkill)
+Service mesh (Istio, Linkerd)
+Distributed tracing full stack
+Auto-scaling per metrics
+Multi-cloud orchestration
+5.4 4 exit gates
+1. G1 Local Mode Hardened (week 4): deploy_agent, health aggregator
+2. G2 Central Plane MVP (week 8): registry, heartbeat, basic UI
+3. G3 Rollout & Rollback (week 12): blue-green, automatic rollback, policy
+4. G4 Production-ready (week 16): wszystkie SC, DR drills
+5.5 Top 3 ryzyka
+1. Blue-green dla stateful PG historycznie trudny
+2. Central plane jako single point of failure
+3. Policy engine za prymitywny — Robert chce rego później
+6. Migration Plan v1 → v2
+Pełny dokument: MIGRATION_PLAN_v1_to_v2.md (27 KB, 11 sekcji)
+6.1 Wersjonowanie
+AEIS v1.x — obecny stan (LIVE)
+
+=== PAGE 8 ===
+AEIS v2.0 — W15 G4 done (~16-19 tyg solo)
+AEIS v2.5 — W15+W16 G4 (~32-39 tyg solo)
+AEIS v3.0 — W15+W16+W17 G4 (~48-59 tyg solo)
+6.2 Klasyfikacja 81 modułów
+Klasa A — Stay unchanged: ~50 modułów (62%)
+Klasa B — Refactor (use OSDK): ~25 modułów (31%)
+Klasa C — Deprecated: ~5-8 modułów (7%)
+Wymaga dedicated phase Module Inventory & Classification (1-2 tyg) PRZED W15 G1.
+6.3 Migracja W14 → W15 (10 kroków)
+1. Manifest authoring (25 obiektów → YAML)
+2. DDL generation + verification
+3. Data export from SQLite (JSONL)
+4. Data transformation (per-table transformer)
+5. Bulk import to PG
+6. Verification (row count + sample diff 10%)
+7. Code refactor (use OSDK)
+8. Side-by-side test (1 tydzień)
+9. Cutover
+10. Cleanup (po 30 dniach)
+Każdy krok ma rollback path.
+6.4 13 frontend surfaces
+Decyzja per surface: Stay hand-coded / Migrate to manifest / Hybrid. Opcjonalna migracja
+— nie blokuje v3.0.
+6.5 Backward compatibility
+REST API /api/v1/* stable do v3.0+
+Internal Python API może się zmienić w v2.0 (deprecation warnings)
+
+=== PAGE 9 ===
+Database: pre-migration backup obowiązkowy
+6.6 17 Human Gates przez 12-15 miesięcy
+Każdy gate to explicit Robert decision. Plan ma N exit ramps — nie all-or-nothing.
+7. W18 — Operator Terminal Plane (mini-char ter)
+Status: zarysowany w rozmowie, nie ma pełnego charteru jeszcze D-level: D4
+(proponowana) Estymacja solo: 10-14 tygodni
+7.1 Cel
+Pełen interaktywny terminal jako pierwszorzędne UI dla Roberta — pokazuje na żywo co się
+dzieje w całej federacji agentów, z możliwością interwencji w każdym momencie.
+Cockpit/Mission Control dla SYLION-a.
+7.2 Scope IN
+Live Activity Stream — main window, każda akcja każdego agenta na każdym hoście jako
+linia:
+Filters & Focus — filtrowanie po warstwie/hoście/modelu/severity, drill-down per agent.
+Session Threading — każde “co robisz” to session z id/title/tasks/progress, wiele
+równolegle.
+Task List per Session — todo list aktualnej sesji z W6 Execution Pipeline state.
+Interactive Interventions — Pause / Cancel / Override (zmień model w locie) / Inject HG /
+Rollback.
+Command Palette — wszystkie slash commands z poprzedniej rozmowy:
+/status, /cost, /agents, /skip, /focus, /explain, /findings, /retry, /diff,
+/budget, /priority, /export, /report, /help
+/host {name} — drill into specific host
+/model {name} — drill into specific model usage
+14:32:01  W15·OntologyMigrator  qwen2.5:72b@laptop      Reading manifest customer.yaml ✓
+14:32:03  W14·FindingClassifier kimi-k2@vps-warsaw      Classified F-127 → D3 (cost $0.04)
+14:32:05  W6·PipelineExec       claude-opus-4-7@local   HG REQUIRED: critic review F-127 ⚠
+
+=== PAGE 10 ===
+/replay {session_id} — odtworzenie historycznej sesji jak film
+/diff sessions {id1} {id2} — porównanie sesji
+History & Replay — każda sesja persisted, replay step-by-step jak film, hash-chained.
+HG Integration — natychmiastowy interrupt przy HG, pierwszorzędny element terminala.
+Federation Map — opcjonalny panel z wszystkimi hostami, metrics live (wymaga W17).
+7.3 Scope OUT
+Nie zastępuje istniejących frontend surfaces
+Nie jest IDE
+Nie hostuje modeli
+Nie podejmuje decyzji za Roberta (auto-routing w W13 Advisor)
+7.4 Tech stack
+Frontend: xterm.js + custom React panels
+Real-time: Server-Sent Events (SSE)
+Backend: FastAPI subscribing to event bus
+Storage: PostgreSQL przez W15 OSDK
+Replay: append-only event log
+7.5 Główne ryzyko
+SSE scaling przy 20 hostów × 5 modeli × 10 actions/sec = 1000 eventów/sec. Mitigation:
+subscription model, filtrowanie na backend.
+7.6 Dependencies
+W15 G2 (OSDK)
+W14 E12 Agent Theater Aggregator (rozszerzenie)
+W11 Adapter Bus (event emission)
+Istniejący sylion.core.event_bus
+Może startować równolegle z W17.
+
+=== PAGE 11 ===
+8. Rozszerzenia istniejących warstw (W7, W11, W13, W17)
+Status: zarysowane w rozmowie, nie mają osobnych charterów Łączny dodatkowy
+effort: ~15-19 tygodni solo
+8.1 W11 Adapter Bus — rozszerzenie (3-4 tyg solo)
+Stan obecny: ~10 modeli (Anthropic, OpenAI, Google, Kimi, GLM, Grok + Ollama).
+Rozszerzenie:
+1. Provider abstraction refactor — plug-and-play directory providers/
+2. OpenRouter provider — ~200+ modeli przez ich API
+3. Together.ai provider — open source models aggregator
+4. Replicate provider — image/audio/video generation
+5. Fireworks AI provider — speed-optimized inference
+6. Local providers extension — LM Studio, vLLM, llama.cpp
+7. Cost adapter expansion — pricing per model, drift detection
+8. Capability tagging — tagi: text, code, vision, image-gen, audio-gen, embeddings,
+function-calling, long-context, cheap, fast, precise
+8.2 W7 Skills Registry — rozszerzenie (2 tyg solo)
+Rozszerzenie — Role Catalog:
+30+ kreatywnych ról dla budowania produktów:
+Tekst: copywriter, editor, fact_checker, translator, ghostwriter, technical_writer
+Kod: code_implementer, code_reviewer, refactorer, debugger, test_writer,
+security_auditor
+Wizual: graphic_designer, illustrator, ui_designer, photo_editor, video_editor
+Audio: composer, sound_designer, voiceover_artist, transcriber
+Strategia: researcher, analyst, strategist, planner, project_manager
+Mobile: ios_specialist, android_specialist, react_native_specialist
+Web: frontend_specialist, backend_specialist, fullstack_implementer
+Domain: lawyer, accountant, scientist, marketer, sales, customer_support
+
+=== PAGE 12 ===
+Każda rola ma manifest z preferred_capabilities, preferred_models, fallback_models,
+typical_tasks, cost_profile.
+8.3 W13 Advisor — rozszerzenie (4-5 tyg solo)
+Rozszerzenie — Task-to-Role Suggester:
+Nowy moduł task_role_advisor:
+1. Operator definiuje task (np. “napisz książkę o SYLION”)
+2. Advisor analizuje typ output, skala, etap, domain
+3. Sugeruje pipeline ról — np. researcher → strategist → ghostwriter → fact_checker →
+editor → final_reviewer
+4. Pokazuje jako AdvisorCard z HG: Akceptuj / Modyfikuj / Auto
+5. Każda rola w pipeline może być na innym hoście (federacja przez W17)
+8.4 W17 Deployment Plane — rozszerzenie (6-8 tyg dodatkowych)
+Rozszerzenie — Compute Provider Federation:
+Trzy typy nodes:
+Full instance — pełen AEIS
+Compute provider — tylko hostuje modele (Ollama, vLLM, LM Studio)
+Hybrid — pełen AEIS + exposed local models
+Federation routing — task wymagający qwen2.5:72b routowany do najtańszego compute
+provider który ma model online.
+Privacy levels per task — tagged “must run locally” / “OK external” / “OK any provider” .
+9. Otwarte pytania wymagające decyzji
+Te pytania pojawiły się w rozmowie i nie zostały rozstrzygnięte. Wymagają explicit decyzji
+Roberta zanim cokolwiek konkretnego dalej.
+9.1 Security/Policy plane — re-evaluation z 10-os zespołem
+Kontekst: poprzednia decyzja “system jest tylko dla mnie, Policy plane wycięty” była
+podjęta gdy Robert był solo. Z 10 osobami w zespole sytuacja jest inna.
+
+=== PAGE 13 ===
+Pytania krytyczne:
+Czy zespół ma dostęp do production data?
+Czy każdy widzi wszystkie API keys do prod LLM providers?
+Czy zespół ma dostęp do grant applications, financial data, klient information?
+Co jeśli ktoś z zespołu odejdzie nieprzyjaźnie?
+Czy keys plaintext (zapamiętane jako preferencja) jest dalej OK?
+Decyzja do podjęcia: czy Policy plane wraca jako W19, w jakiej skali (minimal RBAC vs
+pełny Palantir-style)?
+9.2 Struktura zespołu
+Niezbędne by zaprojektować team-based development:
+Frontend / backend / full-stack split?
+Wszyscy seniorzy w jednej technologii czy różne?
+Kto jest tech lead?
+Role specjalistyczne (DevOps, ML, security, designer, PM)?
+Praca razem / remote / hybrid?
+Strefy czasowe?
+9.3 HSB jako team framework
+Status: HSB odrzucony jako pattern dla rojki agentów AI.
+Pytanie: czy HSB warto przemyśleć jako framework dla zespołu 10 osób? Każda para
+deweloperów = naturalny “merger” w drzewie. Tech lead = L4 integrator. To może być
+praktyczna sprint methodology dopasowana do AEIS.
+9.4 Status istniejących chartów (W15-W17)
+Chartami napisane były pod założenie solo dev. Z zespołem trzeba zdecydować:
+(a) Przerabiamy chartami pod team development (timeline, team allocation,
+parallelization, code review process, PR workflow)
+(b) Zostają jak są, każdy plane ma osobnego owner z zespołu który dostosuje
+(c) Anulujemy stare chartami, piszemy od zera z team perspective
+
+=== PAGE 14 ===
+9.5 Stack/tooling zespołu
+Z 10 osobami prawdopodobnie macie już ustalone:
+Git workflow (GitFlow, trunk-based, GitHub Flow)
+CI/CD specifics
+Code review proces
+Testing standards
+Deployment process
+Niektóre rekomendacje w chartach (FastAPI, Next.js, Alembic) mogą być w konflikcie z
+preferencjami zespołu.
+9.6 Rola Roberta w zespole
+Tech lead / architect — decyzje techniczne, zespół wykonuje
+Product owner — definiuje co budujemy, tech lead rozdziela jak
+Founder / CEO — kierunek strategiczny, zespół samoorganizuje
+Operator / power user — używa produktu, zespół buduje pod potrzeby
+Co innego
+Wpływa na to dla kogo dokumentacja i chartami.
+9.7 W18 — czy budować od razu czy odłożyć
+W18 (Operator Terminal Plane) został zarysowany ale nie ma pełnego charteru. Pytanie:
+Czy zacząć W18 razem z W15-W17 (parallel tracks)?
+Czy odłożyć W18 do v3.5 po W15-W17?
+9.8 Rozszerzenia W7/W11/W13/W17 — kiedy
+Rozszerzenia istniejących warstw mogą być robione:
+(a) Razem z W15-W17 (jako część v2 effortu)
+(b) Po stabilizacji v3.0 (jako v3.1)
+(c) Per warstwa, gdy konkretna potrzeba się pojawi (lazy)
+
+=== PAGE 15 ===
+10. Trzy alternatywne ścieżki dalej
+Po przeczytaniu tego dokumentu, Robert ma trzy realistyczne ścieżki:
+Ścieżka A — Maximum focus, rygorystyczny scope
+1. Akceptujesz tylko W15-W17 w obecnym zakresie (bez W18, bez rozszerzeń)
+2. Najpierw odpowiadasz na pytania o zespół (sekcja 9)
+3. Aktualizujemy chartami pod team execution
+4. Zespół zaczyna od Pre-W15 Module Inventory & Classification (1-2 tyg)
+5. Potem W15 G1
+6. W18 i rozszerzenia oceniane post-v3.0
+Plus: czystszy scope, mniej decyzji do równoległego utrzymania Minus: nie wykorzystujesz
+kapitału zespołu na multitasking
+Ścieżka B — Maximum coverage, parallel tracks
+1. Akceptujesz wszystkie 4 nowe warstwy (W15-W18) + rozszerzenia
+2. Decydujesz o Policy plane (W19) w oparciu o 10-os zespół
+3. Team split na 3-4 tracks pracujące równolegle
+4. Aktualizujemy chartami, piszemy nowe (W18, ewentualnie W19)
+5. Każdy track ma własnego ownera z zespołu
+6. Robert jako tech lead/architect koordynuje
+Plus: maximum velocity, wszystkie potrzeby adresowane Minus: większe ryzyko
+coordination overhead, więcej decision points
+Ścieżka C — Pause & Reflect
+1. Nie podejmujesz żadnych nowych decyzji teraz
+2. Czytasz wszystkie 4 chartami + ten dokument na spokojnie
+3. Konsultujesz z zespołem
+4. Wracasz za 1-2 tygodnie z konkretnymi odpowiedziami na sekcję 9
+5. Wtedy projektujemy konkretny plan
+
+=== PAGE 16 ===
+Plus: mądrzejsze decyzje, mniej regretów Minus: opóźnienie startu, potencjalna utrata
+momentum
+11. Lokalizacja plików deliverables
+Pliki gotowe (z poprzednich wiadomości w rozmowie)
+Plik Rozmiar Status
+CHARTER_W15_ontology_runtime.md 22 KB Gotowy
+CHARTER_W16_apps_builder.md 21 KB Gotowy
+CHARTER_W17_deployment_plane.md 22 KB Gotowy
+MIGRATION_PLAN_v1_to_v2.md 27 KB Gotowy
+Wszystkie w katalogu wyjściowym, dostępne do pobrania osobno.
+Ten dokument
+Plik Rozmiar Status
+SYLION_v2_KOMPLETNY_OBRAZ.md ~25 KB Konsolidacja
+Pliki niegotowe (do stworzenia po decyzjach)
+Plik Wymaga
+CHARTER_W18_operator_terminal.mdDecyzji o priorytecie W18
+CHARTER_W19_policy_security.md
+(opcjonalny)
+Decyzji o Policy plane z perspektywy 10-os
+zespołu
+EXTENSIONS_W7_W11_W13_W17.mdDecyzji o kiedy/jak
+TEAM_WORKING_AGREEMENT.md Odpowiedzi na pytania o zespół
+MODULE_INVENTORY_CLASSIFICATION.csvFaza Pre-W15
+SPRINT_PLAN_v2.md Aktualizacji chartów pod team
+
+=== PAGE 17 ===
+Zakończenie
+Ten dokument konsoliduje wszystko co zostało omówione w rozmowie. Nie zawiera
+nowych decyzji — tylko zbiera istniejące w jednym miejscu z jasnym oznaczeniem co jest
+gotowe, co wymaga decyzji, i jakie są opcje dalej.
+Następny krok należy do Roberta. Polecane (subiektywnie): Ścieżka C — Pause & Reflect +
+odpowiedzi na pytania z sekcji 9 w wolnym tempie. Z 10-osobowym zespołem decyzje
+fundamentalne (Policy plane, struktura, role) wpływają na 6-8 miesięcy pracy 10 osób.
+Warto je przemyśleć z zespołem zanim się zobowiązujesz.
+

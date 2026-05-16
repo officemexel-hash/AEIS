@@ -1,0 +1,195 @@
+# SYLION v5.9.1 — .env.example Drift Check
+#
+# Extends the original env_lint.yml (from mega_audit/env_example_drift) with:
+#   - Broader path triggers (all Python files that consume env vars)
+#   - --strict mode on main/release branches
+#   - Annotated PR comments with diff table
+#   - Artifact upload (JSON report)
+#
+# Original source: .github/workflows/env_lint.yml (mega_audit reference implementation)
+
+name: Env Lint — .env.example Drift Check
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - ".env.example"
+      - "config.py"
+      - "orchestrator.py"
+      - "pipeline.py"
+      - "dashboard/app.py"
+      - "dashboard/db.py"
+      - "dashboard/start.py"
+      - "dashboard/dashboard_server.py"
+      - "scripts/env_lint.py"
+      - "*.py"               # catch new root-level modules
+  pull_request:
+    branches: ["main", "develop", "release/**"]
+    paths:
+      - ".env.example"
+      - "config.py"
+      - "orchestrator.py"
+      - "pipeline.py"
+      - "dashboard/app.py"
+      - "dashboard/db.py"
+      - "dashboard/start.py"
+      - "scripts/env_lint.py"
+      - "*.py"
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: "Run in strict mode (fail on any drift)"
+        required: false
+        default: "false"
+
+concurrency:
+  group: env-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  env-lint:
+    name: Lint .env.example drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Collect all source files to scan
+        id: sources
+        run: |
+          # Gather all Python files that may reference env vars (exclude test files and scripts themselves)
+          FILES=$(find . -maxdepth 3 -name "*.py" \
+            ! -path "./.github/*" \
+            ! -path "./tests/*" \
+            ! -path "./__pycache__/*" \
+            ! -path "./.pytest_cache/*" \
+            | tr '\n' ' ')
+          echo "files=${FILES}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine strict mode
+        id: mode
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          INPUT="${{ github.event.inputs.strict }}"
+          if [[ "${INPUT}" == "true" || "${BRANCH}" == "main" || "${BRANCH}" == release/* ]]; then
+            echo "strict=true" >> "$GITHUB_OUTPUT"
+            echo "strict_flag=" >> "$GITHUB_OUTPUT"       # no --no-fail on main/release
+          else
+            echo "strict=false" >> "$GITHUB_OUTPUT"
+            echo "strict_flag=--no-fail" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run env_lint.py — terminal output
+        id: lint
+        run: |
+          python scripts/env_lint.py \
+            --env-example .env.example \
+            --source-files ${{ steps.sources.outputs.files }} \
+            ${{ steps.mode.outputs.strict_flag }}
+
+      - name: Run env_lint.py — JSON report
+        if: always()
+        run: |
+          python scripts/env_lint.py \
+            --env-example .env.example \
+            --source-files ${{ steps.sources.outputs.files }} \
+            --json --no-fail > env_lint_report.json
+          echo "Report generated:"
+          cat env_lint_report.json | python -m json.tool --no-ensure-ascii 2>/dev/null | head -60 || cat env_lint_report.json
+
+      - name: Upload JSON report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-lint-report-${{ github.run_number }}
+          path: env_lint_report.json
+          retention-days: 60
+
+      - name: Comment PR — drift summary
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('env_lint_report.json')) {
+              console.log('No report found, skipping comment');
+              return;
+            }
+
+            const report = JSON.parse(fs.readFileSync('env_lint_report.json', 'utf8'));
+            const missing = report.missing_in_example || [];
+            const unused  = report.unused_in_code || [];
+            const allCodeVars = report.all_code_vars || {};
+
+            const icon = missing.length === 0 ? '✅' : '❌';
+            const lines = [
+              `## ${icon} \`.env.example\` Drift Report`,
+              '',
+              `| Metric | Count |`,
+              `|--------|-------|`,
+              `| Variables in \`.env.example\` | ${(report.example_vars || []).length} |`,
+              `| Variables found in code | ${Object.keys(allCodeVars).length} |`,
+              `| **Missing from \`.env.example\`** | **${missing.length}** |`,
+              `| Unused in code (only in example) | ${unused.length} |`,
+              '',
+            ];
+
+            if (missing.length > 0) {
+              lines.push('### Missing variables');
+              lines.push('');
+              lines.push('| Variable | Found in |');
+              lines.push('|----------|----------|');
+              missing.slice(0, 30).forEach(v => {
+                const files = (allCodeVars[v] || []).join(', ');
+                lines.push(`| \`${v}\` | ${files} |`);
+              });
+              if (missing.length > 30) lines.push(`| … and ${missing.length - 30} more | |`);
+              lines.push('');
+              lines.push('> **Fix:** add the missing variables to `.env.example` before merging.');
+            }
+
+            if (unused.length > 0) {
+              lines.push('### Unused variables (only in .env.example)');
+              lines.push(unused.map(v => `\`${v}\``).join(', '));
+            }
+
+            lines.push('');
+            lines.push('> Run locally: `python scripts/env_lint.py`');
+
+            // Find and update existing comment if present
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const BOT_MARKER = '## ✅ `.env.example` Drift Report\n## ❌ `.env.example` Drift Report';
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' &&
+              (c.body.includes('.env.example` Drift Report'))
+            );
+
+            const body = lines.join('\n');
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

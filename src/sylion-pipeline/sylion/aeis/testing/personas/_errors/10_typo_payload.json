@@ -1,0 +1,14 @@
+{
+  "error_class": "typo_payload",
+  "target_action": "submit_grant_application_with_amount_typo",
+  "context": "external partner enters 100000 instead of 10000 in grant amount",
+  "timing": "during_form_fill",
+  "expected_system_response": [
+    "show_amount_above_baseline_warning",
+    "require_typed_confirmation",
+    "diff_against_previous_value"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

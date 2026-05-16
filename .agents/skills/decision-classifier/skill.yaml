@@ -1,0 +1,27 @@
+name: decision-classifier
+version: "1.0.0"
+description: >
+  Classifies architectural and implementation decisions into the SYLION D0-D5
+  decision ladder. D3+ decisions require Council approval, evidence submission,
+  and a documented rollback plan.
+parallel_safe: true
+idempotent: true
+inputs:
+  change_description:
+    type: string
+    required: true
+    description: Natural-language description of the proposed change
+  affected_modules:
+    type: list
+    required: true
+    description: List of module IDs that will be modified
+outputs:
+  decision_class:
+    type: string
+    description: "One of: D0, D1, D2, D3, D4, D5"
+  rationale:
+    type: string
+    description: Explanation of why this classification was chosen
+  required_evidence:
+    type: list
+    description: Evidence artifacts required before execution (empty for D0-D2)

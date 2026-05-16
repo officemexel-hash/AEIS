@@ -1,0 +1,338 @@
+// SYLION AEIS -- Class N: SDR (5 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: SDRGateway, CaptureOrchestrator, SignalAnalyzer,
+//          ProtocolDecoder, RFSafetyGovernor
+
+syntax = "proto3";
+
+package sylion.sdr.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/sdr/v1;sdrv1";
+option java_package = "com.sylion.aeis.sdr.v1";
+
+// =====================================================================
+// N1: SDR Gateway Service
+// =====================================================================
+
+service SDRGatewayService {
+  rpc RegisterSDR(RegisterSDRRequest) returns (SDRMessage);
+  rpc GetCapabilities(GetSDRRequest) returns (SDRCapabilities);
+  rpc ListSDRs(sylion.common.v1.Empty) returns (SDRList);
+  rpc CheckAvailable(CheckSDRRequest) returns (SDRAvailability);
+  rpc UpdateStatus(UpdateSDRStatusRequest) returns (sylion.common.v1.Status);
+}
+
+message RegisterSDRRequest {
+  string sdr_id        = 1;
+  string name          = 2;
+  string device_type   = 3;
+  string driver        = 4;
+  string config_json   = 5;
+}
+
+message SDRMessage {
+  string sdr_id      = 1;
+  string name        = 2;
+  string device_type = 3;
+  string driver      = 4;
+  string status      = 5;
+  double registered_at = 6;
+}
+
+message GetSDRRequest {
+  string sdr_id = 1;
+}
+
+message SDRCapabilities {
+  string sdr_id         = 1;
+  double min_freq_hz    = 2;
+  double max_freq_hz    = 3;
+  double bandwidth_hz   = 4;
+  repeated string supported_modulations = 5;
+}
+
+message SDRList {
+  repeated SDRMessage sdrs = 1;
+}
+
+message CheckSDRRequest {
+  string sdr_id = 1;
+}
+
+message SDRAvailability {
+  bool   available = 1;
+  string status    = 2;
+}
+
+message UpdateSDRStatusRequest {
+  string sdr_id = 1;
+  string status = 2;
+}
+
+// =====================================================================
+// N2: Capture Orchestrator Service
+// =====================================================================
+
+service CaptureOrchestratorService {
+  rpc CreateCapture(CreateCaptureRequest) returns (CaptureMessage);
+  rpc Start(StartCaptureRequest) returns (CaptureMessage);
+  rpc Stop(StopCaptureRequest) returns (CaptureMessage);
+  rpc Get(GetCaptureRequest) returns (CaptureMessage);
+  rpc ListCaptures(ListCapturesRequest) returns (CaptureList);
+}
+
+message CreateCaptureRequest {
+  string sdr_id      = 1;
+  double center_freq_hz = 2;
+  double sample_rate_hz = 3;
+  double bandwidth_hz   = 4;
+  int64  max_samples    = 5;
+  string description  = 6;
+}
+
+message CaptureMessage {
+  string capture_id  = 1;
+  string sdr_id      = 2;
+  double center_freq_hz = 3;
+  double sample_rate_hz = 4;
+  string status      = 5;  // created|running|stopped|error
+  int64  samples_captured = 6;
+  double started_at  = 7;
+  double stopped_at  = 8;
+}
+
+message StartCaptureRequest {
+  string capture_id = 1;
+}
+
+message StopCaptureRequest {
+  string capture_id = 1;
+}
+
+message GetCaptureRequest {
+  string capture_id = 1;
+}
+
+message ListCapturesRequest {
+  string sdr_id = 1;
+  string status = 2;
+}
+
+message CaptureList {
+  repeated CaptureMessage captures = 1;
+}
+
+// =====================================================================
+// N3: Signal Analyzer Service
+// =====================================================================
+
+service SignalAnalyzerService {
+  rpc AnalyzeSpectrum(AnalyzeSpectrumRequest) returns (SpectrumAnalysisMessage);
+  rpc ClassifyModulation(ClassifyModulationRequest) returns (ModulationMessage);
+  rpc DetectSignals(DetectSignalsRequest) returns (DetectedSignalList);
+  rpc Get(GetAnalysisRequest) returns (AnalysisMessage);
+  rpc ListAnalyses(ListAnalysesRequest) returns (AnalysisList);
+}
+
+message AnalyzeSpectrumRequest {
+  string capture_id = 1;
+  double center_freq_hz = 2;
+  double bandwidth_hz   = 3;
+  string fft_params_json = 4;
+}
+
+message SpectrumAnalysisMessage {
+  string analysis_id = 1;
+  string capture_id  = 2;
+  double peak_freq_hz = 3;
+  double noise_floor_dbm = 4;
+  double snr_db      = 5;
+  double bandwidth_hz = 6;
+  double timestamp   = 7;
+}
+
+message ClassifyModulationRequest {
+  string capture_id = 1;
+  double center_freq_hz = 2;
+}
+
+message ModulationMessage {
+  string classification_id = 1;
+  string capture_id        = 2;
+  string modulation_type   = 3;
+  double confidence        = 4;
+  double timestamp         = 5;
+}
+
+message DetectSignalsRequest {
+  string capture_id   = 1;
+  double threshold_dbm = 2;
+}
+
+message DetectedSignalList {
+  repeated DetectedSignalMessage signals = 1;
+}
+
+message DetectedSignalMessage {
+  string signal_id   = 1;
+  double center_freq_hz = 2;
+  double bandwidth_hz   = 3;
+  double power_dbm   = 4;
+  string modulation  = 5;
+}
+
+message GetAnalysisRequest {
+  string analysis_id = 1;
+}
+
+message AnalysisMessage {
+  string analysis_id = 1;
+  string capture_id  = 2;
+  string type        = 3;
+  string results_json = 4;
+  double timestamp   = 5;
+}
+
+message ListAnalysesRequest {
+  string capture_id = 1;
+  string type       = 2;
+  int32  limit      = 3;
+}
+
+message AnalysisList {
+  repeated AnalysisMessage analyses = 1;
+}
+
+// =====================================================================
+// N4: Protocol Decoder Service
+// =====================================================================
+
+service ProtocolDecoderService {
+  rpc Decode(DecodeRequest) returns (DecodeResultMessage);
+  rpc Get(GetDecodeRequest) returns (DecodeResultMessage);
+  rpc ListDecodes(ListDecodesRequest) returns (DecodeList);
+  rpc ListProtocols(sylion.common.v1.Empty) returns (ProtocolList);
+}
+
+message DecodeRequest {
+  string capture_id   = 1;
+  string protocol     = 2;
+  double center_freq_hz = 3;
+  string params_json  = 4;
+}
+
+message DecodeResultMessage {
+  string decode_id    = 1;
+  string capture_id   = 2;
+  string protocol     = 3;
+  bool   success      = 4;
+  string decoded_data = 5;
+  int32  packets_found = 6;
+  double timestamp    = 7;
+}
+
+message GetDecodeRequest {
+  string decode_id = 1;
+}
+
+message ListDecodesRequest {
+  string capture_id = 1;
+  string protocol   = 2;
+  int32  limit      = 3;
+}
+
+message DecodeList {
+  repeated DecodeResultMessage decodes = 1;
+}
+
+message ProtocolList {
+  repeated ProtocolMessage protocols = 1;
+}
+
+message ProtocolMessage {
+  string protocol_id = 1;
+  string name        = 2;
+  string description = 3;
+  bool   supported   = 4;
+}
+
+// =====================================================================
+// N5: RF Safety Governor Service
+// =====================================================================
+
+service RFSafetyGovernorService {
+  rpc AddBandPolicy(AddBandPolicyRequest) returns (BandPolicyMessage);
+  rpc CheckTxAllowed(CheckTxRequest) returns (TxAllowedResponse);
+  rpc RecordTx(RecordTxRequest) returns (sylion.common.v1.Status);
+  rpc EnableTxGlobal(EnableTxRequest) returns (sylion.common.v1.Status);
+  rpc IsTxEnabled(sylion.common.v1.Empty) returns (TxEnabledResponse);
+  rpc GetPolicies(sylion.common.v1.Empty) returns (BandPolicyList);
+  rpc GetEvents(GetRFEventsRequest) returns (RFEventList);
+}
+
+message AddBandPolicyRequest {
+  string policy_id   = 1;
+  double min_freq_hz = 2;
+  double max_freq_hz = 3;
+  double max_power_dbm = 4;
+  string regulation  = 5;
+}
+
+message BandPolicyMessage {
+  string policy_id   = 1;
+  double min_freq_hz = 2;
+  double max_freq_hz = 3;
+  double max_power_dbm = 4;
+  string regulation  = 5;
+  bool   enabled     = 6;
+}
+
+message CheckTxRequest {
+  double freq_hz    = 1;
+  double power_dbm  = 2;
+  string duration   = 3;
+}
+
+message TxAllowedResponse {
+  bool   allowed      = 1;
+  string reason       = 2;
+  string policy_id    = 3;
+  double max_power_dbm = 4;
+}
+
+message RecordTxRequest {
+  double freq_hz    = 1;
+  double power_dbm  = 2;
+  double duration_s = 3;
+  string sdr_id     = 4;
+}
+
+message EnableTxRequest {
+  bool enabled = 1;
+}
+
+message TxEnabledResponse {
+  bool enabled = 1;
+}
+
+message BandPolicyList {
+  repeated BandPolicyMessage policies = 1;
+}
+
+message GetRFEventsRequest {
+  int32 limit = 1;
+}
+
+message RFEventList {
+  repeated RFEventMessage events = 1;
+}
+
+message RFEventMessage {
+  string event_id    = 1;
+  string type        = 2;
+  string description = 3;
+  double timestamp   = 4;
+}

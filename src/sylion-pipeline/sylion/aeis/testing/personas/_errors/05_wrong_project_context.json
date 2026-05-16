@@ -1,0 +1,14 @@
+{
+  "error_class": "wrong_context",
+  "target_action": "approve_action_for_wrong_project",
+  "context": "Operator has 5 projects open in tabs, clicks Approve on wrong tab",
+  "timing": "during_multi_project_session",
+  "expected_system_response": [
+    "show_project_header_prominently",
+    "show_project_change_confirmation",
+    "highlight_project_id_in_action_summary"
+  ],
+  "severity_if_system_allows_error": "D3",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

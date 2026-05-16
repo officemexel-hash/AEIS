@@ -1,0 +1,130 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_test_suite
+  name_pl: Zestaw testów W14
+  name_en: W14 Test Suite
+  version: v1.0
+  description_pl: 'Logiczna grupa przypadków testowych wykonywanych razem.
+
+    Pozwala filtrować po nazwie, klasie i stanie aktywności,
+
+    a listy case IDs oraz tagi trafiają do rozszerzenia.'
+  description_en: 'Logical grouping of test cases executed together.
+
+    It supports filtering by name, test class, and active state,
+
+    while case lists and tags live in the extension column.'
+  tags:
+  - w14
+  - testing
+  - suite
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: name
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: test_class
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - T0
+    - T1
+    - T2
+    - T3
+    - T4
+    - T5
+    - T6
+    - T7
+    - T8
+    - T9
+    - T10
+    - T11
+    - T12
+    - T13
+    - T14
+    - T15
+    - T16
+    - T17
+    - T18
+    - T19
+    default: T2
+  - name: enabled
+    type: boolean
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    default: true
+  - name: case_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: plan
+    target: w14_test_plan
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - name
+    - test_class
+    - enabled
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - name
+  actions:
+  - id: disable_test_suite
+    description_pl: Wyłącza suite z bieżącego wykonania bez usuwania danych historycznych.
+    description_en: Disables the suite from current execution without deleting history.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: enabled
+      to: false
+    - type: emit_event
+      topic: aeis.w14.test_suite.disabled
+  - id: enable_test_suite
+    description_pl: Przywraca suite do aktywnego planu wykonania.
+    description_en: Restores the suite to the active execution plan.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: enabled
+      to: true
+    - type: emit_event
+      topic: aeis.w14.test_suite.enabled

@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package sylion;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "sylion_common.proto";
+
+// ──────────────────────────────────────────────
+//  SYLION Governance – decisions & council
+// ──────────────────────────────────────────────
+
+// ═══════ Decision Classification ═══════
+
+message ClassifyDecisionRequest {
+  string title         = 1;
+  string description   = 2;
+  repeated string affected_modules = 3;
+}
+
+message ClassifyDecisionResponse {
+  DecisionClass  decision_class = 1;
+  double         confidence     = 2;
+  string         rationale      = 3;
+}
+
+// ═══════ Proposals ═══════
+
+/** Status of a governance proposal. */
+enum ProposalStatus {
+  PROPOSAL_STATUS_UNSPECIFIED = 0;
+  PROP_DRAFT                  = 1;
+  PROP_OPEN                   = 2;
+  PROP_APPROVED               = 3;
+  PROP_REJECTED               = 4;
+  PROP_EXPIRED                = 5;
+}
+
+message Proposal {
+  string                      proposal_id     = 1;
+  string                      title           = 2;
+  string                      description     = 3;
+  DecisionClass               decision_class  = 4;
+  ProposalStatus              status          = 5;
+  string                      proposer        = 6;
+  repeated string             blast_radius    = 7;
+  google.protobuf.Timestamp   created_at      = 8;
+  google.protobuf.Timestamp   closes_at       = 9;
+}
+
+message CreateProposalRequest {
+  string          title           = 1;
+  string          description     = 2;
+  string          proposer        = 3;
+  repeated string blast_radius    = 4;
+}
+
+message CreateProposalResponse {
+  Proposal proposal = 1;
+}
+
+message GetProposalRequest {
+  string proposal_id = 1;
+}
+
+message GetProposalResponse {
+  Proposal proposal = 1;
+}
+
+message ListProposalsRequest {
+  ProposalStatus  status_filter = 1;
+  DecisionClass   class_filter  = 2;
+  int32           page_size     = 3;
+  string          page_token    = 4;
+}
+
+message ListProposalsResponse {
+  repeated Proposal proposals  = 1;
+  string            next_token = 2;
+}
+
+message ProposalActionRequest {
+  string  proposal_id = 1;
+  string  actor       = 2;
+  string  reason      = 3;
+}
+
+message ProposalActionResponse {
+  Proposal proposal = 1;
+}
+
+/** Governance service – decision classification and proposal lifecycle. */
+service GovernanceService {
+  rpc ClassifyDecision(ClassifyDecisionRequest)  returns (ClassifyDecisionResponse);
+  rpc CreateProposal(CreateProposalRequest)      returns (CreateProposalResponse);
+  rpc GetProposal(GetProposalRequest)            returns (GetProposalResponse);
+  rpc ListProposals(ListProposalsRequest)        returns (ListProposalsResponse);
+  rpc ApproveProposal(ProposalActionRequest)     returns (ProposalActionResponse);
+  rpc RejectProposal(ProposalActionRequest)      returns (ProposalActionResponse);
+}
+
+// ═══════ Council ═══════
+
+/** Vote cast by a council member. */
+enum Vote {
+  VOTE_UNSPECIFIED = 0;
+  YES              = 1;
+  NO               = 2;
+  ABSTAIN          = 3;
+  VETO             = 4;
+}
+
+/** Status of a council session. */
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  SESS_OPEN                  = 1;
+  SESS_CLOSED                = 2;
+  SESS_EXPIRED               = 3;
+}
+
+message CouncilSession {
+  string                      session_id   = 1;
+  string                      proposal_id  = 2;
+  SessionStatus               status       = 3;
+  int32                       quorum       = 4;
+  google.protobuf.Timestamp   opened_at    = 5;
+  google.protobuf.Timestamp   closes_at    = 6;
+}
+
+message CreateSessionRequest {
+  string  proposal_id = 1;
+  int32   quorum      = 2;
+  int32   ttl_seconds = 3;
+}
+
+message CreateSessionResponse {
+  CouncilSession session = 1;
+}
+
+message CastVoteRequest {
+  string  session_id = 1;
+  string  voter      = 2;
+  Vote    vote       = 3;
+  string  rationale  = 4;
+}
+
+message CastVoteResponse {
+  bool accepted = 1;
+}
+
+message TallyVotesRequest {
+  string session_id = 1;
+}
+
+message TallyVotesResponse {
+  int32 yes_votes     = 1;
+  int32 no_votes      = 2;
+  int32 abstentions   = 3;
+  int32 vetoes        = 4;
+  bool  quorum_reached = 5;
+  Vote  outcome       = 6;
+}
+
+message HumanGateRequest {
+  string  proposal_id  = 1;
+  string  reason       = 2;
+  int32   timeout_secs = 3;
+}
+
+message HumanGateResponse {
+  string session_id = 1;
+}
+
+/** Council service – voting sessions and human-in-the-loop gates. */
+service CouncilService {
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc CastVote(CastVoteRequest)           returns (CastVoteResponse);
+  rpc TallyVotes(TallyVotesRequest)       returns (TallyVotesResponse);
+  rpc HumanGate(HumanGateRequest)         returns (HumanGateResponse);
+}

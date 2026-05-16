@@ -1,0 +1,392 @@
+--- SYLION_v588_unzipped/sylion-pipeline/dashboard/db.py	2026-04-18 22:15:51.000000000 +0000
++++ SYLION_v590_work/sylion-pipeline/dashboard/db.py	2026-04-18 22:39:52.523007610 +0000
+@@ -5,6 +5,7 @@
+ RBAC (users, sessions), baselines (Księga).
+ """
+ 
++import datetime
+ import hashlib
+ import json
+ import logging
+@@ -16,6 +17,14 @@
+ from contextlib import contextmanager
+ from pathlib import Path
+ from typing import Any, Optional
++from typing import Optional as Opt
++
++try:
++    from pydantic import BaseModel, field_validator, ValidationError
++    _PYDANTIC_AVAILABLE = True
++except ImportError:  # pragma: no cover
++    _PYDANTIC_AVAILABLE = False
++    ValidationError = Exception  # type: ignore
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -30,6 +39,21 @@
+ # the env dict update is a separate step — use this lock to make the pair atomic.
+ api_keys_lock = threading.Lock()
+ 
++# v5.8.9 M-02 Council fix: serialize init_db() across threads during startup.
++# Multiple uvicorn workers / test fixtures may race on migration framework.
++_db_init_lock = threading.Lock()
++
++# v5.8.9 M-02: versioned migration framework (PRAGMA user_version).
++# Increment _DB_TARGET_VERSION when adding a new migration; register it in
++# _MIGRATIONS below. DO NOT renumber or reorder existing migrations — they are
++# applied in ascending order and each version is committed with its own
++# PRAGMA user_version = N.
++_DB_TARGET_VERSION = 1
++
++# v5.8.9 M-03: default retention windows (days). Configurable via `config` table.
++_AUDIT_LOG_RETENTION_DEFAULT = 365  # 1 year — RODO art.5.1.e minimization
++_SESSIONS_RETENTION_DEFAULT = 30     # 30 days — expired RBAC sessions
++
+ 
+ def compute_sha256(value: str) -> str:
+     """SHA-256 hash of a string, hex-encoded. Used for setup token storage."""
+@@ -46,7 +70,18 @@
+ 
+ 
+ def init_db(conn: sqlite3.Connection | None = None):
+-    """Create all tables if they don't exist. Seed defaults."""
++    """Create all tables if they don't exist. Seed defaults.
++
++    v5.8.9 M-02: wrapped in _db_init_lock to serialize cross-thread startup races
++    (multiple uvicorn workers / pytest fixtures). The lock is advisory — SQLite
++    itself is safe under WAL, but the sequence read→migrate→seed→commit should
++    not interleave.
++    """
++    with _db_init_lock:
++        return _init_db_unlocked(conn)
++
++
++def _init_db_unlocked(conn: sqlite3.Connection | None = None):
+     own = conn is None
+     if own:
+         conn = get_conn()
+@@ -635,8 +670,10 @@
+     CREATE INDEX IF NOT EXISTS idx_code_versions_status ON code_versions(status);
+     """)
+ 
+-    # Add columns to existing tables if they don't exist (migration safety)
+-    _migrate_columns(conn)
++    # v5.8.9 M-02: versioned migration framework replaces the bare
++    # _migrate_columns(conn) call. PRAGMA user_version tracks applied migrations
++    # and _run_migrations triggers a WAL-safe backup before the first apply.
++    _run_migrations(conn, db_path=DB_PATH)
+ 
+     # Seed default config if empty
+     row = conn.execute("SELECT COUNT(*) as c FROM config").fetchone()
+@@ -704,8 +741,95 @@
+         conn.close()
+ 
+ 
+-def _migrate_columns(conn: sqlite3.Connection):
+-    """Add new columns to existing tables if they are missing."""
++def _backup_db_before_migration(source_conn: sqlite3.Connection) -> None:
++    """v5.8.9 M-08: WAL-safe backup before applying a migration.
++
++    Uses sqlite3 online backup API (sqlite3_backup_*) which works even while
++    the DB is in WAL mode and the source connection is open. Destination is
++    ``~/sylion/sylion.db.bak.v5.8.9.<YYYY-MM-DD>.sqlite3``.
++
++    Security3 F-04 guard: resolved destination MUST be under the backup dir
++    (prevents symlink/parent-traversal shenanigans if HOME is misconfigured).
++    """
++    version_tag = "v5.8.9"
++    date_str = datetime.date.today().isoformat()
++    backup_dir = Path.home() / "sylion"
++    backup_dir.mkdir(parents=True, exist_ok=True)
++    backup_path = backup_dir / f"sylion.db.bak.{version_tag}.{date_str}.sqlite3"
++
++    # F-04: ensure resolved path stays inside the backup dir.
++    try:
++        backup_path.resolve().relative_to(backup_dir.resolve())
++    except ValueError:
++        raise RuntimeError(
++            f"M-08: refusing backup to suspicious path {backup_path}"
++        )
++
++    logger.info("M-08: creating WAL-safe backup → %s", backup_path)
++    try:
++        dest_conn = sqlite3.connect(str(backup_path))
++        try:
++            source_conn.backup(dest_conn)
++        finally:
++            dest_conn.close()
++        logger.info("M-08: backup complete → %s", backup_path)
++    except sqlite3.OperationalError:
++        logger.exception("M-08: backup FAILED → %s — aborting migration", backup_path)
++        raise
++
++
++def _run_migrations(conn: sqlite3.Connection, db_path: Path) -> int:
++    """v5.8.9 M-02: versioned migration runner using PRAGMA user_version.
++
++    Reads current user_version, applies migrations in ascending order up to
++    ``_DB_TARGET_VERSION``. Creates a WAL-safe backup **before the first**
++    applied migration. Each migration commits its own `PRAGMA user_version = N`
++    inside the same transaction (BEGIN EXCLUSIVE).
++
++    Returns number of migrations applied (0 if already at target).
++    Raises RuntimeError if DB is newer than code (downgrade refused).
++    """
++    current = conn.execute("PRAGMA user_version").fetchone()[0]
++    target = _DB_TARGET_VERSION
++
++    if current > target:
++        raise RuntimeError(
++            f"M-02: DB at user_version={current} is newer than code target={target}. "
++            "Downgrade refused — upgrade the SYLION code or restore from backup."
++        )
++    if current == target:
++        logger.debug("M-02: DB already at user_version=%d, no migrations", current)
++        return 0
++
++    # Backup before the very first migration of this run.
++    _backup_db_before_migration(conn)
++
++    applied = 0
++    for version in range(current + 1, target + 1):
++        migration = _MIGRATIONS.get(version)
++        if migration is None:
++            raise RuntimeError(f"M-02: no migration registered for version {version}")
++        logger.info("M-02: applying migration → user_version=%d (%s)",
++                    version, migration.__name__)
++        conn.execute("BEGIN EXCLUSIVE")
++        try:
++            migration(conn)
++            conn.execute(f"PRAGMA user_version = {version}")
++            conn.commit()
++            applied += 1
++            logger.info("M-02: migration → user_version=%d committed", version)
++        except Exception:
++            conn.rollback()
++            logger.exception("M-02: migration → user_version=%d FAILED, rolled back", version)
++            raise
++    return applied
++
++
++def _migration_0_to_1(conn: sqlite3.Connection):
++    """v5.8.9 M-02: baseline migration (all pre-v5.8.9 ALTER TABLE ADD COLUMN).
++
++    Formerly _migrate_columns() — kept idempotent via PRAGMA table_info checks.
++    """
+     # Check prompts table for new columns
+     cols = {r["name"] for r in conn.execute("PRAGMA table_info(prompts)").fetchall()}
+     if "scope" not in cols:
+@@ -781,6 +905,133 @@
+             conn.execute("ALTER TABLE baseline_history ADD COLUMN sha256 TEXT NOT NULL DEFAULT ''")
+ 
+ 
++# v5.8.9 M-02: migration registry. Keys are target user_version numbers.
++# When adding a migration, assign the next integer key and bump _DB_TARGET_VERSION.
++_MIGRATIONS = {
++    1: _migration_0_to_1,
++}
++
++
++# v5.8.9 M-01: Pydantic model for agent validation in _seed_agents.
++# Accepts yaml entries with variable key presence; rejects empty id / list stage.
++if _PYDANTIC_AVAILABLE:
++    class AgentSpec(BaseModel):
++        id: str
++        name: Opt[str] = None
++        stage: Opt[str] = "0"
++        role: Opt[str] = ""
++        model: Opt[str] = None
++        enabled: bool = True
++        model_config = {"extra": "ignore"}
++
++        @field_validator("id")
++        @classmethod
++        def id_must_be_nonempty(cls, v: str) -> str:
++            if not v or not v.strip():
++                raise ValueError("agent id must be a non-empty string")
++            return v
++
++        @field_validator("stage", mode="before")
++        @classmethod
++        def stage_to_str(cls, v) -> str:
++            if isinstance(v, list):
++                raise ValueError(f"stage must be scalar, got list: {v}")
++            return str(v) if v is not None else "0"
++else:  # pragma: no cover — fallback path if pydantic missing
++    AgentSpec = None
++
++
++# v5.8.9 M-03: configurable retention helpers (RODO art.5.1.e).
++def _get_retention_days(
++    conn: sqlite3.Connection, key: str, default: int
++) -> int:
++    """Read retention window from config table. Rejects ≤0 / non-numeric → default."""
++    try:
++        row = conn.execute(
++            "SELECT value FROM config WHERE key = ?", (key,)
++        ).fetchone()
++    except sqlite3.OperationalError:
++        return default
++    if not row:
++        return default
++    raw = row["value"] if isinstance(row, sqlite3.Row) else row[0]
++    try:
++        n = int(str(raw).strip())
++    except (TypeError, ValueError):
++        logger.warning("M-03: non-numeric retention %s=%r, using default %d",
++                       key, raw, default)
++        return default
++    if n <= 0:
++        logger.warning("M-03: retention %s=%d ≤ 0, using default %d", key, n, default)
++        return default
++    return n
++
++
++def prune_audit_log(conn: sqlite3.Connection | None = None) -> int:
++    """v5.8.9 M-03: delete audit_log rows older than AUDIT_LOG_RETENTION_DAYS.
++
++    Batched (1000 rows / tx) to avoid long locks under WAL. Returns total deleted.
++    """
++    own = conn is None
++    if own:
++        conn = get_conn()
++    try:
++        days = _get_retention_days(
++            conn, "AUDIT_LOG_RETENTION_DAYS", _AUDIT_LOG_RETENTION_DEFAULT
++        )
++        cutoff = time.time() - days * 86400
++        total = 0
++        while True:
++            cur = conn.execute(
++                "DELETE FROM audit_log WHERE id IN "
++                "(SELECT id FROM audit_log WHERE ts < ? LIMIT 1000)",
++                (cutoff,),
++            )
++            conn.commit()
++            deleted = cur.rowcount or 0
++            total += deleted
++            if deleted < 1000:
++                break
++        if total:
++            logger.info("M-03: prune_audit_log deleted %d rows (>%d days)",
++                        total, days)
++        return total
++    finally:
++        if own:
++            conn.close()
++
++
++def prune_sessions(conn: sqlite3.Connection | None = None) -> int:
++    """v5.8.9 M-03: delete expired RBAC sessions older than SESSIONS_RETENTION_DAYS."""
++    own = conn is None
++    if own:
++        conn = get_conn()
++    try:
++        days = _get_retention_days(
++            conn, "SESSIONS_RETENTION_DAYS", _SESSIONS_RETENTION_DEFAULT
++        )
++        cutoff = time.time() - days * 86400
++        total = 0
++        while True:
++            cur = conn.execute(
++                "DELETE FROM sessions WHERE token IN "
++                "(SELECT token FROM sessions WHERE expires_at < ? LIMIT 1000)",
++                (cutoff,),
++            )
++            conn.commit()
++            deleted = cur.rowcount or 0
++            total += deleted
++            if deleted < 1000:
++                break
++        if total:
++            logger.info("M-03: prune_sessions deleted %d rows (>%d days)",
++                        total, days)
++        return total
++    finally:
++        if own:
++            conn.close()
++
++
+ # v5.8.8 user-requested (Opcja C): pre-fill pipeline credentials at first-run seed.
+ # Values below are defaults — Settings UI writes to the same DB rows, so user edits in UI
+ # immediately override these. Empty string here would keep seed empty (no override at runtime).
+@@ -828,6 +1079,9 @@
+         # Security
+         ("STREAM_SECURITY_PROD", "true", "security", "Tryb produkcyjny", "Wymuszaj pełne zabezpieczenia DTLS/SRTP", 0),
+         ("STREAM_SECURITY_RELAY_ONLY", "true", "security", "Tylko relay", "Wymuszaj relay (bez direct peer)", 0),
++        # v5.8.9 M-03: RODO art.5.1.e retention (dni). Edytowalne w UI.
++        ("AUDIT_LOG_RETENTION_DAYS", str(_AUDIT_LOG_RETENTION_DEFAULT), "security", "Retencja audit_log (dni)", "Po ilu dniach kasować wpisy audit_log (RODO art.5.1.e). ≤ 0 → użyj domyślnej " + str(_AUDIT_LOG_RETENTION_DEFAULT), 0),
++        ("SESSIONS_RETENTION_DAYS", str(_SESSIONS_RETENTION_DEFAULT), "security", "Retencja sessions (dni)", "Po ilu dniach kasować wygaśnięte sesje RBAC. ≤ 0 → użyj domyślnej " + str(_SESSIONS_RETENTION_DEFAULT), 0),
+     ]
+     for key, val, cat, label, desc, secret in defaults:
+         conn.execute(
+@@ -1212,19 +1466,40 @@
+ 
+     upserted = 0  # v5.8.8 Council finding E: counter covers both insert+update
+     for a in source:
++        # v5.8.9 H-04: explicit per-iteration scope reset. Previous
++        # `locals().get('agent_id', ...)` lookup was unreliable because Python
++        # for-loops don't create a new scope — a prior iteration's agent_id
++        # would leak into the error message for a malformed entry.
++        agent_id = None
+         try:
+-            # v5.8.8.1 TestGen council (Sonnet): pull `id` INSIDE try/except, so
+-            # a single malformed yaml entry (missing `id`) doesn't abort the
+-            # whole seed cycle — we log + skip and continue with the rest.
+-            if not isinstance(a, dict) or "id" not in a or not a["id"]:
+-                logger.warning("_seed_agents: skipping malformed entry %r (missing/empty id)", a)
+-                continue
+-            agent_id = a["id"]
+-            name     = a.get("name", agent_id.replace("_", " ").title())
+-            stage    = str(a.get("stage", "0"))
+-            role     = a.get("role", "")
+-            model    = a.get("model")  # may be None
+-            enabled  = 1 if a.get("enabled", True) else 0
++            # v5.8.9 M-01: Pydantic validation replaces ad-hoc isinstance checks.
++            # Handles missing id, empty id, list-typed stage, extra keys.
++            if _PYDANTIC_AVAILABLE and AgentSpec is not None:
++                try:
++                    spec = AgentSpec.model_validate(a)
++                except ValidationError as ve:
++                    logger.warning(
++                        "_seed_agents: skipping malformed entry %r — %s",
++                        a, ve.errors() if hasattr(ve, "errors") else ve,
++                    )
++                    continue
++                agent_id = spec.id
++                name     = spec.name or agent_id.replace("_", " ").title()
++                stage    = spec.stage or "0"
++                role     = spec.role or ""
++                model    = spec.model  # may be None
++                enabled  = 1 if spec.enabled else 0
++            else:  # pragma: no cover — pydantic missing fallback (parity with v5.8.8.1)
++                if not isinstance(a, dict) or "id" not in a or not a["id"]:
++                    logger.warning("_seed_agents: skipping malformed entry %r (missing/empty id)", a)
++                    continue
++                agent_id = a["id"]
++                name     = a.get("name", agent_id.replace("_", " ").title())
++                stage    = str(a.get("stage", "0"))
++                role     = a.get("role", "")
++                model    = a.get("model")
++                enabled  = 1 if a.get("enabled", True) else 0
++
+             # See docstring "Behaviour" for UPSERT rationale.
+             # `enabled` is set only on INSERT (new rows) via VALUES — not in
+             # the DO UPDATE SET clause — so existing rows keep their UI state.
+@@ -1244,9 +1519,13 @@
+             if cur.rowcount:
+                 upserted += 1
+         except Exception as exc:  # pragma: no cover — depends on schema variant
+-            # `agent_id` may be undefined if the exception fires before its
+-            # assignment (malformed entry). Fall back to the raw record.
+-            _aid = locals().get("agent_id", f"<unknown:{a!r}>")
++            # v5.8.9 H-04: agent_id is guaranteed-reset each iteration.
++            if agent_id is not None:
++                _aid = agent_id
++            elif isinstance(a, dict):
++                _aid = a.get("id", repr(a))
++            else:
++                _aid = repr(a)
+             logger.exception("Failed to upsert agent %s: %s", _aid, exc)
+ 
+     conn.commit()

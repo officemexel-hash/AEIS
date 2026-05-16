@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.engine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "sylion/aeis/advisor/v1;advisorv1";
+
+// Engine gRPC contract. The Python service (engine/service.py) implements this
+// surface; codegen stubs land in `_generated/engine_pb2*.py` once
+// `python -m grpc_tools.protoc` runs over this folder.
+
+service EngineService {
+  rpc StreamCards(StreamCardsRequest) returns (stream CardEnvelopeEvent);
+  rpc ReplayCards(ReplayCardsRequest) returns (stream CardEnvelopeEvent);
+  rpc GetRecommendation(GetRecommendationRequest) returns (CardEnvelopeEvent);
+  rpc EvaluateGate(EvaluateGateRequest) returns (EvaluateGateResponse);
+  rpc EvaluateRule(EvaluateRuleRequest) returns (EvaluateRuleResponse);
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  rpc UpdateRule(UpdateRuleRequest) returns (UpdateRuleResponse);
+  rpc InvalidateCache(InvalidateCacheRequest) returns (InvalidateCacheResponse);
+  rpc SignEvidencePack(SignEvidencePackRequest) returns (SignEvidencePackResponse);
+  rpc FinalizeEvidencePack(FinalizeEvidencePackRequest) returns (FinalizeEvidencePackResponse);
+}
+
+message CardEnvelopeEvent {
+  bytes envelope_proto = 1;
+  google.protobuf.Timestamp emitted_at = 2;
+}
+
+message StreamCardsRequest {
+  string project_id = 1;
+  string operator_id = 2;
+  repeated string filter_card_types = 3;
+  repeated string filter_domains = 4;
+  string min_risk_level = 5;
+  bool include_history_based_only = 6;
+}
+
+message ReplayCardsRequest {
+  string operator_id = 1;
+  google.protobuf.Timestamp since = 2;
+  int32 limit = 3;
+}
+
+message GetRecommendationRequest {
+  string card_id = 1;
+}
+
+message EvaluateGateRequest {
+  string event_type = 1;
+  google.protobuf.Value event_payload = 2;
+  google.protobuf.Duration timeout = 3;
+  string operator_id = 4;
+}
+
+message EvaluateGateResponse {
+  GateDecision decision = 1;
+  string blocking_card_id = 2;
+  string created_human_gate_ticket_id = 3;
+  string reason = 4;
+}
+
+enum GateDecision {
+  GATE_DECISION_UNSPECIFIED = 0;
+  GATE_DECISION_PROCEED = 1;
+  GATE_DECISION_BLOCK = 2;
+  GATE_DECISION_DEFER_TO_HUMAN_GATE = 3;
+}
+
+message EvaluateRuleRequest {
+  string rule_id = 1;
+  google.protobuf.Value context = 2;
+}
+
+message EvaluateRuleResponse {
+  bool rule_matched = 1;
+  string would_emit_card_type = 2;
+  google.protobuf.Value derived_context = 3;
+  string skip_reason = 4;
+}
+
+message ListRulesRequest {
+  bool active_only = 1;
+}
+
+message ListRulesResponse {
+  repeated Rule rules = 1;
+}
+
+message Rule {
+  string rule_id = 1;
+  int32 version = 2;
+  string description = 3;
+  string hook_event_pattern = 4;
+  google.protobuf.Value precondition = 5;
+  string recommendation_type = 6;
+  string default_d_level = 7;
+  bool is_active = 8;
+}
+
+message UpdateRuleRequest {
+  Rule rule = 1;
+}
+
+message UpdateRuleResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message InvalidateCacheRequest {
+  string scope = 1;
+}
+
+message InvalidateCacheResponse {
+  bool success = 1;
+}
+
+message SignEvidencePackRequest {
+  string evidence_pack_id = 1;
+  string signer_id = 2;
+  string signer_role = 3;
+  string signature_payload = 4;
+}
+
+message SignEvidencePackResponse {
+  string signature_id = 1;
+}
+
+message FinalizeEvidencePackRequest {
+  string evidence_pack_id = 1;
+}
+
+message FinalizeEvidencePackResponse {
+  bool ok = 1;
+  string error_message = 2;
+}

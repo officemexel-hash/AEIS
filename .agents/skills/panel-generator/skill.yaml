@@ -1,0 +1,12 @@
+name: panel-generator
+version: 1.0.0
+description: Generates complete operator console panels with RBAC
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: panel_name
+    type: string
+    required: true
+outputs:
+  - page.tsx
+  - components.tsx

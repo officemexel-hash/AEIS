@@ -1,0 +1,43 @@
+{
+  "module_id": "core.integration",
+  "module_kind": "A",
+  "owner_plan": "P01",
+  "name": "Integration Orchestrator & Drift Detector",
+  "version": "1.0.0",
+  "domain": "core.integration",
+  "description": "Candidate build orchestration, validation pipeline, and cross-module contract drift detection.",
+  "owner": "core",
+  "status": "active",
+  "depends_on": [
+    "core.event_bus",
+    "core.module_registry",
+    "core.worker"
+  ],
+  "public_api": [
+    "/api/v1/integration/builds",
+    "/api/v1/integration/builds/{build_id}",
+    "/api/v1/integration/builds/{build_id}/validate",
+    "/api/v1/integration/builds/{build_id}/promote",
+    "/api/v1/integration/builds/{build_id}/reject",
+    "/api/v1/integration/builds/{build_id}/results",
+    "/api/v1/integration/drift",
+    "/api/v1/integration/drift/detect",
+    "/api/v1/integration/drift/summary"
+  ],
+  "events": [
+    "integration.build.created",
+    "integration.build.status_changed",
+    "integration.build.validated",
+    "integration.build.rejected",
+    "integration.build.deleted",
+    "integration.drift.detected",
+    "integration.drift.recorded",
+    "integration.drift.resolved"
+  ],
+  "metadata": {
+    "scalable": true,
+    "sqlite_wal": true,
+    "postgres_ready": true,
+    "validation_stages": ["contract_tests", "integration_tests", "smoke_tests", "lint", "typecheck"]
+  }
+}

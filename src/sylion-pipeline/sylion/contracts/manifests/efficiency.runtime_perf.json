@@ -1,0 +1,24 @@
+{
+  "module_id": "efficiency.runtime_perf",
+  "module_kind": "G",
+  "owner_plan": "P10",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "efficiency.perf.sample",
+    "efficiency.perf.alert"
+  ],
+  "consumes_events": [],
+  "description": "Runtime performance monitoring with latency histograms and throughput.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

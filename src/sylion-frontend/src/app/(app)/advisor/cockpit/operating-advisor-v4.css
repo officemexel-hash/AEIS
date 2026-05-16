@@ -1,0 +1,601 @@
+/*
+ * Operating Advisor v4 — Orbital Glass Command Deck
+ * Scoped under .cockpit-v4 to prevent global pollution.
+ * :root tokens kept as-is (no conflict with app globals.css).
+ */
+
+:root {
+  color-scheme: dark;
+  --bg-0: #03040a;
+  --bg-1: #070b18;
+  --bg-2: #0c1327;
+  --ink: #eef4ff;
+  --ink-soft: #b8c6e8;
+  --ink-muted: #7f8eae;
+  --line: rgba(178, 199, 255, .16);
+  --line-strong: rgba(214, 226, 255, .26);
+  --glass: rgba(14, 21, 41, .62);
+  --glass-strong: rgba(24, 34, 62, .78);
+  --glass-soft: rgba(255,255,255,.052);
+  --cyan: #55e4ff;
+  --blue: #7aa7ff;
+  --violet: #a98dff;
+  --magenta: #ff7ad9;
+  --green: #55f3a9;
+  --amber: #ffd27a;
+  --orange: #ff9c62;
+  --red: #ff6b88;
+  --shadow-lg: 0 34px 100px rgba(0, 0, 0, .48);
+  --shadow-md: 0 22px 60px rgba(0, 0, 0, .36);
+  --shadow-inner: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.35);
+  --r-xl: 34px;
+  --r-lg: 26px;
+  --r-md: 18px;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ================================================================
+   Base resets (scoped)
+   ================================================================ */
+.cockpit-v4 * { box-sizing: border-box; }
+.cockpit-v4 button,
+.cockpit-v4 input { font: inherit; }
+.cockpit-v4 a { color: inherit; text-decoration: none; }
+
+/* ================================================================
+   Root container — replaces `body` background
+   ================================================================ */
+.cockpit-v4 {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  color: var(--ink);
+  font-family: var(--font);
+  background:
+    radial-gradient(circle at 8% 8%, rgba(85, 228, 255, .18), transparent 30%),
+    radial-gradient(circle at 84% 12%, rgba(169, 141, 255, .22), transparent 28%),
+    radial-gradient(circle at 68% 92%, rgba(255, 122, 217, .10), transparent 28%),
+    linear-gradient(145deg, #03040a 0%, #071021 52%, #03040a 100%);
+  overflow-x: hidden;
+  display: grid;
+  gap: 20px;
+  padding: 4px 4px 46px;
+  margin: -24px;
+}
+
+/* Grid overlay — replaces body::before */
+.cockpit-v4::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .38;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 50% 20%, black, transparent 76%);
+  z-index: 0;
+}
+
+/* Scanlines overlay — replaces body::after */
+.cockpit-v4::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .11;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.2) 0 1px, transparent 1px 7px);
+  mix-blend-mode: soft-light;
+}
+
+/* All direct children above pseudo-elements */
+.cockpit-v4 > * { position: relative; z-index: 1; }
+
+/* ================================================================
+   Glass Panel
+   ================================================================ */
+.cockpit-v4 .panel {
+  position: relative;
+  border-radius: var(--r-xl);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.045)),
+    linear-gradient(180deg, rgba(17,27,53,.83), rgba(8,12,24,.70));
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+  backdrop-filter: blur(22px) saturate(130%);
+  overflow: hidden;
+}
+
+.cockpit-v4 .panel::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(85,228,255,.13), transparent 34%),
+    radial-gradient(circle at 96% 10%, rgba(255,122,217,.11), transparent 28%);
+  pointer-events: none;
+}
+
+.cockpit-v4 .panel-content {
+  position: relative;
+  z-index: 1;
+  padding: 26px;
+}
+
+/* ================================================================
+   Eyebrow label
+   ================================================================ */
+.cockpit-v4 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #cfe9ff;
+  background: rgba(85,228,255,.10);
+  border: 1px solid rgba(85,228,255,.20);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* ================================================================
+   Hero section
+   ================================================================ */
+.cockpit-v4 .visual-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(380px, .88fr);
+  gap: 20px;
+}
+
+.cockpit-v4 .hero-title {
+  max-width: 850px;
+  margin: 18px 0 12px;
+  font-size: clamp(36px, 5vw, 68px);
+  line-height: .94;
+  letter-spacing: -.055em;
+}
+
+.cockpit-v4 .hero-title .grad {
+  color: transparent;
+  background: linear-gradient(135deg, #ffffff 8%, #bdefff 35%, #a98dff 66%, #ffb3ea 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.cockpit-v4 .hero-copy {
+  max-width: 760px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.cockpit-v4 .hero-metrics {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cockpit-v4 .metric-tile {
+  padding: 14px;
+  min-height: 104px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255,255,255,.095), rgba(255,255,255,.035));
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 16px 34px rgba(0,0,0,.18);
+}
+
+.cockpit-v4 .metric-tile span { color: var(--ink-muted); font-size: 12px; }
+.cockpit-v4 .metric-tile b { display: block; margin-top: 9px; font-size: 24px; letter-spacing: -.03em; }
+.cockpit-v4 .metric-tile small { display: block; color: var(--ink-muted); margin-top: 5px; line-height: 1.35; }
+
+/* ================================================================
+   Advisor Core (orb panel)
+   ================================================================ */
+.cockpit-v4 .advisor-core {
+  min-height: 460px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.cockpit-v4 .core-stage {
+  position: relative;
+  min-height: 210px;
+  display: grid;
+  place-items: center;
+  perspective: 900px;
+}
+
+.cockpit-v4 .core-orb {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  position: relative;
+  background:
+    radial-gradient(circle at 35% 24%, #ffffff 0 7px, rgba(255,255,255,.76) 8px 14px, transparent 15px),
+    radial-gradient(circle at 34% 28%, #c8f8ff 0%, #55e4ff 24%, #8c92ff 48%, #21143f 100%);
+  box-shadow:
+    0 40px 110px rgba(85,228,255,.35),
+    inset 0 5px 16px rgba(255,255,255,.46),
+    inset 0 -38px 54px rgba(0,0,0,.52);
+  transform: rotateX(8deg) rotateY(-15deg);
+  animation: cv4-breathe 5s ease-in-out infinite;
+}
+
+.cockpit-v4 .core-orb::before,
+.cockpit-v4 .core-orb::after {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  border: 1px solid rgba(150, 225, 255, .28);
+  transform: rotateX(70deg) rotateZ(25deg);
+}
+
+.cockpit-v4 .core-orb::after {
+  inset: -34px;
+  border-color: rgba(169,141,255,.25);
+  transform: rotateX(68deg) rotateZ(-34deg);
+}
+
+@keyframes cv4-breathe {
+  0%, 100% { transform: translateY(0) rotateX(8deg) rotateY(-15deg); }
+  50% { transform: translateY(-8px) rotateX(10deg) rotateY(-8deg); }
+}
+
+.cockpit-v4 .core-label {
+  position: absolute;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #dce9ff;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 14px 32px rgba(0,0,0,.24);
+}
+
+.cockpit-v4 .core-label.l1 { left: 8px; top: 34px; }
+.cockpit-v4 .core-label.l2 { right: 12px; top: 70px; }
+.cockpit-v4 .core-label.l3 { left: 22px; bottom: 38px; }
+.cockpit-v4 .core-label.l4 { right: 28px; bottom: 18px; }
+
+.cockpit-v4 .advisor-speech {
+  margin-top: -4px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.04)),
+    rgba(5, 10, 22, .32);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 22px 44px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.13);
+}
+
+.cockpit-v4 .advisor-speech h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.02em; }
+.cockpit-v4 .advisor-speech p { margin: 0; color: var(--ink-soft); line-height: 1.55; }
+
+.cockpit-v4 .priority-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ================================================================
+   Chips & Badges
+   ================================================================ */
+.cockpit-v4 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #dce8ff;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.cockpit-v4 .chip.green { color: #c8ffe5; background: rgba(85,243,169,.10); border-color: rgba(85,243,169,.20); }
+.cockpit-v4 .chip.amber { color: #ffe9b8; background: rgba(255,210,122,.10); border-color: rgba(255,210,122,.22); }
+.cockpit-v4 .chip.red   { color: #ffd1d9; background: rgba(255,107,136,.12); border-color: rgba(255,107,136,.25); }
+.cockpit-v4 .chip.cyan  { color: #d1f8ff; background: rgba(85,228,255,.10);  border-color: rgba(85,228,255,.20); }
+
+.cockpit-v4 .badge2 {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #dce8ff;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+
+.cockpit-v4 .badge2.d5   { color: #ffd0da; background: rgba(255,107,136,.15); border-color: rgba(255,107,136,.28); }
+.cockpit-v4 .badge2.d4   { color: #ffd0da; background: rgba(255,107,136,.12); border-color: rgba(255,107,136,.22); }
+.cockpit-v4 .badge2.d3   { color: #ffe7ad; background: rgba(255,210,122,.13); border-color: rgba(255,210,122,.25); }
+.cockpit-v4 .badge2.ok   { color: #c9ffe7; background: rgba(85,243,169,.11);  border-color: rgba(85,243,169,.22); }
+.cockpit-v4 .badge2.cyan { color: #cdf8ff; background: rgba(85,228,255,.11);  border-color: rgba(85,228,255,.22); }
+
+/* ================================================================
+   Section head
+   ================================================================ */
+.cockpit-v4 .section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 2px 12px;
+}
+
+.cockpit-v4 .section-head h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+.cockpit-v4 .section-head p  { margin: 6px 0 0; color: var(--ink-muted); line-height: 1.45; }
+
+/* ================================================================
+   Decision grid
+   ================================================================ */
+.cockpit-v4 .decision-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+  gap: 20px;
+}
+
+.cockpit-v4 .decision-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cockpit-v4 .decision-card {
+  position: relative;
+  min-height: 250px;
+  padding: 20px;
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.115), rgba(255,255,255,.038)),
+    linear-gradient(180deg, rgba(18,28,54,.75), rgba(7,11,23,.72));
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: 0 24px 66px rgba(0,0,0,.33), inset 0 1px 0 rgba(255,255,255,.14);
+  overflow: hidden;
+  transition: transform .18s ease, border-color .18s ease;
+}
+
+.cockpit-v4 .decision-card:hover { transform: translateY(-4px); border-color: rgba(85,228,255,.25); }
+
+.cockpit-v4 .decision-card.featured {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255,107,136,.23), transparent 30%),
+    linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,255,255,.045)),
+    linear-gradient(180deg, rgba(39,18,38,.70), rgba(8,11,23,.78));
+}
+
+.cockpit-v4 .decision-card.featured::before {
+  content: "";
+  position: absolute;
+  right: -60px;
+  top: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,107,136,.23), transparent 64%);
+}
+
+.cockpit-v4 .card-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+
+.cockpit-v4 .decision-card h3 { margin: 0 0 9px; font-size: 21px; line-height: 1.1; letter-spacing: -.03em; }
+.cockpit-v4 .decision-card p  { margin: 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.58; }
+
+.cockpit-v4 .alt-panel {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cockpit-v4 .alt-tile {
+  padding: 12px;
+  border-radius: 18px;
+  min-height: 94px;
+  background: rgba(4,9,20,.38);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+.cockpit-v4 .alt-tile b    { display: block; font-size: 12.5px; }
+.cockpit-v4 .alt-tile span { display: block; margin-top: 6px; color: var(--ink-muted); font-size: 11.5px; line-height: 1.35; }
+
+.cockpit-v4 .card-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+
+.cockpit-v4 .small-btn {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 14px;
+  padding: 0 11px;
+  border: 1px solid rgba(255,255,255,.11);
+  background: rgba(255,255,255,.065);
+  color: #e8f0ff;
+  font-size: 12px;
+  font-weight: 780;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+  cursor: pointer;
+  transition: opacity .14s;
+}
+
+.cockpit-v4 .small-btn:hover { opacity: .85; }
+.cockpit-v4 .small-btn.primary { color: #04111c; background: linear-gradient(145deg, #effbff, #7edcff); border: 0; box-shadow: 0 14px 32px rgba(85,228,255,.18), inset 0 1px 0 #fff; }
+.cockpit-v4 .small-btn.danger  { color: #ffd5de; background: rgba(255,107,136,.13); border-color: rgba(255,107,136,.28); }
+
+/* ================================================================
+   Lifecycle rail
+   ================================================================ */
+.cockpit-v4 .lifecycle-panel .panel-content { padding-bottom: 20px; }
+
+.cockpit-v4 .lifecycle-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(15, minmax(96px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 1px 16px;
+}
+
+.cockpit-v4 .lifecycle-rail::-webkit-scrollbar { height: 8px; }
+.cockpit-v4 .lifecycle-rail::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 999px; }
+
+.cockpit-v4 .phase-tile {
+  min-width: 96px;
+  padding: 13px 12px;
+  border-radius: 19px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.028));
+  box-shadow: 0 12px 28px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+.cockpit-v4 .phase-tile b    { display: block; font-size: 12px; line-height: 1.2; }
+.cockpit-v4 .phase-tile span { display: block; margin-top: 5px; color: var(--ink-muted); font-size: 11px; line-height: 1.25; }
+
+.cockpit-v4 .phase-tile.done    { background: linear-gradient(145deg, rgba(85,243,169,.13), rgba(255,255,255,.03)); border-color: rgba(85,243,169,.24); }
+.cockpit-v4 .phase-tile.now     { background: linear-gradient(145deg, rgba(85,228,255,.18), rgba(169,141,255,.08)); border-color: rgba(85,228,255,.35); box-shadow: 0 0 0 1px rgba(85,228,255,.12), 0 24px 55px rgba(85,228,255,.11); }
+.cockpit-v4 .phase-tile.blocked { background: linear-gradient(145deg, rgba(255,107,136,.17), rgba(255,255,255,.03)); border-color: rgba(255,107,136,.32); }
+
+/* ================================================================
+   Two-column layout
+   ================================================================ */
+.cockpit-v4 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+
+/* ================================================================
+   Agent topology
+   ================================================================ */
+.cockpit-v4 .topology-wrap { position: relative; min-height: 370px; }
+.cockpit-v4 .topology-svg  { width: 100%; height: 346px; display: block; }
+
+.cockpit-v4 .topology-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 118px;
+  text-align: center;
+  padding: 10px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.045));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 18px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+.cockpit-v4 .topology-label b    { display: block; font-size: 12.5px; }
+.cockpit-v4 .topology-label span { display: block; margin-top: 4px; color: var(--ink-muted); font-size: 11px; }
+
+.cockpit-v4 .t-planner  { left: 50%; top: 18%; }
+.cockpit-v4 .t-workers  { left: 20%; top: 50%; }
+.cockpit-v4 .t-verifier { left: 50%; top: 58%; }
+.cockpit-v4 .t-critic   { left: 80%; top: 50%; }
+.cockpit-v4 .t-council  { left: 50%; top: 86%; }
+
+/* ================================================================
+   Configuration grid
+   ================================================================ */
+.cockpit-v4 .config-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cockpit-v4 .config-card {
+  padding: 18px;
+  min-height: 185px;
+  border-radius: 25px;
+  background: linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+  border: 1px solid rgba(255,255,255,.11);
+  box-shadow: 0 20px 48px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.12);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease;
+}
+
+.cockpit-v4 .config-card:hover { transform: translateY(-3px); border-color: rgba(85,228,255,.22); }
+
+.cockpit-v4 .config-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  margin-bottom: 14px;
+  background: linear-gradient(145deg, rgba(85,228,255,.22), rgba(169,141,255,.16));
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: 0 12px 30px rgba(85,228,255,.12), inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.cockpit-v4 .config-card h3   { margin: 0 0 7px; font-size: 16px; }
+.cockpit-v4 .config-card p    { margin: 0; color: var(--ink-muted); font-size: 12.8px; line-height: 1.5; }
+.cockpit-v4 .config-stat      { margin-top: 16px; font-size: 27px; font-weight: 900; letter-spacing: -.04em; }
+.cockpit-v4 .config-stat small { font-size: 12px; color: var(--ink-muted); font-weight: 650; letter-spacing: 0; }
+
+/* ================================================================
+   Audit trail
+   ================================================================ */
+.cockpit-v4 .audit-list { display: grid; gap: 11px; }
+
+.cockpit-v4 .audit-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.09);
+}
+
+.cockpit-v4 .audit-dot {
+  width: 38px;
+  height: 38px;
+  border-radius: 15px;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, rgba(85,228,255,.24), rgba(169,141,255,.17));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 12px 28px rgba(85,228,255,.10);
+}
+
+.cockpit-v4 .audit-item h4 { margin: 0; font-size: 13.5px; }
+.cockpit-v4 .audit-item p  { margin: 4px 0 0; color: var(--ink-muted); font-size: 12px; }
+
+/* ================================================================
+   Loading / empty state
+   ================================================================ */
+.cockpit-v4 .cv4-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* ================================================================
+   Responsive
+   ================================================================ */
+@media (max-width: 1280px) {
+  .cockpit-v4 .visual-hero,
+  .cockpit-v4 .decision-grid,
+  .cockpit-v4 .two-col { grid-template-columns: 1fr; }
+  .cockpit-v4 .config-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .cockpit-v4 { padding: 10px; gap: 12px; margin: -10px; }
+  .cockpit-v4 .hero-metrics,
+  .cockpit-v4 .decision-stack,
+  .cockpit-v4 .config-grid { grid-template-columns: 1fr; }
+  .cockpit-v4 .alt-panel    { grid-template-columns: 1fr; }
+  .cockpit-v4 .panel-content { padding: 18px; }
+  .cockpit-v4 .hero-title   { font-size: 39px; }
+}

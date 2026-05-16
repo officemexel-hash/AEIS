@@ -1,0 +1,28 @@
+skill_id: seed.tokenize
+name: seed.tokenize
+version: 1.0.0
+description: Split text into whitespace-delimited tokens.
+category: skill
+domain: seed
+owner_role: operator
+entry_point: sylion.skills.catalog:seed_tokenize_handler
+parallel_safe: true
+idempotent: true
+requires_hg: false
+tags:
+  - seed
+  - demo
+  - nlp
+inputs:
+  - name: text
+    type: string
+    required: true
+outputs:
+  - name: tokens
+    type: array
+steps:
+  - Read the text payload.
+  - Split the text on whitespace boundaries.
+safety_rules:
+  - No filesystem writes.
+  - No network calls.

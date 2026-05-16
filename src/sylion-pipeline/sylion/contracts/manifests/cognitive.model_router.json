@@ -1,0 +1,26 @@
+{
+  "module_id": "cognitive.model_router",
+  "module_kind": "B",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cognitive.model.selected",
+    "cognitive.model.fallback"
+  ],
+  "consumes_events": [
+    "efficiency.cost.tracked"
+  ],
+  "description": "Routes LLM requests to optimal model based on task type and cost envelope.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

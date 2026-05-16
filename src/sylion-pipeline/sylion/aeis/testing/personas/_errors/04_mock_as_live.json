@@ -1,0 +1,15 @@
+{
+  "error_class": "mock_as_live",
+  "target_action": "execute_action_on_mock_data_thinking_it_is_live",
+  "context": "Backend offline, frontend shows mock data, operator clicks destructive CTA",
+  "timing": "during_backend_offline_state",
+  "expected_system_response": [
+    "show_mock_badge_prominently",
+    "disable_destructive_ctas",
+    "show_offline_warning",
+    "block_action"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

@@ -1,0 +1,26 @@
+{
+  "module_id": "governance.self_explanation_validator",
+  "module_kind": "E",
+  "owner_plan": "P05",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "governance.self_explanation.validated",
+    "governance.self_explanation.rejected"
+  ],
+  "consumes_events": [
+    "aeis.explanation.generated"
+  ],
+  "description": "Validates that system decisions include adequate self-explanations.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

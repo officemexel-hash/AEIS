@@ -1,0 +1,58 @@
+project_id: "proj_demo_03_factory_automation_panel"
+name: "Factory Automation HMI Panel"
+type: "industrial-iot"
+target_d_level: "D5"
+domain: "industrial_safety"
+
+description: |
+  PLC + HMI panel for factory production line. Real-device action with
+  mandatory backup + dry-run + staged upload + emergency-stop verification.
+  D5 because of physical equipment exposure.
+
+required_personas:
+  - "production_engineer"  # NOT in 8 starter, override needed
+  - "operator_overloaded"
+  - "incident_responder"
+
+domain_specific_human_errors:
+  - error_class: "premature_action"
+    target_action: "wrong_cabinet_upload_no_id_verification"
+    severity_if_system_allows_error: "D5"
+  - error_class: "gate_skip"
+    target_action: "missing_emergency_stop_verification"
+    severity_if_system_allows_error: "D5"
+  - error_class: "authority_abuse"
+    target_action: "unsafe_override_safety_interlock"
+    severity_if_system_allows_error: "D5"
+
+required_test_classes:
+  - "T0"   # spec
+  - "T2"   # unit
+  - "T4"   # integration
+  - "T5"   # ui_e2e
+  - "T6"   # human-like
+  - "T7"   # human error injection
+  - "T8"   # negative
+  - "T9"   # regression
+  - "T10"  # security
+  - "T11"  # governance
+  - "T13"  # chaos
+  - "T15"  # release rehearsal
+
+release_blockers:
+  - "Backup not verified before upload"
+  - "Emergency stop not tested"
+  - "Cabinet ID mismatch in IO map"
+  - "Safety interlock override without D5 approval"
+  - "Any P0/P1 finding"
+
+expected_modules: 12
+expected_api_endpoints: 18
+expected_ui_pages: 6
+
+success_criteria:
+  - "PRODUCTION_RELEASED status reached"
+  - "Council session D5 completed (full Council + multi-sig)"
+  - "All 3 sentinels (cost+security+safety) pass"
+  - "Minimum 7 lessons_learned (D5 demands more)"
+  - "Anti-pattern catalog gained ≥2 entries"

@@ -1,0 +1,448 @@
+// SYLION AEIS -- Class C: Execution (6 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: JobRunner, ToolRunner, ConnectorFramework,
+//          WorkflowEngine, AdapterBus, RetryOrchestrator
+
+syntax = "proto3";
+
+package sylion.execution.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/execution/v1;executionv1";
+option java_package = "com.sylion.aeis.execution.v1";
+
+// =====================================================================
+// C1: Job Runner Service
+// =====================================================================
+
+service JobRunnerService {
+  rpc Submit(SubmitJobRequest) returns (SubmitJobResponse);
+  rpc GetNext(sylion.common.v1.Empty) returns (JobMessage);
+  rpc Complete(CompleteJobRequest) returns (sylion.common.v1.Status);
+  rpc Fail(FailJobRequest) returns (sylion.common.v1.Status);
+  rpc GetJob(GetJobRequest) returns (JobMessage);
+  rpc ListJobs(ListJobsRequest) returns (JobList);
+  rpc GetStats(sylion.common.v1.Empty) returns (JobStats);
+}
+
+message SubmitJobRequest {
+  string job_type     = 1;
+  string payload_json = 2;
+  int32  priority     = 3;
+}
+
+message SubmitJobResponse {
+  string job_id = 1;
+  string status = 2;
+}
+
+message JobMessage {
+  string job_id       = 1;
+  string job_type     = 2;
+  string payload_json = 3;
+  string status       = 4;  // queued|running|completed|failed
+  int32  priority     = 5;
+  string assigned_to  = 6;
+  string result       = 7;
+  string error        = 8;
+  double created_at   = 9;
+  double started_at   = 10;
+  double completed_at = 11;
+}
+
+message CompleteJobRequest {
+  string job_id = 1;
+  string result = 2;
+}
+
+message FailJobRequest {
+  string job_id = 1;
+  string error  = 2;
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message ListJobsRequest {
+  string status = 1;
+  int32  limit  = 2;
+}
+
+message JobList {
+  repeated JobMessage jobs = 1;
+}
+
+message JobStats {
+  int32 total_jobs          = 1;
+  map<string, int64> by_status = 2;
+}
+
+// =====================================================================
+// C2: Tool Runner Service
+// =====================================================================
+
+service ToolRunnerService {
+  rpc RegisterTool(RegisterToolRequest) returns (ToolSummary);
+  rpc Execute(ExecuteToolRequest) returns (ExecuteToolResponse);
+  rpc GetTool(GetToolRequest) returns (ToolMessage);
+  rpc GetExecution(GetExecutionRequest) returns (ToolExecutionMessage);
+  rpc ListTools(ListToolsRequest) returns (ToolList);
+  rpc ListExecutions(ListToolExecutionsRequest) returns (ToolExecutionList);
+}
+
+message RegisterToolRequest {
+  string tool_id      = 1;
+  string name         = 2;
+  string description  = 3;
+  string tool_type    = 4;
+  string config_json  = 5;
+}
+
+message ToolSummary {
+  string tool_id = 1;
+  string name    = 2;
+}
+
+message ExecuteToolRequest {
+  string tool_id      = 1;
+  string input_json   = 2;
+}
+
+message ExecuteToolResponse {
+  string result   = 1;
+  string tool_id  = 2;
+  string exec_id  = 3;
+}
+
+message GetToolRequest {
+  string tool_id = 1;
+}
+
+message ToolMessage {
+  string tool_id     = 1;
+  string name        = 2;
+  string description = 3;
+  string tool_type   = 4;
+  string config_json = 5;
+  bool   active      = 6;
+}
+
+message GetExecutionRequest {
+  string exec_id = 1;
+}
+
+message ToolExecutionMessage {
+  string exec_id      = 1;
+  string tool_id      = 2;
+  string input_hash   = 3;
+  string result       = 4;
+  string status       = 5;
+  double started_at   = 6;
+  double completed_at = 7;
+  string error        = 8;
+}
+
+message ListToolsRequest {
+  bool active_only = 1;
+}
+
+message ToolList {
+  repeated ToolMessage tools = 1;
+}
+
+message ListToolExecutionsRequest {
+  string tool_id = 1;
+  int32  limit   = 2;
+}
+
+message ToolExecutionList {
+  repeated ToolExecutionMessage executions = 1;
+}
+
+// =====================================================================
+// C3: Connector Framework Service
+// =====================================================================
+
+service ConnectorFrameworkService {
+  rpc Register(RegisterConnectorRequest) returns (ConnectorSummary);
+  rpc Get(GetConnectorRequest) returns (ConnectorMessage);
+  rpc ListConnectors(ListConnectorsRequest) returns (ConnectorList);
+  rpc UpdateStatus(UpdateConnectorStatusRequest) returns (sylion.common.v1.Status);
+  rpc Deregister(GetConnectorRequest) returns (sylion.common.v1.Status);
+}
+
+message RegisterConnectorRequest {
+  string connector_id   = 1;
+  string name           = 2;
+  string connector_type = 3;
+  string endpoint       = 4;
+  string auth_type      = 5;
+  string config_json    = 6;
+}
+
+message ConnectorSummary {
+  string connector_id = 1;
+  string name         = 2;
+  string status       = 3;
+}
+
+message GetConnectorRequest {
+  string connector_id = 1;
+}
+
+message ConnectorMessage {
+  string connector_id   = 1;
+  string name           = 2;
+  string connector_type = 3;
+  string endpoint       = 4;
+  string auth_type      = 5;
+  string config_json    = 6;
+  string status         = 7;
+  double registered_at  = 8;
+}
+
+message ListConnectorsRequest {
+  string connector_type = 1;
+  string status         = 2;
+}
+
+message ConnectorList {
+  repeated ConnectorMessage connectors = 1;
+}
+
+message UpdateConnectorStatusRequest {
+  string connector_id = 1;
+  string status       = 2;
+}
+
+// =====================================================================
+// C4: Workflow Engine Service
+// =====================================================================
+
+service WorkflowEngineService {
+  rpc CreateWorkflow(CreateWorkflowRequest) returns (WorkflowSummary);
+  rpc GetWorkflow(GetWorkflowRequest) returns (WorkflowMessage);
+  rpc ListWorkflows(ListWorkflowsRequest) returns (WorkflowList);
+  rpc RunWorkflow(RunWorkflowRequest) returns (RunWorkflowResponse);
+  rpc GetRun(GetRunRequest) returns (WorkflowRunMessage);
+  rpc ListRuns(ListRunsRequest) returns (WorkflowRunList);
+}
+
+message CreateWorkflowRequest {
+  string name        = 1;
+  string description = 2;
+  repeated WorkflowStep steps = 3;
+}
+
+message WorkflowStep {
+  string name        = 1;
+  string tool        = 2;
+  string input_json  = 3;
+}
+
+message WorkflowSummary {
+  string workflow_id = 1;
+  string name        = 2;
+  string status      = 3;
+}
+
+message GetWorkflowRequest {
+  string workflow_id = 1;
+}
+
+message WorkflowMessage {
+  string workflow_id  = 1;
+  string name         = 2;
+  string description  = 3;
+  repeated WorkflowStep steps = 4;
+  string status       = 5;
+  double created_at   = 6;
+  double completed_at = 7;
+}
+
+message ListWorkflowsRequest {
+  string status = 1;
+}
+
+message WorkflowList {
+  repeated WorkflowMessage workflows = 1;
+}
+
+message RunWorkflowRequest {
+  string workflow_id = 1;
+}
+
+message RunWorkflowResponse {
+  string run_id          = 1;
+  string workflow_id     = 2;
+  string status          = 3;
+  int32  steps_executed  = 4;
+}
+
+message GetRunRequest {
+  string run_id = 1;
+}
+
+message WorkflowRunMessage {
+  string run_id       = 1;
+  string workflow_id  = 2;
+  string status       = 3;
+  int32  current_step = 4;
+  repeated StepResultMessage step_results = 5;
+  double started_at   = 6;
+  double completed_at = 7;
+}
+
+message StepResultMessage {
+  int32  step   = 1;
+  string name   = 2;
+  string tool   = 3;
+  string status = 4;
+  string output_json = 5;
+}
+
+message ListRunsRequest {
+  string workflow_id = 1;
+  int32  limit       = 2;
+}
+
+message WorkflowRunList {
+  repeated WorkflowRunMessage runs = 1;
+}
+
+// =====================================================================
+// C5: Adapter Bus Service
+// =====================================================================
+
+service AdapterBusService {
+  rpc RegisterRoute(RegisterRouteRequest) returns (RouteSummary);
+  rpc Route(RouteRequest) returns (RouteList);
+  rpc RemoveRoute(RemoveRouteRequest) returns (sylion.common.v1.Status);
+  rpc ListRoutes(ListRoutesRequest) returns (RouteList);
+}
+
+message RegisterRouteRequest {
+  string source_type   = 1;
+  string source_id     = 2;
+  string target_type   = 3;
+  string target_id     = 4;
+  string transform_json = 5;
+}
+
+message RouteSummary {
+  string route_id = 1;
+  bool   active   = 2;
+}
+
+message RouteRequest {
+  string source_type = 1;
+  string source_id   = 2;
+}
+
+message RouteMessage {
+  string route_id      = 1;
+  string source_type   = 2;
+  string source_id     = 3;
+  string target_type   = 4;
+  string target_id     = 5;
+  string transform_json = 6;
+  bool   active        = 7;
+}
+
+message RouteList {
+  repeated RouteMessage routes = 1;
+}
+
+message RemoveRouteRequest {
+  string route_id = 1;
+}
+
+message ListRoutesRequest {
+  string source_type = 1;
+}
+
+// =====================================================================
+// C6: Retry Orchestrator Service
+// =====================================================================
+
+service RetryOrchestratorService {
+  rpc SetPolicy(SetPolicyRequest) returns (PolicySummary);
+  rpc RecordAttempt(RecordAttemptRequest) returns (AttemptSummary);
+  rpc ShouldRetry(ShouldRetryRequest) returns (ShouldRetryResponse);
+  rpc GetCircuitState(GetCircuitRequest) returns (CircuitStateMessage);
+  rpc ResetCircuit(GetCircuitRequest) returns (sylion.common.v1.Status);
+  rpc GetAttempts(GetAttemptsRequest) returns (AttemptList);
+}
+
+message SetPolicyRequest {
+  string target_type      = 1;
+  string target_id        = 2;
+  int32  max_retries      = 3;
+  double backoff_base     = 4;
+  double backoff_max      = 5;
+  int32  circuit_threshold = 6;
+  double circuit_timeout  = 7;
+}
+
+message PolicySummary {
+  string policy_id    = 1;
+  string target_type  = 2;
+  string target_id    = 3;
+}
+
+message RecordAttemptRequest {
+  string target_type = 1;
+  string target_id   = 2;
+  string status      = 3;  // success|failed
+  string error       = 4;
+}
+
+message AttemptSummary {
+  string attempt_id    = 1;
+  int32  attempt_number = 2;
+}
+
+message ShouldRetryRequest {
+  string target_type = 1;
+  string target_id   = 2;
+}
+
+message ShouldRetryResponse {
+  bool allowed = 1;
+}
+
+message GetCircuitRequest {
+  string target_type = 1;
+  string target_id   = 2;
+}
+
+message CircuitStateMessage {
+  string target_type  = 1;
+  string target_id    = 2;
+  string state        = 3;  // closed|open|half-open
+  int32  failure_count = 4;
+  double last_failure = 5;
+}
+
+message GetAttemptsRequest {
+  string target_type = 1;
+  string target_id   = 2;
+  int32  limit       = 3;
+}
+
+message AttemptList {
+  repeated AttemptMessage attempts = 1;
+}
+
+message AttemptMessage {
+  string attempt_id    = 1;
+  string target_type   = 2;
+  string target_id     = 3;
+  int32  attempt_number = 4;
+  string status        = 5;
+  string error         = 6;
+  double timestamp     = 7;
+}

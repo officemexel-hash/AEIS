@@ -1,0 +1,26 @@
+{
+  "module_id": "devices.artifact_deployer",
+  "module_kind": "M",
+  "owner_plan": "P19",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "devices.deployment.started",
+    "devices.deployment.completed"
+  ],
+  "consumes_events": [
+    "devices.device.registered"
+  ],
+  "description": "Deploys artifacts to target devices with rollback support.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

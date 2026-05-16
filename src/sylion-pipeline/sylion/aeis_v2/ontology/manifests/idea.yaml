@@ -1,0 +1,197 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: idea
+  name_pl: Idea
+  name_en: Idea
+  version: v1.0
+  description_pl: |
+    Typ obiektu dla idei innowacyjnych i inicjatyw rozwojowych,
+    z priorytetem, domeną oraz ścieżką oceny przez operatora.
+    Stanowi odpowiednik v1 idea_vault w runtime ontologii W15.
+  description_en: |
+    Object type for innovation ideas and growth initiatives
+    with priority, domain, and operator review flow.
+    It acts as the W15 runtime counterpart of v1 idea_vault.
+  tags: [idea, innovation, intake, w15]
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+    - name: title
+      type: text
+      nullable: false
+      indexed: true
+      searchable: true
+    - name: description
+      type: text
+      nullable: false
+      indexed: false
+      searchable: true
+    - name: author
+      type: text
+      nullable: false
+      indexed: true
+      searchable: false
+    - name: status
+      type: text
+      nullable: false
+      indexed: true
+      searchable: false
+      enum: [draft, clarification, submitted, council_review, approved, rejected, implemented, archived]
+      default: draft
+    - name: priority
+      type: integer
+      nullable: false
+      indexed: true
+      searchable: false
+      default: 3
+    - name: category
+      type: text
+      nullable: true
+      indexed: true
+      searchable: false
+    - name: domain
+      type: text
+      nullable: true
+      indexed: true
+      searchable: false
+    - name: tags
+      type: text
+      nullable: true
+      indexed: false
+      searchable: true
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+      properties:
+        clarification_notes:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        human_gate_decision:
+          type: object
+          additionalProperties: true
+        attachments:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+  relations: []
+  audit:
+    enabled: true
+    track_fields: ["title", "status", "priority", "category", "domain"]
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: ["title", "description", "tags"]
+    embeddings:
+      enabled: false
+      source_columns: ["title", "description"]
+      dim: 1024
+  actions:
+    - id: promote_to_project
+      description_pl: |
+        Promuje ideę do projektu roboczego
+        po decyzji kwalifikacyjnej i ocenie ryzyka.
+      description_en: |
+        Promotes the idea into a working project
+        after qualification and risk review.
+      d_level: D3
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: approved
+        - type: emit_event
+          topic: aeis.idea.promoted
+    - id: archive_idea
+      description_pl: |
+        Przenosi ideę do archiwum bez usuwania
+        jej historii i danych kontekstowych.
+      description_en: |
+        Moves the idea to archive without deleting
+        its history and contextual data.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: archived
+        - type: emit_event
+          topic: aeis.idea.archived
+    - id: restore_idea
+      description_pl: |
+        Przywraca ideę z archiwum do obiegu
+        roboczego bez utraty śladu audytowego.
+      description_en: |
+        Restores the idea from archive back
+        into working circulation with audit continuity.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: clarification
+        - type: emit_event
+          topic: aeis.idea.restored
+    - id: delete_soft
+      description_pl: |
+        Oznacza ideę jako logicznie usuniętą
+        bez fizycznego kasowania rekordu.
+      description_en: |
+        Marks the idea as logically deleted
+        without physically removing the record.
+      d_level: D3
+      hg_required: true
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: archived
+        - type: emit_event
+          topic: aeis.idea.soft_deleted
+    - id: delete_hard
+      description_pl: |
+        Uruchamia trwałe usunięcie idei
+        i wymaga najwyższego poziomu kontroli człowieka.
+      description_en: |
+        Initiates permanent deletion of the idea
+        and requires the highest human control level.
+      d_level: D5
+      hg_required: true
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: emit_event
+          topic: aeis.idea.hard_deleted

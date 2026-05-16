@@ -1,0 +1,26 @@
+{
+  "module_id": "cellular.rf_isolation",
+  "module_kind": "O",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D5",
+  "security_profile": "staging-strict",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cellular.rf.validation",
+    "cellular.rf.violation"
+  ],
+  "consumes_events": [
+    "sdr.capture.completed"
+  ],
+  "description": "RF isolation validation for lab environment safety compliance.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

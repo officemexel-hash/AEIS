@@ -1,0 +1,107 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_human_scenario
+  name_pl: Scenariusz ludzki W14
+  name_en: W14 Human Scenario
+  version: v1.0
+  description_pl: 'Scenariusz workflow wykonywany przez personę w symulacji.
+
+    Domena i poziom trudności są dedykowane do selekcji scenariuszy,
+
+    a kroki, punkty decyzji i kryteria sukcesu trafiają do rozszerzenia.'
+  description_en: 'Workflow scenario executed by a persona in simulation.
+
+    Domain and difficulty are dedicated for scenario selection,
+
+    while steps, decision points, and success criteria stay in the extension.'
+  tags:
+  - w14
+  - testing
+  - scenario
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: domain
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: difficulty
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - easy
+    - medium
+    - hard
+    default: medium
+  - name: workflow_step_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: decision_point_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: persona
+    target: w14_human_persona
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - domain
+    - difficulty
+    - workflow_step_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - domain
+  actions:
+  - id: promote_human_scenario
+    description_pl: Promuje scenariusz do obowiązkowego zestawu symulacyjnego.
+    description_en: Promotes the scenario to the mandatory simulation set.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_scenario.promoted
+  - id: retire_human_scenario
+    description_pl: Wycofuje scenariusz z aktywnej biblioteki testowej.
+    description_en: Retires the scenario from the active testing library.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_scenario.retired

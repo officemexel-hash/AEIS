@@ -1,0 +1,17 @@
+name: proto-contract-designer
+version: 1.0.0
+description: Designs gRPC proto contracts for SYLION modules
+parallel_safe: true
+idempotent: false
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: services
+    type: list
+    required: true
+  - name: messages
+    type: list
+    required: false
+outputs:
+  - contract.proto

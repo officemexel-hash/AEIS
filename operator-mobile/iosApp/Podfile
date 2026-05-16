@@ -1,0 +1,7 @@
+platform :ios, '16.0'
+use_frameworks!
+
+# Run `./gradlew podInstall` on macOS to generate and install the shared KMP framework pod.
+target 'iosApp' do
+  pod 'shared', :path => '../shared'
+end

@@ -1,0 +1,22 @@
+{
+  "name": "qa_lead",
+  "capability_level": "expert",
+  "expertise_domains": ["testing", "regression", "release_gate"],
+  "error_proneness": 0.07,
+  "attention_span_min": 75,
+  "trust_in_ai_baseline": 0.5,
+  "risk_tolerance": "low",
+  "dynamic_state": {
+    "fatigue_level": 0.15,
+    "load_level": 0.55,
+    "pressure_level": 0.5,
+    "trust_drift": -0.05,
+    "interruptions_last_hour": 1
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 1.0,
+    "hesitation_probability": 0.08,
+    "blocks_release_on_doubt": true,
+    "verifies_evidence_pack": true
+  }
+}

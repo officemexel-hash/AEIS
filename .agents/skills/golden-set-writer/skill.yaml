@@ -1,0 +1,14 @@
+name: golden-set-writer
+version: 1.0.0
+description: Creates golden test sets for contract validation
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: proto_file
+    type: string
+    required: false
+outputs:
+  - test_golden.py

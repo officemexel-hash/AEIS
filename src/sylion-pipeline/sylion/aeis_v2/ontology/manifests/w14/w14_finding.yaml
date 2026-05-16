@@ -1,0 +1,164 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_finding
+  name_pl: Ustalenie W14
+  name_en: W14 Finding
+  version: v1.0
+  description_pl: 'Wykryta wada, drift lub naruszenie wymagające działania.
+
+    Do kolumn trafiają severity, status i tytuł, a dłuższy opis
+
+    oraz dodatkowy kontekst pozostają w rozszerzeniu.'
+  description_en: 'Detected defect, drift, or violation requiring action.
+
+    Severity, status, and title are dedicated columns, while the longer
+
+    description and additional context remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - finding
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: severity
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - P0
+    - P1
+    - P2
+    - P3
+    - P4
+    default: P2
+  - name: r_status
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - OPEN
+    - TRIAGED
+    - REPRODUCED
+    - CLASSIFIED
+    - REPAIR_PROPOSED
+    - WAITING_FOR_HUMAN_GATE
+    - REPAIRING
+    - READY_FOR_RETEST
+    - REGRESSION_FAILED
+    - VERIFIED
+    - ESCALATED
+    - WAIVED_BY_HUMAN
+    - CLOSED
+    default: OPEN
+  - name: d_level
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - D0
+    - D1
+    - D2
+    - D3
+    - D4
+    - D5
+    default: D2
+  - name: title
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: discovered_by
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: ticket
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: requirement
+    target: w14_requirement
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: test_run
+    target: w14_test_run
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: guardian_alert
+    target: w14_guardian_alert
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - severity
+    - r_status
+    - d_level
+    - title
+    - ticket
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - title
+  actions:
+  - id: triage_finding
+    description_pl: Przenosi finding do stanu triage i rejestruje rozpoczęcie obsługi.
+    description_en: Moves the finding into triage and records handling start.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: r_status
+      to: TRIAGED
+    - type: emit_event
+      topic: aeis.w14.finding.triaged
+  - id: close_finding
+    description_pl: Zamyka finding po potwierdzeniu naprawy lub waiverze.
+    description_en: Closes the finding after fix verification or waiver.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: r_status
+      to: CLOSED
+    - type: emit_event
+      topic: aeis.w14.finding.closed

@@ -1,0 +1,14 @@
+{
+  "error_class": "stale_data_action",
+  "target_action": "approve_proposal_using_2h_old_cache",
+  "context": "Operator views advisor card cached 2h ago and clicks Approve",
+  "timing": "after_cache_ttl_expired",
+  "expected_system_response": [
+    "show_stale_badge",
+    "force_refresh_before_action",
+    "block_action_until_refresh"
+  ],
+  "severity_if_system_allows_error": "D3",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

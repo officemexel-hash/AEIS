@@ -1,0 +1,14 @@
+{
+  "error_class": "premature_action",
+  "target_action": "promote_release_before_regression_finishes",
+  "context": "release operator promotes RC while regression is still running",
+  "timing": "before_regression_complete",
+  "expected_system_response": [
+    "block_action",
+    "show_in_progress_indicator",
+    "highlight_pending_regression_run_id"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

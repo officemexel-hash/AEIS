@@ -1,0 +1,14 @@
+name: demand-signal-clusterer
+version: 1.0.0
+description: Implements Demand Signal Analyzer
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: signal_data
+    type: object
+    required: true
+  - name: clustering_config
+    type: object
+    required: false
+outputs:
+  - demand_report

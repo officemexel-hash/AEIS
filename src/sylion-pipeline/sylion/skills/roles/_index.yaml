@@ -1,0 +1,133 @@
+version: "v2.1.0"
+total_roles: 41
+generated_at: "2026-04-27"
+description: >
+  W7 Skills Registry — Role Catalog. Source: PDF SYLION_v2 §8.2.
+  Each role has a YAML manifest with preferred_capabilities, preferred_models,
+  fallback_models, typical_tasks, cost_profile and system_prompt (PL+EN).
+
+categories:
+  text:
+    label_pl: Teksty
+    label_en: Text
+    role_ids:
+      - copywriter
+      - editor
+      - fact_checker
+      - translator
+      - ghostwriter
+      - technical_writer
+  code:
+    label_pl: Kod
+    label_en: Code
+    role_ids:
+      - code_implementer
+      - code_reviewer
+      - refactorer
+      - debugger
+      - test_writer
+      - security_auditor
+      - data_engineer
+      - ml_engineer
+      - ai_orchestrator
+  visual:
+    label_pl: Wizual
+    label_en: Visual
+    role_ids:
+      - graphic_designer
+      - illustrator
+      - ui_designer
+      - photo_editor
+      - video_editor
+  audio:
+    label_pl: Audio
+    label_en: Audio
+    role_ids:
+      - composer
+      - sound_designer
+      - voiceover_artist
+      - transcriber
+  strategy:
+    label_pl: Strategia
+    label_en: Strategy
+    role_ids:
+      - researcher
+      - analyst
+      - strategist
+      - planner
+      - project_manager
+  mobile:
+    label_pl: Mobile
+    label_en: Mobile
+    role_ids:
+      - ios_specialist
+      - android_specialist
+      - react_native_specialist
+  web:
+    label_pl: Web
+    label_en: Web
+    role_ids:
+      - frontend_specialist
+      - backend_specialist
+      - fullstack_implementer
+  domain:
+    label_pl: Domena
+    label_en: Domain
+    role_ids:
+      - lawyer
+      - accountant
+      - scientist
+      - marketer
+      - sales
+      - customer_support
+
+roles:
+  # text (6)
+  - {id: copywriter, category: text, file: copywriter.yaml}
+  - {id: editor, category: text, file: editor.yaml}
+  - {id: fact_checker, category: text, file: fact_checker.yaml}
+  - {id: translator, category: text, file: translator.yaml}
+  - {id: ghostwriter, category: text, file: ghostwriter.yaml}
+  - {id: technical_writer, category: text, file: technical_writer.yaml}
+  # code (9 — includes 3 extras: data_engineer, ml_engineer, ai_orchestrator)
+  - {id: code_implementer, category: code, file: code_implementer.yaml}
+  - {id: code_reviewer, category: code, file: code_reviewer.yaml}
+  - {id: refactorer, category: code, file: refactorer.yaml}
+  - {id: debugger, category: code, file: debugger.yaml}
+  - {id: test_writer, category: code, file: test_writer.yaml}
+  - {id: security_auditor, category: code, file: security_auditor.yaml}
+  - {id: data_engineer, category: code, file: data_engineer.yaml}
+  - {id: ml_engineer, category: code, file: ml_engineer.yaml}
+  - {id: ai_orchestrator, category: code, file: ai_orchestrator.yaml}
+  # visual (5)
+  - {id: graphic_designer, category: visual, file: graphic_designer.yaml}
+  - {id: illustrator, category: visual, file: illustrator.yaml}
+  - {id: ui_designer, category: visual, file: ui_designer.yaml}
+  - {id: photo_editor, category: visual, file: photo_editor.yaml}
+  - {id: video_editor, category: visual, file: video_editor.yaml}
+  # audio (4)
+  - {id: composer, category: audio, file: composer.yaml}
+  - {id: sound_designer, category: audio, file: sound_designer.yaml}
+  - {id: voiceover_artist, category: audio, file: voiceover_artist.yaml}
+  - {id: transcriber, category: audio, file: transcriber.yaml}
+  # strategy (5)
+  - {id: researcher, category: strategy, file: researcher.yaml}
+  - {id: analyst, category: strategy, file: analyst.yaml}
+  - {id: strategist, category: strategy, file: strategist.yaml}
+  - {id: planner, category: strategy, file: planner.yaml}
+  - {id: project_manager, category: strategy, file: project_manager.yaml}
+  # mobile (3)
+  - {id: ios_specialist, category: mobile, file: ios_specialist.yaml}
+  - {id: android_specialist, category: mobile, file: android_specialist.yaml}
+  - {id: react_native_specialist, category: mobile, file: react_native_specialist.yaml}
+  # web (3)
+  - {id: frontend_specialist, category: web, file: frontend_specialist.yaml}
+  - {id: backend_specialist, category: web, file: backend_specialist.yaml}
+  - {id: fullstack_implementer, category: web, file: fullstack_implementer.yaml}
+  # domain (6)
+  - {id: lawyer, category: domain, file: lawyer.yaml}
+  - {id: accountant, category: domain, file: accountant.yaml}
+  - {id: scientist, category: domain, file: scientist.yaml}
+  - {id: marketer, category: domain, file: marketer.yaml}
+  - {id: sales, category: domain, file: sales.yaml}
+  - {id: customer_support, category: domain, file: customer_support.yaml}

@@ -1,0 +1,15 @@
+{
+  "error_class": "premature_action",
+  "target_action": "device_commissioning_upload_without_backup",
+  "context": "HMEP commissioning page: operator clicks Upload before Backup completes",
+  "timing": "before_backup_step_complete",
+  "expected_system_response": [
+    "block_upload",
+    "show_message_backup_required",
+    "highlight_backup_step",
+    "audit_log_attempt"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D5",
+  "action_d_level": "D2"
+}

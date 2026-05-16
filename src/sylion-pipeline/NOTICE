@@ -1,0 +1,73 @@
+SYLION Pipeline
+Copyright (c) 2024-2026 Robert Skorupka
+
+This product includes software developed by the following third parties,
+each governed by their respective licenses (see THIRD_PARTY_LICENSES.md):
+
+------------------------------------------------------------------------
+APACHE-2.0 COMPONENTS
+------------------------------------------------------------------------
+
+aiofiles
+  Copyright (c) 2016-2024 Tin Tvrtković and contributors
+  https://github.com/Tinche/aiofiles
+
+python-multipart
+  Copyright (c) 2012-2024 Andrew Dunham and contributors
+  https://github.com/Kludex/python-multipart
+
+watchdog
+  Copyright (c) 2011-2024 Yesudeep Mangalapilly and contributors
+  https://github.com/gorakhargosh/watchdog
+
+------------------------------------------------------------------------
+BSD-3-CLAUSE COMPONENTS
+------------------------------------------------------------------------
+
+uvicorn
+  Copyright (c) 2017-present Tom Christie
+  https://github.com/encode/uvicorn
+
+starlette
+  Copyright (c) 2018-present Encode OSS Ltd.
+  https://github.com/encode/starlette
+
+pypdf
+  Copyright (c) 2006-2024 pypdf contributors
+  https://github.com/py-pdf/pypdf
+
+python-dotenv
+  Copyright (c) 2014-2024 Saurabh Kumar and contributors
+  https://github.com/theskumar/python-dotenv
+
+httpx
+  Copyright (c) 2019-present Encode OSS Ltd.
+  https://github.com/encode/httpx
+
+numpy
+  Copyright (c) 2005-2024 NumPy Developers
+  Copyright (c) 2001, Travis Oliphant (portions)
+  https://github.com/numpy/numpy
+
+idna
+  Copyright (c) 2013-2024 Kim Davies and contributors
+  https://github.com/kjd/idna
+
+------------------------------------------------------------------------
+MOZILLA PUBLIC LICENSE 2.0 (MPL-2.0) COMPONENTS
+------------------------------------------------------------------------
+
+certifi (Mozilla CA Bundle)
+  Copyright (c) 2022 Kenneth Reitz
+  https://github.com/certifi/python-certifi
+
+------------------------------------------------------------------------
+SQLITE (PUBLIC DOMAIN)
+------------------------------------------------------------------------
+
+SQLite is in the public domain. No attribution required.
+  https://www.sqlite.org/copyright.html
+
+------------------------------------------------------------------------
+
+Full license texts are provided in THIRD_PARTY_LICENSES.md.

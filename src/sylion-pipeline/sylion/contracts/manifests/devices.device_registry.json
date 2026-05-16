@@ -1,0 +1,27 @@
+{
+  "module_id": "devices.device_registry",
+  "module_kind": "M",
+  "owner_plan": "P19",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "devices.device.registered",
+    "devices.device.status"
+  ],
+  "consumes_events": [
+    "devices.discovery.found",
+    "devices.discovery.lost"
+  ],
+  "description": "Registry of known devices with capabilities and status tracking.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

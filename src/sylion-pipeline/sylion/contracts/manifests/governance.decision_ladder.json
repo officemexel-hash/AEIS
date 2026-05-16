@@ -1,0 +1,28 @@
+{
+  "module_id": "governance.decision_ladder",
+  "module_kind": "E",
+  "owner_plan": "P05",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus",
+    "core.evidence_spine",
+    "core.decision_gate_engine"
+  ],
+  "publishes_events": [
+    "governance.decision.proposed",
+    "governance.decision.classified"
+  ],
+  "consumes_events": [
+    "decision.classified"
+  ],
+  "description": "Implements the D0-D5 decision classification ladder with auto-routing.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

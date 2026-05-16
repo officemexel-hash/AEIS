@@ -1,0 +1,62 @@
+# =============================================================================
+# SYLION AEIS API — Dockerfile for FastAPI application
+# =============================================================================
+# Build:  docker build -f Dockerfile.api -t sylion-api .
+# Run:    docker run -p 8000:8000 -e SYLION_DB_MODE=postgres sylion-api
+# =============================================================================
+
+FROM python:3.14-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV VIRTUAL_ENV=/venv
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+COPY requirements-pg.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements-pg.txt
+
+# ---------------------------------------------------------------------------
+# Runtime stage
+# ---------------------------------------------------------------------------
+FROM python:3.14-slim
+
+LABEL org.opencontainers.image.title="SYLION AEIS API" \
+      org.opencontainers.image.description="Autonomous Engineering Intelligence System API"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /venv /venv
+
+RUN groupadd --gid 10001 sylion && \
+    adduser --uid 10001 --gid 10001 \
+            --system --no-create-home \
+            --shell /usr/sbin/nologin \
+            sylion
+
+ENV PATH="/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+COPY --chown=sylion:sylion sylion/ sylion/
+
+USER sylion
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s \
+            --timeout=5s \
+            --start-period=15s \
+            --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "sylion.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

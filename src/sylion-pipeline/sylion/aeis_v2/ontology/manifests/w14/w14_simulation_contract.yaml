@@ -1,0 +1,111 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_simulation_contract
+  name_pl: Kontrakt symulacji W14
+  name_en: W14 Simulation Contract
+  version: v1.0
+  description_pl: 'Kontrakt uruchomienia symulacji określający izolację, tryb modelu,
+
+    persistencję i ograniczenia bezpieczeństwa. Relacje wiążą kontrakt
+
+    z branchami, projektem źródłowym i opcjonalną kartą testów.'
+  description_en: 'Simulation launch contract defining isolation, model mode,
+
+    persistence, and safety constraints. Relations tie it to branches,
+
+    the source project, and an optional test charter.'
+  tags:
+  - w14
+  - testing
+  - simulation_contract
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: simulation_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: sot_version
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: masterplan_version
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: source_project
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: branch
+    target: w14_branch
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: test_charter
+    target: w14_test_charter
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - simulation_ref
+    - sot_version
+    - masterplan_version
+    - source_project
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - simulation_ref
+  actions:
+  - id: approve_simulation_contract
+    description_pl: Zatwierdza kontrakt symulacji do wykonania w izolacji.
+    description_en: Approves the simulation contract for isolated execution.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.simulation_contract.approved
+  - id: abort_simulation_contract
+    description_pl: Przerywa kontrakt symulacji z nieodwracalnym skutkiem operacyjnym.
+    description_en: Aborts the simulation contract with an irreversible operational
+      effect.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: emit_event
+      topic: aeis.w14.simulation_contract.aborted

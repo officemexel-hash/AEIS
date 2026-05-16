@@ -1,0 +1,22 @@
+{
+  "name": "security_analyst",
+  "capability_level": "expert",
+  "expertise_domains": ["security", "incident_response", "pii", "threat_modeling"],
+  "error_proneness": 0.06,
+  "attention_span_min": 100,
+  "trust_in_ai_baseline": 0.25,
+  "risk_tolerance": "low",
+  "dynamic_state": {
+    "fatigue_level": 0.1,
+    "load_level": 0.6,
+    "pressure_level": 0.65,
+    "trust_drift": -0.1,
+    "interruptions_last_hour": 3
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 1.1,
+    "hesitation_probability": 0.05,
+    "demands_chain_of_custody": true,
+    "challenges_council_decisions": true
+  }
+}

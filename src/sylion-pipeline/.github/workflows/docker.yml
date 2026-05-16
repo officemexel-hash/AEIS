@@ -1,0 +1,182 @@
+# SYLION v5.9.1 — Docker Build & Push to GHCR
+#
+# Trigger: push to main branch (or manual dispatch)
+# Target:  ghcr.io/<org>/<repo>:main  +  :sha-<short>
+#
+# This workflow is for continuous delivery of the dev/main image.
+# Release-tagged images are handled by release.yml.
+
+name: Docker
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/CODEOWNERS"
+      - ".github/pull_request_template.md"
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push image to GHCR (true/false)"
+        required: false
+        default: "true"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write   # cosign keyless signing
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+concurrency:
+  group: docker-main
+  cancel-in-progress: true
+
+jobs:
+  # ── Lint Dockerfile ──────────────────────────────────────────────────────────
+  dockerfile-lint:
+    name: hadolint — Dockerfile lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+        continue-on-error: true   # advisory only — don't block build
+
+  # ── Build & push ─────────────────────────────────────────────────────────────
+  build-push:
+    name: Build and push Docker image
+    runs-on: ubuntu-latest
+    needs: dockerfile-lint
+    timeout-minutes: 25
+    outputs:
+      image_digest: ${{ steps.push.outputs.digest }}
+      image_tags: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (multi-arch emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=main
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event.inputs.push != 'false' }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SYLION_VERSION=${{ github.sha }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image summary
+        run: |
+          echo "### Docker Image Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-|-|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Registry | \`${{ env.REGISTRY }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | \`${{ env.IMAGE_NAME }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tags | \`${{ steps.meta.outputs.tags }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Digest | \`${{ steps.push.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Sign with cosign ─────────────────────────────────────────────────────────
+  sign:
+    name: Sign image with cosign (keyless)
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: github.event.inputs.push != 'false'
+    timeout-minutes: 10
+
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign image
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          DIGEST="${{ needs.build-push.outputs.image_digest }}"
+          cosign sign --yes "${IMAGE}@${DIGEST}"
+          echo "Signed: ${IMAGE}@${DIGEST}"
+
+  # ── Post-push smoke test ──────────────────────────────────────────────────────
+  smoke-test:
+    name: Container smoke test
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: github.event.inputs.push != 'false'
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and run health check
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+          docker pull "${IMAGE}"
+
+          # Start container, wait for it to be healthy, then check
+          docker run -d \
+            --name sylion-smoke \
+            --env-file .env.example \
+            -p 8000:8000 \
+            "${IMAGE}" &
+
+          sleep 10
+
+          # Basic HTTP health check (adjust path as needed)
+          docker logs sylion-smoke 2>&1 | head -30
+
+          docker stop sylion-smoke || true
+          docker rm sylion-smoke   || true

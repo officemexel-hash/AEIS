@@ -1,0 +1,45 @@
+project_id: "proj_demo_04_operator_crm"
+name: "Operator CRM"
+type: "crm"
+target_d_level: "D4"
+domain: "data_management"
+
+description: |
+  CRM for AEIS operators tracking customer contacts, projects, billing.
+  Sensitive PII data; GDPR-compliant; legal compliance officer involved.
+
+required_personas:
+  - "operator_power_user"
+  - "auditor"
+  - "legal_compliance_officer"  # not in 8 starter
+
+domain_specific_human_errors:
+  - error_class: "permission_overreach"
+    target_action: "gdpr_delete_request_vs_audit_retention_policy"
+    severity_if_system_allows_error: "D4"
+  - error_class: "wrong_context"
+    target_action: "contact_merge_creating_data_loss"
+    severity_if_system_allows_error: "D3"
+  - error_class: "authority_abuse"
+    target_action: "operator_self_grants_admin_role"
+    severity_if_system_allows_error: "D4"
+
+required_test_classes: ["T0", "T2", "T3", "T4", "T5", "T6", "T7", "T9", "T10", "T11", "T15"]
+
+release_blockers:
+  - "PII exposure in any endpoint"
+  - "GDPR right-to-be-forgotten not enforceable"
+  - "Audit log write failure (must be append-only)"
+  - "Role escalation without approval workflow"
+  - "Contact merge without conflict detection"
+
+expected_modules: 10
+expected_api_endpoints: 22
+expected_ui_pages: 8
+
+success_criteria:
+  - "PRODUCTION_RELEASED status reached"
+  - "Legal/compliance officer signed off"
+  - "PII Guardian zero alerts in last 24h"
+  - "All operations have audit trail"
+  - "Minimum 6 lessons_learned recorded"

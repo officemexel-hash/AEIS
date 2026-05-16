@@ -1,0 +1,12 @@
+{
+  "class": "A",
+  "module": "core.module_registry",
+  "tests": [
+    {
+      "method": "register",
+      "setup": {},
+      "input": {"module_id": "test.module", "module_kind": "A", "owner_plan": "P01"},
+      "expected": {"module_id": "test.module"}
+    }
+  ]
+}

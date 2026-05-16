@@ -1,0 +1,21 @@
+{
+  "module_id": "sylion.aeis.advisor.role_resolver",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.pricing"
+  ],
+  "lifecycle_stage": "DRAFT",
+  "events_emit": [
+    "aeis.advisor.role_resolver.routing_decision",
+    "aeis.advisor.role_resolver.override_applied",
+    "aeis.advisor.role_resolver.fallback_to_local"
+  ],
+  "events_subscribe": [],
+  "storage": {
+    "postgres_schemas": []
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "module_id": "cognitive.planner",
+  "module_kind": "B",
+  "owner_plan": "P01",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cognitive.plan.created",
+    "cognitive.plan.updated",
+    "cognitive.plan.completed"
+  ],
+  "consumes_events": [
+    "governance.decision.classified",
+    "aeis.improvement.proposed"
+  ],
+  "description": "Multi-agent planning engine. Decomposes goals into executable task trees.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

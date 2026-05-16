@@ -1,0 +1,28 @@
+name: gate-check-runner
+version: "1.0.0"
+description: >
+  Runs entry and exit gates for SYLION module lifecycle stages. Each gate
+  enforces a checklist of quality, security, and performance criteria that
+  must pass before a module can transition to the next stage.
+parallel_safe: true
+idempotent: true
+inputs:
+  module_id:
+    type: string
+    required: true
+    description: "The SYLION module identifier (e.g., m1_roast)"
+  gate_type:
+    type: string
+    required: true
+    description: "One of: G-ARCH, G-TEST, G-SEC, G-EFF, G-PERF, G-MEM, G-COST, G-READY"
+  target_stage:
+    type: string
+    required: true
+    description: The lifecycle stage being transitioned to
+outputs:
+  gate_result:
+    type: string
+    description: '"PASS" or "FAIL"'
+  checklist:
+    type: list
+    description: Checklist items with pass/fail status and details per item

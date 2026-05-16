@@ -1,0 +1,382 @@
+# =============================================================================
+# SYLION AEIS — Import Linter Configuration
+# Enforces R2.5 dependency rules from Ksiega/Masterplan v3.5
+#
+# Rules:
+#   1. Only sylion.core.* may be imported by any other package (kernel layer)
+#   2. Same-package imports are always allowed
+#   3. Cross-package imports between non-core packages are FORBIDDEN
+#   4. sylion.api is a facade layer — it may import from any package
+#   5. sylion.contracts and sylion.db are infrastructure — may import from core only
+#   6. All cross-package communication must go through EventBus or Contract Registry
+# =============================================================================
+
+layers:
+  # A: Core Kernel — 12 modules, the immutable backbone
+  - name: core
+    packages:
+      - sylion.core
+
+  # B: Cognitive — reasoning layer (7 modules)
+  - name: cognitive
+    packages:
+      - sylion.cognitive
+
+  # C: Execution — execution layer (6 modules)
+  - name: execution
+    packages:
+      - sylion.execution
+
+  # D: Memory — Ksiega, compacts, evidence store (7 modules)
+  - name: memory
+    packages:
+      - sylion.memory
+
+  # E: Governance — D0-D5, Council, Evidence (7 modules)
+  - name: governance
+    packages:
+      - sylion.governance
+
+  # F: Security — auth, audit, phantom (8 modules)
+  - name: security
+    packages:
+      - sylion.security
+
+  # G: Efficiency — bloat, perf, memory, cost (4 modules)
+  - name: efficiency
+    packages:
+      - sylion.efficiency
+
+  # H: AEIS Self-* — self-observation through self-preservation (5 modules)
+  - name: aeis
+    packages:
+      - sylion.aeis
+
+  # I: Skills & Demand — skill lifecycle + demand signals (3 modules)
+  - name: skills
+    packages:
+      - sylion.skills
+
+  # J: Surface — Console API + UI + WebSocket (3 modules)
+  - name: surface
+    packages:
+      - sylion.surface
+
+  # K: Rebuildability — rebuild orchestration + cutover (4 modules)
+  - name: rebuild
+    packages:
+      - sylion.rebuild
+
+  # L: Quality — golden set + regression (3 modules)
+  - name: quality
+    packages:
+      - sylion.quality
+
+  # Facade: API routes — thin HTTP layer, imports from all domain packages
+  - name: api
+    packages:
+      - sylion.api
+
+  # Infrastructure: Database migrations
+  - name: db
+    packages:
+      - sylion.db
+
+  # Infrastructure: Contract manifests
+  - name: contracts
+    packages:
+      - sylion.contracts
+
+  # Domain: Device management (4 modules)
+  - name: devices
+    packages:
+      - sylion.devices
+
+  # Domain: SDR pipeline (5 modules)
+  - name: sdr
+    packages:
+      - sylion.sdr
+
+  # Domain: Cellular testing (7 modules)
+  - name: cellular
+    packages:
+      - sylion.cellular
+
+rules:
+  # -------------------------------------------------------------------------
+  # ALLOWED: All domain packages may import from sylion.core (the kernel)
+  # This is the ONLY cross-package import direction allowed for domain code
+  # -------------------------------------------------------------------------
+  - from: [sylion.governance]
+    to: [sylion.core]
+    allow: true
+    comment: "Governance depends on Core kernel (EventBus, EvidenceSpine, DecisionGateEngine)"
+
+  - from: [sylion.memory]
+    to: [sylion.core]
+    allow: true
+    comment: "Memory depends on Core kernel (EventBus, EvidenceSpine)"
+
+  - from: [sylion.cognitive]
+    to: [sylion.core]
+    allow: true
+    comment: "Cognitive depends on Core kernel (EventBus)"
+
+  - from: [sylion.execution]
+    to: [sylion.core]
+    allow: true
+    comment: "Execution depends on Core kernel (EventBus)"
+
+  - from: [sylion.security]
+    to: [sylion.core]
+    allow: true
+    comment: "Security depends on Core kernel (EventBus)"
+
+  - from: [sylion.efficiency]
+    to: [sylion.core]
+    allow: true
+    comment: "Efficiency depends on Core kernel (EventBus)"
+
+  - from: [sylion.aeis]
+    to: [sylion.core]
+    allow: true
+    comment: "AEIS depends on Core kernel (EventBus)"
+
+  - from: [sylion.skills]
+    to: [sylion.core]
+    allow: true
+    comment: "Skills depends on Core kernel (EventBus)"
+
+  - from: [sylion.surface]
+    to: [sylion.core]
+    allow: true
+    comment: "Surface depends on Core kernel (EventBus)"
+
+  - from: [sylion.rebuild]
+    to: [sylion.core]
+    allow: true
+    comment: "Rebuild depends on Core kernel (EventBus)"
+
+  - from: [sylion.quality]
+    to: [sylion.core]
+    allow: true
+    comment: "Quality depends on Core kernel (EventBus)"
+
+  - from: [sylion.devices]
+    to: [sylion.core]
+    allow: true
+    comment: "Devices depends on Core kernel (EventBus)"
+
+  - from: [sylion.sdr]
+    to: [sylion.core]
+    allow: true
+    comment: "SDR depends on Core kernel (EventBus)"
+
+  - from: [sylion.cellular]
+    to: [sylion.core]
+    allow: true
+    comment: "Cellular depends on Core kernel (EventBus)"
+
+  - from: [sylion.db]
+    to: [sylion.core]
+    allow: true
+    comment: "DB infrastructure depends on Core kernel"
+
+  - from: [sylion.contracts]
+    to: [sylion.core]
+    allow: true
+    comment: "Contracts infrastructure depends on Core kernel"
+
+  - from: [sylion.api]
+    to: [sylion.core]
+    allow: true
+    comment: "API facade depends on Core kernel (EventBus, ContractRegistry)"
+
+  # -------------------------------------------------------------------------
+  # ALLOWED: API facade may import from all domain packages (thin HTTP layer)
+  # api/*_routes.py files are controllers that wire HTTP to domain modules
+  # -------------------------------------------------------------------------
+  - from: [sylion.api]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular]
+    allow: true
+    comment: "API facade routes import domain package singletons (get_* functions)"
+
+  - from: [sylion.api]
+    to: [sylion.db]
+    allow: true
+    comment: "API app.py imports run_migration from db"
+
+  # -------------------------------------------------------------------------
+  # FORBIDDEN: Cross-package imports between non-core, non-api packages
+  # These are the violations the monolith has accumulated
+  # Communication must go through EventBus / Contract Registry instead
+  # -------------------------------------------------------------------------
+
+  # Governance must NOT import from domain packages
+  - from: [sylion.governance]
+    to: [sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Governance must not directly import domain packages — use EventBus"
+
+  # Memory must NOT import from other domain packages
+  - from: [sylion.memory]
+    to: [sylion.governance, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Memory must not directly import domain packages — use EventBus"
+
+  # Cognitive must NOT import from other domain packages
+  - from: [sylion.cognitive]
+    to: [sylion.governance, sylion.memory, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Cognitive must not directly import domain packages — use EventBus"
+
+  # Execution must NOT import from other domain packages
+  - from: [sylion.execution]
+    to: [sylion.governance, sylion.memory, sylion.cognitive,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Execution must not directly import domain packages — use EventBus"
+
+  # Security must NOT import from other domain packages
+  - from: [sylion.security]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Security must not directly import domain packages — use EventBus"
+
+  # Efficiency must NOT import from other domain packages
+  - from: [sylion.efficiency]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Efficiency must not directly import domain packages — use EventBus"
+
+  # AEIS must NOT import from other domain packages
+  - from: [sylion.aeis]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "AEIS must not directly import domain packages — use EventBus"
+
+  # Skills must NOT import from other domain packages
+  - from: [sylion.skills]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Skills must not directly import domain packages — use EventBus"
+
+  # Surface must NOT import from other domain packages
+  - from: [sylion.surface]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Surface must not directly import domain packages — use EventBus"
+
+  # Rebuild must NOT import from other domain packages
+  - from: [sylion.rebuild]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Rebuild must not directly import domain packages — use EventBus"
+
+  # Quality must NOT import from other domain packages
+  - from: [sylion.quality]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Quality must not directly import domain packages — use EventBus"
+
+  # Devices must NOT import from other domain packages
+  - from: [sylion.devices]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Devices must not directly import domain packages — use EventBus"
+
+  # SDR must NOT import from other domain packages
+  - from: [sylion.sdr]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "SDR must not directly import domain packages — use EventBus"
+
+  # Cellular must NOT import from other domain packages
+  - from: [sylion.cellular]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Cellular must not directly import domain packages — use EventBus"
+
+  # DB must NOT import from domain packages
+  - from: [sylion.db]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.contracts]
+    allow: false
+    comment: "DB must not directly import domain packages"
+
+  # Contracts must NOT import from domain packages
+  - from: [sylion.contracts]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db]
+    allow: false
+    comment: "Contracts must not directly import domain packages"
+
+  # -------------------------------------------------------------------------
+  # Core must NOT import from any domain package (it is the bottom layer)
+  # -------------------------------------------------------------------------
+  - from: [sylion.core]
+    to: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+         sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+         sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+         sylion.sdr, sylion.cellular, sylion.api, sylion.db, sylion.contracts]
+    allow: false
+    comment: "Core is the bottom layer — must not import from domain packages"
+
+  # -------------------------------------------------------------------------
+  # No domain package may import from api (api is a consumer, not a provider)
+  # -------------------------------------------------------------------------
+  - from: [sylion.governance, sylion.memory, sylion.cognitive, sylion.execution,
+           sylion.security, sylion.efficiency, sylion.aeis, sylion.skills,
+           sylion.surface, sylion.rebuild, sylion.quality, sylion.devices,
+           sylion.sdr, sylion.cellular, sylion.core, sylion.db, sylion.contracts]
+    to: [sylion.api]
+    allow: false
+    comment: "API is a consumer facade — domain packages must not import from it"

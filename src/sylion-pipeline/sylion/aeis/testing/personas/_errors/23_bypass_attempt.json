@@ -1,0 +1,14 @@
+{
+  "error_class": "bypass_attempt",
+  "target_action": "force_promote_to_production_skipping_release_rail",
+  "context": "operator deliberately attempts to bypass ReleaseRail evaluation via a hidden API path",
+  "timing": "before_release_rail_check",
+  "expected_system_response": [
+    "block_action",
+    "alert_release_guardian",
+    "audit_with_bypass_attempt_flag"
+  ],
+  "severity_if_system_allows_error": "D5",
+  "simulated_target_d_level": "D5",
+  "action_d_level": "D3"
+}

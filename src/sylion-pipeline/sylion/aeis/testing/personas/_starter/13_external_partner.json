@@ -1,0 +1,22 @@
+{
+  "name": "external_partner",
+  "capability_level": "intermediate",
+  "expertise_domains": ["external_action", "submission", "grant_workflow"],
+  "error_proneness": 0.22,
+  "attention_span_min": 35,
+  "trust_in_ai_baseline": 0.45,
+  "risk_tolerance": "medium",
+  "dynamic_state": {
+    "fatigue_level": 0.05,
+    "load_level": 0.2,
+    "pressure_level": 0.7,
+    "trust_drift": 0.0,
+    "interruptions_last_hour": 0
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 1.6,
+    "hesitation_probability": 0.25,
+    "deadline_driven": true,
+    "skips_optional_fields": true
+  }
+}

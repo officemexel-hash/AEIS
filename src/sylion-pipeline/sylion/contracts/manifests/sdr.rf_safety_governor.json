@@ -1,0 +1,24 @@
+{
+  "module_id": "sdr.rf_safety_governor",
+  "module_kind": "N",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D5",
+  "security_profile": "staging-strict",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "sdr.safety.check",
+    "sdr.safety.violation"
+  ],
+  "consumes_events": [],
+  "description": "RF safety governor. Enforces transmission limits and compliance.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

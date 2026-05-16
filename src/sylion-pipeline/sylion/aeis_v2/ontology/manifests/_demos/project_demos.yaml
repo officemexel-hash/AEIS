@@ -1,0 +1,39 @@
+# Project demo rows - SYLION v2 ontology demo data
+# Source: docs/v2/_drafts/ollama_batch/batch_B/13_project_demos.yaml (curated by v2 cron)
+# Type definition: ../project.yaml
+# Notes: status values cover planning|active|done|on_hold lifecycle.
+---
+id: 101
+name_pl: Analiza wymagań
+description_pl: Przeprowadzenie analizy wymagań dla nowego systemu ERP.
+status: planning
+owner_email: kamil.owczarek@example.com
+deadline: 2024-10-15
+---
+id: 102
+name_pl: Projektowanie interfejsu
+description_pl: Opracowanie UI/UX dla aplikacji mobilnej.
+status: active
+owner_email: anna.kowalska@example.com
+deadline: 2024-12-01
+---
+id: 103
+name_pl: Implementacja modułu płatności
+description_pl: Rozwój modułu obsługi płatności online.
+status: on_hold
+owner_email: michal.nowak@example.com
+deadline: 2025-02-28
+---
+id: 104
+name_pl: Testy akceptacyjne
+description_pl: Przeprowadzenie testów akceptacyjnych przez klienta.
+status: done
+owner_email: piotr.jankowski@example.com
+deadline: 2024-08-31
+---
+id: 105
+name_pl: Wdrożenie produkcyjne
+description_pl: Implementacja i konfiguracja środowiska produkcyjnego.
+status: planning
+owner_email: agnieszka.wasilewska@example.com
+deadline: 2025-05-20

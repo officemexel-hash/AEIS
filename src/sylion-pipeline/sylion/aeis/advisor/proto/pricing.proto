@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.pricing.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "sylion/aeis/advisor/v1;advisorv1";
+
+service PricingService {
+  rpc GetCost(GetCostRequest) returns (CostEstimate);
+  rpc RefreshPricing(RefreshPricingRequest) returns (RefreshPricingResponse);
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc RegisterAdapter(RegisterAdapterRequest) returns (RegisterAdapterResponse);
+  rpc GetPricingHistory(GetPricingHistoryRequest) returns (GetPricingHistoryResponse);
+  rpc GetProvider(GetProviderRequest) returns (Provider);
+  rpc GetModel(GetModelRequest) returns (Model);
+}
+
+message GetCostRequest {
+  string model_id = 1;
+  int64 input_tokens = 2;
+  int64 output_tokens = 3;
+  int64 cache_hit_tokens = 4;
+}
+
+message CostEstimate {
+  string model_id = 1;
+  string provider_id = 2;
+  string total_cost_usd = 3;
+  string input_cost_usd = 4;
+  string output_cost_usd = 5;
+  string cache_cost_usd = 6;
+  Source source = 7;
+  bool is_assumption = 8;
+  string assumption_note = 9;
+  google.protobuf.Timestamp pricing_effective_from = 10;
+  string pricing_id = 11;
+}
+
+enum Source {
+  SOURCE_UNSPECIFIED = 0;
+  SOURCE_ASSUMPTION = 1;
+  SOURCE_PROFILE = 2;
+  SOURCE_MEASURED = 3;
+}
+
+message RefreshPricingRequest {
+  string provider_id = 1;
+  bool force = 2;
+}
+
+message RefreshPricingResponse {
+  int32 refreshed_count = 1;
+  int32 failed_count = 2;
+  bool used_live = 3;
+  bool assumption_fallback = 4;
+}
+
+message ListProvidersRequest {
+  bool active_only = 1;
+}
+
+message ListProvidersResponse {
+  repeated Provider providers = 1;
+}
+
+message Provider {
+  string provider_id = 1;
+  string display_name = 2;
+  bool is_local = 3;
+  bool is_active = 4;
+  string metadata_url = 5;
+}
+
+message ListModelsRequest {
+  string provider_id = 1;
+  bool include_deprecated = 2;
+}
+
+message ListModelsResponse {
+  repeated Model models = 1;
+}
+
+message Model {
+  string model_id = 1;
+  string provider_id = 2;
+  string display_name = 3;
+  int32 context_window = 4;
+  bool is_local = 5;
+  repeated string capabilities = 6;
+  bool is_default_judge = 7;
+  bool is_default_local = 8;
+  bool is_deprecated = 9;
+  CostEstimate sample_cost_per_1k = 10;
+}
+
+message RegisterAdapterRequest {
+  string provider_id = 1;
+  string display_name = 2;
+  bool is_local = 3;
+  string metadata_url = 4;
+  string adapter_class_path = 5;
+}
+
+message RegisterAdapterResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message GetPricingHistoryRequest {
+  string model_id = 1;
+  google.protobuf.Timestamp since = 2;
+  int32 limit = 3;
+}
+
+message GetPricingHistoryResponse {
+  repeated PricingSnapshot snapshots = 1;
+}
+
+message PricingSnapshot {
+  string history_id = 1;
+  string model_id = 2;
+  google.protobuf.Timestamp fetched_at = 3;
+  Source source = 4;
+  bool is_assumption = 5;
+  string error_message = 6;
+}
+
+message GetProviderRequest {
+  string provider_id = 1;
+}
+
+message GetModelRequest {
+  string model_id = 1;
+}

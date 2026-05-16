@@ -1,0 +1,13 @@
+{
+  "error_class": "wrong_click",
+  "target_action": "click_approve_when_meant_reject",
+  "context": "fatigued operator clicks the wrong button on a D3 card",
+  "timing": "during_review",
+  "expected_system_response": [
+    "show_confirmation_modal",
+    "require_typed_confirmation_for_d3"
+  ],
+  "severity_if_system_allows_error": "D3",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

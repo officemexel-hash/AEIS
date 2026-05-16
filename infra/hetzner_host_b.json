@@ -1,0 +1,16 @@
+{
+  "server_id": 127853600,
+  "name": "sylion-host-b-1776977286",
+  "server_type": "cx23",
+  "location": "fsn1",
+  "image": "ubuntu-24.04",
+  "ipv4": "46.224.3.35",
+  "created_iso": "2026-04-23 20:48:08+00:00",
+  "ssh_key_id": 110961771,
+  "ssh_key_fingerprint": "3d:6f:a3:c5:ef:a5:2a:ca:08:09:f8:53:7d:8e:c8:93",
+  "webhook_url": "https://webhook.site/1d941844-03f5-4ea6-be1e-740735b4b901",
+  "labels": {
+    "purpose": "sylion-distributed",
+    "role": "host-b"
+  }
+}

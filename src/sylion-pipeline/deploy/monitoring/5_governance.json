@@ -1,0 +1,74 @@
+{
+  "__inputs": [{"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus"}],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"}
+  ],
+  "title": "SYLION — Governance",
+  "uid": "sylion-governance",
+  "description": "Phase 3 W3.1 — governance plane (council, tickets, audit chain, autonomy).",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 38,
+  "tags": ["sylion", "phase3", "governance"],
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Council vote latency p95",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "id": 1,
+      "targets": [
+        {"expr": "sylion:council_vote_latency:p95", "refId": "A", "legendFormat": "p95"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tickets per minute by decision_class",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "id": 2,
+      "targets": [
+        {"expr": "sylion:governance:tickets_per_minute", "refId": "A", "legendFormat": "{{decision_class}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Council votes per minute by decision_class",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "id": 3,
+      "targets": [
+        {"expr": "sylion:council:votes_per_minute", "refId": "A", "legendFormat": "{{decision_class}}"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Audit chain valid",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 12, "y": 8, "w": 6, "h": 8},
+      "id": 4,
+      "options": {"colorMode": "background"},
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {"steps": [{"value": null, "color": "red"}, {"value": 1, "color": "green"}]},
+          "mappings": [{"options": {"0": {"text": "BROKEN"}, "1": {"text": "OK"}}, "type": "value"}]
+        }
+      },
+      "targets": [{"expr": "aeis_audit_chain_valid", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Autonomy stage transitions per hour",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 18, "y": 8, "w": 6, "h": 8},
+      "id": 5,
+      "targets": [
+        {"expr": "sylion:autonomy:transitions_per_hour", "refId": "A", "legendFormat": "{{from_stage}}->{{to_stage}}"}
+      ]
+    }
+  ]
+}

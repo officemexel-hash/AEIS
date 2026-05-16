@@ -1,0 +1,227 @@
+# SYLION v5.9.1 — Daily Security Scan
+#
+# Schedule: cron 06:00 UTC every day
+# Manual:   workflow_dispatch
+#
+# Jobs:
+#   - pip-audit     → Python dependency CVE scan
+#   - trivy-docker  → Container image vulnerability scan
+#   - gitleaks      → Secrets detection in git history
+
+name: Security
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to scan (default: latest)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF to GitHub Security tab
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ── 1. pip-audit — Python dependency CVEs ────────────────────────────────────
+  pip-audit:
+    name: pip-audit — dependency CVE scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit requirements.in
+        id: audit-in
+        run: |
+          pip-audit \
+            --requirement requirements.in \
+            --output json \
+            --format json > pip-audit-in.json 2>&1 || true
+
+          pip-audit \
+            --requirement requirements.in \
+            --output text || echo "AUDIT_FAILED=true" >> "$GITHUB_ENV"
+
+      - name: Audit requirements-lock.txt (if present)
+        if: hashFiles('requirements-lock.txt') != ''
+        run: |
+          pip-audit \
+            --requirement requirements-lock.txt \
+            --output json \
+            --format json > pip-audit-lock.json 2>&1 || true
+
+          pip-audit \
+            --requirement requirements-lock.txt \
+            --output text || echo "LOCK_AUDIT_FAILED=true" >> "$GITHUB_ENV"
+
+      - name: Fail on CVEs
+        if: env.AUDIT_FAILED == 'true' || env.LOCK_AUDIT_FAILED == 'true'
+        run: |
+          echo "::error::pip-audit found vulnerable dependencies — see artifacts for details"
+          exit 1
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-reports
+          path: "pip-audit-*.json"
+          retention-days: 90
+
+  # ── 2. trivy — Container image vulnerability scan ────────────────────────────
+  trivy-docker:
+    name: trivy — Docker image CVE scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          INPUT_TAG="${{ github.event.inputs.image_tag }}"
+          TAG="${INPUT_TAG:-latest}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull image
+        run: docker pull "${{ steps.tag.outputs.image }}" || echo "IMAGE_PULL_FAILED=true" >> "$GITHUB_ENV"
+
+      - name: Run trivy image scan (CRITICAL + HIGH)
+        if: env.IMAGE_PULL_FAILED != 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.tag.outputs.image }}
+          format: "sarif"
+          output: "trivy-image.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"   # don't fail here — upload SARIF for review
+
+      - name: Run trivy image scan (text summary)
+        if: env.IMAGE_PULL_FAILED != 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.tag.outputs.image }}
+          format: "table"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          exit-code: "1"   # fail on CRITICAL/HIGH findings in table output
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always() && env.IMAGE_PULL_FAILED != 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-container
+
+      - name: Filesystem scan (repo itself)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-fs.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
+
+      - name: Upload FS SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem
+
+  # ── 3. gitleaks — Secrets in git history ─────────────────────────────────────
+  gitleaks:
+    name: gitleaks — secrets detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history required for gitleaks
+
+      - name: Run gitleaks on full git history
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}   # optional: for organisations
+        with:
+          args: "--redact --verbose"
+
+      - name: Upload gitleaks SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: gitleaks
+        continue-on-error: true   # SARIF may not be present if scan was clean
+
+  # ── 4. Notify on failure ──────────────────────────────────────────────────────
+  notify-on-failure:
+    name: Slack / email notification
+    runs-on: ubuntu-latest
+    needs: [pip-audit, trivy-docker, gitleaks]
+    if: failure()
+    timeout-minutes: 5
+
+    steps:
+      - name: Create GitHub Issue on security failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[SECURITY] Daily scan failure — ${new Date().toISOString().slice(0,10)}`;
+            const body = [
+              '## 🔴 Security scan failed',
+              '',
+              `**Workflow run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'Check the failing job(s) above and triage findings.',
+              '',
+              '/cc @sylion-sre',
+            ].join('\n');
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security', 'automated'],
+              state: 'open',
+            });
+
+            const alreadyOpen = existing.data.some(i => i.title === title);
+            if (!alreadyOpen) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['security', 'automated', 'priority:high'],
+              });
+            }

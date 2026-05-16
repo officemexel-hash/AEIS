@@ -1,0 +1,48 @@
+{
+  "__inputs": [{"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus"}],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"}
+  ],
+  "title": "SYLION — Workspace",
+  "uid": "sylion-workspace",
+  "description": "Phase 3 W3.1 — workspace projects, AI workspace activity, cross-cutting throughput.",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 38,
+  "tags": ["sylion", "phase3", "workspace"],
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Workspace requests per second by endpoint",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
+      "id": 1,
+      "targets": [
+        {"expr": "sum by (endpoint) (rate(aeis_http_requests_total{endpoint=~\"/api/v1/workspace/.*\"}[5m]))", "refId": "A", "legendFormat": "{{endpoint}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Workspace latency p95",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "id": 2,
+      "targets": [
+        {"expr": "sylion:latency:p95{layer=\"workspace\"}", "refId": "A", "legendFormat": "p95"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Workspace error rate (5xx)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "id": 3,
+      "targets": [
+        {"expr": "sylion:error_rate:5xx{endpoint=~\"/api/v1/workspace/.*\"}", "refId": "A", "legendFormat": "{{endpoint}}"}
+      ]
+    }
+  ]
+}

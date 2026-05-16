@@ -1,0 +1,11 @@
+name: skill-registry-implementer
+version: 1.0.0
+description: Implements Skills Registry service
+parallel_safe: false
+idempotent: true
+inputs:
+  - name: skill_definition
+    type: object
+    required: true
+outputs:
+  - registry_service

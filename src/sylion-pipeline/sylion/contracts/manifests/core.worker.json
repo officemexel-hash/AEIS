@@ -1,0 +1,46 @@
+{
+  "module_id": "core.worker",
+  "module_kind": "A",
+  "owner_plan": "P01",
+  "name": "Worker Fleet & Assignment Orchestrator",
+  "version": "1.0.0",
+  "domain": "core.worker",
+  "description": "Distributed build worker registry, assignment orchestration, compact generation and build topology management.",
+  "owner": "core",
+  "status": "active",
+  "depends_on": [
+    "core.event_bus",
+    "core.module_registry"
+  ],
+  "public_api": [
+    "/api/v1/workers",
+    "/api/v1/workers/{worker_id}",
+    "/api/v1/workers/{worker_id}/heartbeat",
+    "/api/v1/workers/{worker_id}/assignments",
+    "/api/v1/workers/{worker_id}/compact",
+    "/api/v1/workers/assignments/orchestrate",
+    "/api/v1/workers/assignments/rebalance",
+    "/api/v1/workers/topology",
+    "/api/v1/workers/topology/{topology_id}"
+  ],
+  "events": [
+    "worker.registered",
+    "worker.updated",
+    "worker.unregistered",
+    "worker.heartbeat",
+    "assignment.created",
+    "assignment.updated",
+    "assignment.deleted",
+    "assignment.auto_assigned",
+    "assignment.rebalanced",
+    "topology.created"
+  ],
+  "metadata": {
+    "scalable": true,
+    "sqlite_wal": true,
+    "postgres_ready": true,
+    "supports_local_vms": true,
+    "supports_vps": true,
+    "max_workers_unbounded": true
+  }
+}

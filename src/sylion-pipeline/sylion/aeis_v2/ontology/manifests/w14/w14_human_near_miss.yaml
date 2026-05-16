@@ -1,0 +1,116 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_human_near_miss
+  name_pl: Near miss ludzki W14
+  name_en: W14 Human Near Miss
+  version: v1.0
+  description_pl: 'Incydent, w którym system poprawnie zablokował błąd operatora.
+
+    Do kolumn trafiają wynik blokady, ocena komunikatu i poziom przyszłego ryzyka,
+
+    a sugestie UX pozostają w rozszerzeniu.'
+  description_en: 'Incident where the system correctly blocked an operator error.
+
+    Columns capture block outcome, message quality, and future risk,
+
+    while UX improvement suggestions remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - near_miss
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: blocked_successfully
+    type: boolean
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    default: true
+  - name: operator_message_quality_score
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 1.0
+  - name: future_risk
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - low
+    - medium
+    - high
+    default: low
+  - name: suggested_ui_improvement
+    type: text
+    nullable: false
+    indexed: false
+    searchable: true
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: scenario
+    target: w14_human_scenario
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  - name: error_injection
+    target: w14_human_error_injection
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - blocked_successfully
+    - operator_message_quality_score
+    - future_risk
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - suggested_ui_improvement
+  actions:
+  - id: promote_human_near_miss
+    description_pl: Promuje near miss do backlogu poprawy UX lub governance.
+    description_en: Promotes the near miss into UX or governance backlog.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_near_miss.promoted
+  - id: dismiss_human_near_miss
+    description_pl: Oznacza near miss jako zamknięty bez dalszych działań.
+    description_en: Dismisses the near miss with no further action.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: emit_event
+      topic: aeis.w14.human_near_miss.dismissed

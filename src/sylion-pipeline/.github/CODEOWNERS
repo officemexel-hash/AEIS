@@ -1,0 +1,62 @@
+# SYLION v5.9.1 — CODEOWNERS
+#
+# Syntax: <pattern>  <owner> [<owner> …]
+# GitHub assigns the listed owners as required reviewers for any PR touching the matched paths.
+# Patterns are matched in order; the LAST matching rule wins.
+#
+# Teams:
+#   @sylion-core  — product, legal, documentation owners
+#   @sylion-sre   — infrastructure, deployment, CI/CD owners
+
+# ── Default (fallback) ────────────────────────────────────────────────────────
+*                               @sylion-sre
+
+# ── Documentation & Legal ────────────────────────────────────────────────────
+/docs/                          @sylion-core
+/docs/PRIVACY_POLICY_*.md       @sylion-core
+/docs/DPIA_*.md                 @sylion-core
+/docs/FAQ_*.md                  @sylion-core
+/docs/ONBOARDING_CHECKLIST_*.md @sylion-core
+/docs/MIGRATION_GUIDE.md        @sylion-core
+/docs/KSEF_*.md                 @sylion-core
+/docs/KSIEGA_*.md               @sylion-core
+/docs/QUICKSTART_*.md           @sylion-core
+/docs/DISASTER_RECOVERY.md      @sylion-core
+/docs/INCIDENT_RESPONSE.md      @sylion-core @sylion-sre
+README.md                       @sylion-core
+LICENSE.md                      @sylion-core
+NOTICE                          @sylion-core
+CHANGELOG.md                    @sylion-core @sylion-sre
+/docs/CHANGELOG_*.md            @sylion-core @sylion-sre
+MANIFEST.json                   @sylion-core @sylion-sre
+
+# ── Deployment & Infrastructure ──────────────────────────────────────────────
+Dockerfile                      @sylion-sre
+docker-compose*.yml             @sylion-sre
+docker-compose*.yaml            @sylion-sre
+/deploy/                        @sylion-sre
+/systemd/                       @sylion-sre
+install.sh                      @sylion-sre
+install.bat                     @sylion-sre
+
+# ── CI/CD ─────────────────────────────────────────────────────────────────────
+/.github/                       @sylion-sre
+/.github/workflows/             @sylion-sre
+/.github/dependabot.yml         @sylion-sre
+
+# ── Security-sensitive files ──────────────────────────────────────────────────
+.env.example                    @sylion-sre @sylion-core
+config.py                       @sylion-sre
+/scripts/env_lint.py            @sylion-sre
+
+# ── Core Pipeline ─────────────────────────────────────────────────────────────
+orchestrator.py                 @sylion-sre @sylion-core
+pipeline.py                     @sylion-sre
+agents.yaml                     @sylion-sre @sylion-core
+/agents/                        @sylion-sre @sylion-core
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+/tests/                         @sylion-sre
+
+# ── ADR & Compliance docs ─────────────────────────────────────────────────────
+/docs/ADR_*.md                  @sylion-core @sylion-sre

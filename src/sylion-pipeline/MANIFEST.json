@@ -1,0 +1,438 @@
+{
+  "name": "SYLION",
+  "version": "6.2.0",
+  "codename": "Mega-Audit Cleanup — CSRF + Docker + Observability",
+  "build_date": "2026-04-19",
+  "release_type": "patch",
+  "baseline_from": "5.9.1",
+  "python_required": ">=3.12",
+  "entry_point": "dashboard/start.py",
+  "port_default": 8421,
+  "db_path_default": "~/sylion/sylion.db",
+  "status": "PROPOSED — not yet released",
+  "summary": "Proposed patch release following mega_audit findings (~150 audit subdirectories). Key focus: CSRF-71 (all endpoints), Docker, Prometheus metrics, circuit breaker LLM, bug fixes (auth-500, cost-tracker single-conn, prune TOCTOU, claim-provenance orphans, cost_log FK, setup-token consumed, SSE heartbeat). Security: aiohttp CVE, RODO Art.17 cascade, xAI/DeepSeek disclosure.",
+  "artifacts_removed": [
+    "dashboard/app.py.fixed",
+    "dashboard/app.py.orig"
+  ],
+  "audit_coverage": {
+    "mega_audit_subdirs": 150,
+    "findings_addressed_in_v592": 36,
+    "models": [
+      "Claude Opus 4.7",
+      "Claude Sonnet 4.6",
+      "GPT-5.4",
+      "Gemini 3.1 Pro"
+    ]
+  },
+  "test_results_v591_baseline": {
+    "total": 101,
+    "passed": 97,
+    "skipped": 4,
+    "failed": 0,
+    "runtime_seconds": 5.21
+  },
+  "checksums_status": {
+    "total_tracked": 272,
+    "failed_v591": 58,
+    "note": "58 FAILED checksums in v5.9.1 CHECKSUMS.sha256 — stale hashes from previous audit waves. Regenerate with scripts/regenerate_checksums.sh"
+  },
+  "security_findings_v592": {
+    "critical": 0,
+    "high": 3,
+    "medium": 8,
+    "low": 5,
+    "notes": [
+      "CSRF missing on 35 of 71 endpoints (HIGH)",
+      "aiohttp transitive CVE via litellm (HIGH)",
+      "cost_log FK violation on cascade delete (MEDIUM)",
+      "setup token not consumed on password change in fresh repo (MEDIUM)"
+    ]
+  },
+  "constraints_preserved": [
+    "C-001 API keys UI editing",
+    "C-002 idempotent UPSERT",
+    "C-003 thread-safe init_db",
+    "C-004 partial fault tolerance",
+    "C-005 API keys priority",
+    "C-006 _DEFAULT_API_KEYS plaintext (user decision for local dev)",
+    "C-101 no breaking _API_KEY_NAMES",
+    "C-103 no CI added (user preference — unless explicitly added per v5.9.2 plan)",
+    "C-104 no destructive migration"
+  ],
+  "documentation": {
+    "adr_count": 25,
+    "adr_range": "ADR-0001..ADR-0025",
+    "new_adrs_planned": [
+      "ADR-0026: multi-worker-safety (Uvicorn + SQLite WAL)",
+      "ADR-0027: systemd-service-unit",
+      "ADR-0028: csrf-all-endpoints",
+      "ADR-0029: docker-compose-production"
+    ]
+  },
+  "files": {
+    "core": {
+      "README.md": {
+        "sha256": "fb3a9394f97089bc8e8f7726fabed35b4c34ba9eca07f372870e30616e5b0989",
+        "role": "Project overview, badges, quick-start, feature list",
+        "size_bytes": 3471
+      },
+      "CHANGELOG.md": {
+        "sha256": "35582a68a274046ccb3612b68507a5462e9236e0d8715f554dc3124c7d62c29d",
+        "role": "Keep-a-Changelog 1.1.0 — all version history",
+        "size_bytes": 6871
+      },
+      "MANIFEST.json": {
+        "sha256": "a8182cd59fbb37f5e92cab8f88e020a7007e00667880b78f2db3f5eeb01063c5",
+        "role": "Release metadata, file inventory, audit coverage",
+        "size_bytes": 6010,
+        "note": "Current v5.9.1 MANIFEST — to be replaced by MANIFEST_v592.json at release"
+      },
+      "CHECKSUMS.sha256": {
+        "sha256": "c6aa13be08cb4d4ec18b28cf01c35555a811a9b04c3304e5ead1aa6a98c2184c",
+        "role": "SHA-256 integrity hashes for all tracked files",
+        "size_bytes": null,
+        "note": "58 FAILED — regenerate with scripts/regenerate_checksums.sh"
+      },
+      "VERSION": {
+        "sha256": "3dffde354ff63404a613ed9382935207d2882353f5b0870d8bf3114070df46b1",
+        "role": "Single-line version tag (5.9.1)",
+        "size_bytes": 6
+      },
+      "LICENSE.md": {
+        "sha256": "2942505f05f3c419da7316f048f166934b54f4c4b281fbe340b72fd40fe0cc01",
+        "role": "Proprietary license",
+        "size_bytes": 1589
+      }
+    },
+    "dashboard": {
+      "dashboard/app.py": {
+        "sha256": "c8ee89b4d039cc418a9ac7be15607c78af1b0a907d960f1583d7a2d4e5b156f7",
+        "role": "FastAPI application — main entry point, all HTTP routes",
+        "size_bytes": 297030
+      },
+      "dashboard/db.py": {
+        "sha256": "a3f66624eafe905a65e16cb1f1672b3dd7bfb686e96c0c8796c54d0859bd684d",
+        "role": "SQLite WAL + schema migrations + all DB operations",
+        "size_bytes": 135167
+      },
+      "dashboard/start.py": {
+        "sha256": "2ed0b8ff149779943d8b4fb252008eecc7bf7fcfaaf2b8b398e38f55569efd59",
+        "role": "Entry point — pidfile, port-check, Uvicorn launch",
+        "size_bytes": 13747
+      },
+      "dashboard/cost_tracker.py": {
+        "sha256": "6e579526dae88eded2a94165c74bdada944b9ce8287ffa06947a575e711e2236",
+        "role": "[v5.9.1] FinOps — LLM cost tracking per provider/model/user",
+        "size_bytes": 15924
+      },
+      "dashboard/seed_agents.py": {
+        "sha256": "6e278978aa7110ff432e63ca0088d092df773c47fe732f298f0a3cd114fd3ee5",
+        "role": "48-agent initialization, Pydantic AgentSpec validation",
+        "size_bytes": 6143
+      },
+      "dashboard/bridge.py": {
+        "sha256": "7f518b2b33f83b7f8669d02f0fa48488d41b4f1fbe00d5237af991abc416c1c4",
+        "role": "HTTP to WebSocket bridge for streaming",
+        "size_bytes": 9323
+      },
+      "dashboard/retention_cleaner.py": {
+        "sha256": "07820eb869f91f7ed40c34ecb79f511bbf5bb35fa194e2c2b8180b417093900f",
+        "role": "[v5.9.1] RODO — automatic data retention cleanup",
+        "size_bytes": 13003
+      },
+      "dashboard/__init__.py": {
+        "sha256": "bef1442e19402d3df061639d4a7719e503cb1ea4e0dd54661fac96bea16086e8",
+        "role": "Package init",
+        "size_bytes": 77
+      }
+    },
+    "anti_hallucination": {
+      "fact_checker.py": {
+        "sha256": "24801b91f7f34a66eec0cfabc4d72ed7533734846f3ccd501452d1d614a8ab8d",
+        "role": "[v5.9.1] Anti-hallucination Layer 5 — LLM-based claim verification",
+        "size_bytes": 18757
+      },
+      "build_verification.py": {
+        "sha256": "3dc6c74988278020498055f8d33050c56e3db14b52eeaa5affaacdc3871281b1",
+        "role": "[v5.9.1] Anti-hallucination Layer 2 — build consistency check",
+        "size_bytes": 11283
+      },
+      "claim_provenance.py": {
+        "sha256": "e053022edeb8e33a2bcdcd50cc6eae5276d3f76b50bf9ae1a0de95a703d6e4c9",
+        "role": "[v5.9.1] Anti-hallucination Layer 3a — claim source registration",
+        "size_bytes": 13636
+      },
+      "file_verification.py": {
+        "sha256": "0755074ca3822793371c1c4ba7d975b5ab7465733a28bffd409dd7a9c6a18d6a",
+        "role": "[v5.9.1] Anti-hallucination Layer 3b — SHA-256 file integrity (Phantom v3)",
+        "size_bytes": 56365
+      },
+      "semantic_dedup.py": {
+        "sha256": "c28b1ff1163aaf7416f89e7a3711d2a31f34b13e940ad2bcf727203071303bb3",
+        "role": "[v5.9.1] Anti-hallucination Layer 4 — semantic deduplication",
+        "size_bytes": 14453
+      },
+      "book_guardian.py": {
+        "sha256": "f293a213337a2671f457b485fbc41528ed630e1975f9343870281fac24178ce3",
+        "role": "[v5.9.1] BookGuardian — SHA-256 integrity guard for product spec (Księga 3.4)",
+        "size_bytes": 24584
+      }
+    },
+    "budget_finops": {
+      "budget_guard.py": {
+        "sha256": "dbb7ff4658c4e857423726606c57947194c98126edfa440753f524124c675ada",
+        "role": "[v5.9.1] Global daily cost cap — halt pipeline on budget exceeded",
+        "size_bytes": 17927
+      }
+    },
+    "pipeline_core": {
+      "orchestrator.py": {
+        "sha256": "aa424a65c6e166f5a41715bb72b9289d93588e03e21da53585533de54f149271",
+        "role": "Main agent orchestrator — coordinates 48 agents across 5 audit waves",
+        "size_bytes": 160819
+      },
+      "pipeline.py": {
+        "sha256": "e94287b199303c97ae9f4450ecd035321332ed8d266d83616005346625128f7a",
+        "role": "Pipeline execution engine",
+        "size_bytes": 28100
+      },
+      "agent_manager.py": {
+        "sha256": "75247afef34efb92239d24d57a071102145091854a2f9aaac157a7f95be2ab3a",
+        "role": "Agent lifecycle management",
+        "size_bytes": 37699
+      },
+      "agent_manager_ext.py": {
+        "sha256": "903f8d062e30315994066820c7e027c72462b996889a9d0d316e392d938af98c",
+        "role": "Agent manager extensions",
+        "size_bytes": 38350
+      },
+      "config.py": {
+        "sha256": "6ccae7532e3193d747fa80ce91d0b926d7cb647af778378ad73c0f119292ea5c",
+        "role": "Global configuration (budget_per_model, max_cost_usd_per_day, etc.)",
+        "size_bytes": 27206
+      },
+      "supervisor.py": {
+        "sha256": "3be1e67e290b528cba39d19fd13cbabfe51ee84d1ee812c7a76db6f520eb5291",
+        "role": "GateLevel supervisor — CRITICAL/HIGH/MEDIUM/LOW escalation",
+        "size_bytes": 49835
+      },
+      "loop_guard.py": {
+        "sha256": "25e1d448c6583cf26f8c3156bd189fd8676e8044e06445b869cd1c71d5dd89b1",
+        "role": "Anti-hallucination Layer 1 — iteration limit + token budget per agent",
+        "size_bytes": 62478
+      }
+    },
+    "installation": {
+      "install.sh": {
+        "sha256": "de3f1f7c852ae8ad8c29c2c59521afe922d3b3c55d7500e27b50cdc81bdcf1b7",
+        "role": "Linux/macOS installer — venv, deps, DB init, service setup",
+        "size_bytes": 8288
+      },
+      "install.bat": {
+        "sha256": "e1b9f6815f6bc146f8af23944aaee25d83c1a69d943afd9ad264a0dcb59a8059",
+        "role": "Windows installer",
+        "size_bytes": 9023
+      },
+      "rollback.sh": {
+        "sha256": "2d805d70968ece08306b77d47c7beccce364f2012a0f0158fe3cd8caf697dbe9",
+        "role": "WAL-safe rollback to previous DB backup",
+        "size_bytes": 1069
+      },
+      "requirements-lock.txt": {
+        "sha256": "39908cace530e6e98f6ab5d58be13d69a68318eba54259db5721bb49217f7f6b",
+        "role": "pip-compile lockfile — pinned transitive dependencies",
+        "size_bytes": 1927
+      }
+    },
+    "scripts": {
+      "scripts/regen-lock.sh": {
+        "sha256": "440c650f6f9d585b6673902d3c223dcbfd44b5b669a1fbccccfeb527440327e0",
+        "role": "Regenerate requirements-lock.txt via pip-compile",
+        "size_bytes": 885
+      },
+      "scripts/validate_agents_manifest.py": {
+        "sha256": "c007cb1585d6a01c8a3e4dd74722df7529362b7acdffa4b5aa7cecabf65960be",
+        "role": "CI validation — agents.yaml vs MANIFEST.json consistency",
+        "size_bytes": 14296
+      },
+      "scripts/regenerate_checksums.sh": {
+        "sha256": null,
+        "role": "[PLANNED v5.9.2] Regenerate CHECKSUMS.sha256 for all tracked files",
+        "size_bytes": null,
+        "note": "File to be created — see mega_audit/changelog/regenerate_checksums.sh"
+      }
+    },
+    "agents": {
+      "agents.yaml": {
+        "sha256": "6bd282eaa3d1f50883fd1b0197ccf36ee2d8aeb85f87a0dc407b367ddeb1f17b",
+        "role": "48-agent definitions — skills, council roles, model assignments",
+        "size_bytes": 57409
+      },
+      "agents/definitions.py": {
+        "sha256": "ebcce2ea500ca00d5a44f3191354ccec573c538a7a8efb8d1ca238ac58a210c5",
+        "role": "Python agent definitions + Pydantic AgentSpec models",
+        "size_bytes": 20824
+      },
+      "agents/sdr_agents.py": {
+        "sha256": "4a21b3beb6611416017a9af9eec5564b8fe77b258d26927caeb5f2a86b8ca8a6",
+        "role": "SDR (Software Defined Radio) specialized agents",
+        "size_bytes": 6881
+      }
+    },
+    "docs": {
+      "docs/PHANTOM_V3_SPEC.md": {
+        "sha256": "e5f4cf0d5aba289522477a02af9404b552fa1e8630ab99764cafc568f716183c",
+        "role": "[v5.9.1] Anti-Hallucination Layer 3 specification",
+        "size_bytes": 3877
+      },
+      "docs/KSIEGA_3_4_SPEC.md": {
+        "sha256": "a0e42f15d0bd2195b09bf860f3d0c3c6dd7579a8875601d0598288c0648185b1",
+        "role": "[v5.9.1] Product specification — BookGuardian SHA-256 baseline",
+        "size_bytes": 2144
+      },
+      "docs/DPIA_v591.md": {
+        "sha256": "463a7ccb3912f9f9d4d52e1c035308f9149eb3fb5b311790097a1c1b46d00e73",
+        "role": "[v5.9.1] Data Protection Impact Assessment (GDPR Art. 35)",
+        "size_bytes": 5741
+      },
+      "docs/MIGRATION_GUIDE.md": {
+        "sha256": "8ca5ef3ba2158d5e9c202a90ca7f6dea28ae2c3efee6121b7e2b6c3859159914",
+        "role": "Migration guide from v5.8.x to v5.9.x",
+        "size_bytes": 13293
+      },
+      "docs/RODO_COMPLIANCE.md": {
+        "sha256": "1fcf3f27cd9d162906645db0134392552e47891e07aaa03717a8c896f5d9bf69",
+        "role": "RODO/GDPR compliance documentation + RoPA",
+        "size_bytes": 30973
+      },
+      "docs/FIX_MAP_v5.9.1.md": {
+        "sha256": "39f195d976f2e4fe6f227ea4bdb650fe391e80d425ec1e3fb632add237e8fdad",
+        "role": "[v5.9.1] Complete map of all fixes applied in v5.9.1",
+        "size_bytes": 16662
+      },
+      "docs/THIRD_PARTY_LICENSES.md": {
+        "sha256": "8c214f940c0ca01646fce21e498df4c78baa189ebeaa86152c6f62a08277d5cf",
+        "role": "Third-party dependency licenses",
+        "size_bytes": 9967
+      },
+      "docs/ROLLBACK_PLAN.md": {
+        "sha256": "b6c44e46059f38efc9f996cf9eb7819e6c8a129e8804f5d0e902a863ee5e89e9",
+        "role": "3-option rollback plan (A: full restore, B: schema-only, C: emergency)",
+        "size_bytes": 7197
+      },
+      "docs/INCIDENT_RESPONSE.md": {
+        "sha256": "33045a01e717d7caaa592728226259cfe8124460e7970ab5d1f54a464e1d5871",
+        "role": "Incident response runbook (SRE)",
+        "size_bytes": 37326
+      }
+    },
+    "adr": {
+      "docs/adr/ADR-0001-seed-agents-guard.md": {
+        "sha256": "2c42a5710765a97662313d9b6e7c9c9435b0922e05d4c7ea702969ca8aac2ab8",
+        "role": "ADR: seed agents guard (isinstance stop-gap)"
+      },
+      "docs/adr/ADR-0009-secure-cookie-default.md": {
+        "sha256": "0e03a0e3435abcfa4b3916e93a9257759c4342a849d5b7d1ad9a24895b837657",
+        "role": "ADR: Secure cookie default = True in production"
+      },
+      "docs/adr/ADR-0010-session-invalidation-on-password-change.md": {
+        "sha256": "e8b8d5eb213c8fa9eeb717e0a8e782b4669310127eb0e0e4764dcfb217da6f93",
+        "role": "ADR: session invalidation on password change"
+      },
+      "docs/adr/ADR-0014-setup-lock-toctou-fix.md": {
+        "sha256": "f9e4140752015a5137af876a2c535888aa197b0cb5eb50f8c1a58fba2e75da56",
+        "role": "ADR: TOCTOU fix in /api/auth/setup"
+      },
+      "docs/adr/ADR-0015-pixel-9-default-device.md": {
+        "sha256": "94f957e147aaf957f01e46914c81ac8943b7a68a359bb47f3ec310dc27c32863",
+        "role": "ADR: Pixel 9 as default device (replaces Pixel 8)"
+      },
+      "docs/adr/ADR-0016-cve-dependency-upgrades.md": {
+        "sha256": "4a4aadf66e4ceeb868632685a115668fc677a0fbe4429aa54307936f72ffa612",
+        "role": "ADR: CVE dependency upgrades in v5.9.1"
+      },
+      "docs/adr/ADR-0018-fact-checker-model-id.md": {
+        "sha256": "bb5e2a2d641a9948288454cd8dca8ffaf8f05ffdc45dcd01158822b69ed930c1",
+        "role": "ADR: fact_checker model ID correction"
+      },
+      "docs/adr/ADR-0019-install-script-fix.md": {
+        "sha256": "fd2ffb0e9e96f74a51617d6bb9ca4470ef63e97fbad3f5174046b94277cbdfbe",
+        "role": "ADR: install.sh/bat module path fix"
+      },
+      "docs/adr/ADR-0020-pydantic-migration.md": {
+        "sha256": "2bda65e1f2f91d4217a67b8407aba3abe4875ea34e09c9285846e827473f1d62",
+        "role": "ADR: Pydantic v2 migration for AgentSpec validation"
+      },
+      "docs/adr/ADR-0021-rodo-retention.md": {
+        "sha256": "4faab29875c9ac4b4cc750d9d91e79951949a65a48e250937181b9ff5416866d",
+        "role": "ADR: RODO Art.5(1)(e) data retention policy"
+      },
+      "docs/adr/ADR-0022-pip-compile.md": {
+        "sha256": "e663d87126f92adcfe47cb3f82a7dceed83ca20ee5c0b3d558d55b36b398e37b",
+        "role": "ADR: pip-compile lockfile management"
+      },
+      "docs/adr/ADR-0023-agent-id-reset.md": {
+        "sha256": "c6005391468982342b2e3987cdc3a55598c810ac914d2fcfec59e9c5356f89b9",
+        "role": "ADR: agent_id reset after schema migration"
+      },
+      "docs/adr/ADR-0024-sql-ollama-whitelist.md": {
+        "sha256": "a588aaa7e744819400e59e70904f8ad228a4b65e2ef390cd64243fcc2ee5b355",
+        "role": "ADR: SQL/Ollama model whitelist (injection defense)"
+      },
+      "docs/adr/ADR-0025-v591-final-verification-loop.md": {
+        "sha256": "2583966c93e67710449b55b275d145e1de1764b898b614dcc9395e86ba131694",
+        "role": "ADR: v5.9.1 final grep-assert verification loop"
+      }
+    },
+    "tests": {
+      "tests/test_v591_regressions.py": {
+        "sha256": "df316057485776d92d6d6fd2aa1530be03a59c93d1a40bb2aeefcd38c608cafd",
+        "role": "[v5.9.1] 101 regression tests — all MUST-FIX findings covered",
+        "size_bytes": 28077
+      },
+      "test_anti_hallucination.py": {
+        "sha256": "12e810e5d4c23084fa6460f6121328954155dfe0bd972ea9d4346899a59f0fd1",
+        "role": "[v5.9.1] Tests for anti-hallucination Layer 2-5",
+        "size_bytes": 19453
+      },
+      "test_new_modules.py": {
+        "sha256": "10803b6ba37043f92f4a5d1233ea9f9a66b52f434f1e4530160d1de616753310",
+        "role": "[v5.9.1] Tests for cost_tracker, budget_guard, book_guardian",
+        "size_bytes": 23753
+      }
+    },
+    "github_workflows": {
+      ".github/workflows/validate-manifest.yml": {
+        "sha256": "87e75e77877308b19f010479be5162cce2dcdd48860a43fc8a27a9841864610b",
+        "role": "GitHub Actions — MANIFEST.json + agents.yaml consistency check",
+        "size_bytes": 2803
+      },
+      ".github/workflows/env_lint.yml": {
+        "sha256": "77555abbef6323625833fbc5af8979df62082dad12e70daca1f4ef7ecb061852",
+        "role": "GitHub Actions — .env.example lint",
+        "size_bytes": 2907
+      }
+    }
+  },
+  "upgrade_path": {
+    "from": "v5.9.1",
+    "breaking_changes": "none",
+    "migration_type": "additive-only",
+    "auto_backup": true,
+    "auto_migration": true,
+    "rollback_available": true,
+    "see_docs": "docs/MIGRATION_GUIDE.md"
+  },
+  "residual_risks": [
+    "Brak szyfrowania at-rest (local dev accepted)",
+    "_DEFAULT_API_KEYS plaintext w db.py (local dev accepted per user preference)",
+    "~38 CVE w deps transitive — aiohttp scheduled for v5.9.2",
+    "CSRF brak na 35/71 endpointach — scheduled for v5.9.2",
+    "Docker/Kubernetes deployment — not yet documented"
+  ],
+  "build_timestamp": "2026-04-19T12:45:00Z",
+  "previous_version": "5.9.6",
+  "change_type": "major",
+  "breaking_changes": true
+}

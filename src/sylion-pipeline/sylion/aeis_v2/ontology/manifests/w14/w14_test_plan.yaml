@@ -1,0 +1,98 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_test_plan
+  name_pl: Plan testów W14
+  name_en: W14 Test Plan
+  version: v1.0
+  description_pl: 'Uszczegółowiony plan wykonania wynikający z karty testów.
+
+    Przechowuje kolejność, szacowany czas i zestawy powiązanych suite,
+
+    podczas gdy listy wykonawcze trafiają do rozszerzenia.'
+  description_en: 'Detailed execution plan derived from the test charter.
+
+    It stores ordering, estimated runtime, and links to related suites,
+
+    while execution lists remain in the extension payload.'
+  tags:
+  - w14
+  - testing
+  - plan
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: estimated_duration_s
+    type: integer
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    default: 0
+  - name: suite_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: parallel_group_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: charter
+    target: w14_test_charter
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - estimated_duration_s
+    - suite_count
+    - parallel_group_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: []
+  actions:
+  - id: freeze_test_plan
+    description_pl: Zamyka plan do wykonania i emituje zdarzenie planistyczne.
+    description_en: Freezes the plan for execution and emits a planning event.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.test_plan.frozen
+  - id: resequence_test_plan
+    description_pl: Aktualizuje kolejność wykonania na podstawie nowych priorytetów.
+    description_en: Updates execution order based on revised priorities.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+    effects:
+    - type: emit_event
+      topic: aeis.w14.test_plan.resequenced

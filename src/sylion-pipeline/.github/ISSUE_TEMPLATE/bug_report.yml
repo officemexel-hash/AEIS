@@ -1,0 +1,128 @@
+name: Bug Report
+description: Report a reproducible bug in SYLION pipeline
+title: "[BUG] "
+labels: ["bug", "triage"]
+assignees:
+  - sylion-sre
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+        Fill out the sections below to help us reproduce and fix the issue quickly.
+        For security vulnerabilities, **do not use this template** — use the [Security Vulnerability](?template=security_vuln.yml) template instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: SYLION version
+      description: Output of `cat VERSION` or `python orchestrator.py --version`
+      placeholder: "e.g. 5.9.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options:
+        - orchestrator
+        - pipeline / agents
+        - dashboard (FastAPI)
+        - dashboard (UI)
+        - config / env
+        - authentication
+        - book_guardian
+        - claim_provenance
+        - fact_checker
+        - budget_guard
+        - audio_pipeline
+        - metrics / Prometheus
+        - install script (Linux)
+        - install script (Windows)
+        - CI / GitHub Actions
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "e.g. 3.11.9"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux (Ubuntu/Debian)
+        - Linux (other)
+        - macOS
+        - Windows 10/11
+        - Docker container
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clear, concise description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps to reliably reproduce the issue.
+      placeholder: |
+        1. Start with `python orchestrator.py …`
+        2. Navigate to …
+        3. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / tracebacks
+      description: Paste logs here. They will be automatically formatted.
+      render: text
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment / config notes
+      description: Any relevant env vars (redact secrets), `.env.example` deviations, etc.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I am not reporting a security vulnerability (use the security template for that)
+          required: true
+        - label: I have redacted all API keys, passwords, and tokens from logs/config snippets
+          required: true

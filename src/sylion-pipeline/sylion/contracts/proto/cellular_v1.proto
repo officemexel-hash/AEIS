@@ -1,0 +1,372 @@
+// SYLION AEIS -- Class O: Cellular (7 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: RANLabOrchestrator, CoreNetworkEmulator, UEEmulator,
+//          RFIsolationValidator, AttackVectorLibrary,
+//          ControlPlaneAnalyzer, CellularEvidenceWriter
+
+syntax = "proto3";
+
+package sylion.cellular.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/cellular/v1;cellularv1";
+option java_package = "com.sylion.aeis.cellular.v1";
+
+// =====================================================================
+// O1: RAN Lab Orchestrator Service
+// =====================================================================
+
+service RANLabService {
+  rpc CreateStack(CreateStackRequest) returns (StackMessage);
+  rpc Start(StackIdRequest) returns (sylion.common.v1.Status);
+  rpc Stop(StackIdRequest) returns (sylion.common.v1.Status);
+  rpc Get(StackIdRequest) returns (StackMessage);
+  rpc ListStacks(ListStacksRequest) returns (StackList);
+}
+
+message CreateStackRequest {
+  string stack_id   = 1;
+  string name       = 2;
+  string ran_type   = 3;  // lte|5g_nr|openran
+  string config_json = 4;
+}
+
+message StackMessage {
+  string stack_id   = 1;
+  string name       = 2;
+  string ran_type   = 3;
+  string status     = 4;  // created|running|stopped|error
+  string config_json = 5;
+  double created_at = 6;
+}
+
+message StackIdRequest {
+  string stack_id = 1;
+}
+
+message ListStacksRequest {
+  string ran_type = 1;
+  string status   = 2;
+}
+
+message StackList {
+  repeated StackMessage stacks = 1;
+}
+
+// =====================================================================
+// O2: Core Network Emulator Service
+// =====================================================================
+
+service CoreNetworkService {
+  rpc Create(CreateCoreRequest) returns (CoreMessage);
+  rpc Start(CoreIdRequest) returns (sylion.common.v1.Status);
+  rpc Stop(CoreIdRequest) returns (sylion.common.v1.Status);
+  rpc Get(CoreIdRequest) returns (CoreMessage);
+  rpc ListCores(ListCoresRequest) returns (CoreList);
+}
+
+message CreateCoreRequest {
+  string core_id    = 1;
+  string name       = 2;
+  string network_type = 3;  // epc|5gc
+  string config_json = 4;
+}
+
+message CoreMessage {
+  string core_id     = 1;
+  string name        = 2;
+  string network_type = 3;
+  string status      = 4;  // created|running|stopped|error
+  string config_json = 5;
+  double created_at  = 6;
+}
+
+message CoreIdRequest {
+  string core_id = 1;
+}
+
+message ListCoresRequest {
+  string network_type = 1;
+  string status       = 2;
+}
+
+message CoreList {
+  repeated CoreMessage cores = 1;
+}
+
+// =====================================================================
+// O3: UE Emulator Service
+// =====================================================================
+
+service UEEmulatorService {
+  rpc Create(CreateUERequest) returns (UEMessage);
+  rpc Attach(AttachUERequest) returns (sylion.common.v1.Status);
+  rpc Detach(DetachUERequest) returns (sylion.common.v1.Status);
+  rpc Get(GetUERequest) returns (UEMessage);
+  rpc ListUEs(ListUEsRequest) returns (UEList);
+}
+
+message CreateUERequest {
+  string ue_id       = 1;
+  string imsi        = 2;
+  string ue_type     = 3;  // smartphone|iot|modem
+  string capabilities_json = 4;
+}
+
+message UEMessage {
+  string ue_id       = 1;
+  string imsi        = 2;
+  string ue_type     = 3;
+  string status      = 4;  // detached|attaching|attached|detaching
+  string attached_core = 5;
+  string attached_stack = 6;
+  double created_at  = 7;
+}
+
+message AttachUERequest {
+  string ue_id    = 1;
+  string core_id  = 2;
+  string stack_id = 3;
+}
+
+message DetachUERequest {
+  string ue_id = 1;
+}
+
+message GetUERequest {
+  string ue_id = 1;
+}
+
+message ListUEsRequest {
+  string status   = 1;
+  string ue_type  = 2;
+}
+
+message UEList {
+  repeated UEMessage ues = 1;
+}
+
+// =====================================================================
+// O4: RF Isolation Validator Service
+// =====================================================================
+
+service RFIsolationService {
+  rpc Validate(ValidateRFRequest) returns (RFValidationMessage);
+  rpc Get(GetRFValidationRequest) returns (RFValidationMessage);
+  rpc Latest(LatestRFValidationRequest) returns (RFValidationMessage);
+  rpc IsValid(LatestRFValidationRequest) returns (RFIsValidResponse);
+  rpc ListChecks(ListRFChecksRequest) returns (RFValidationList);
+}
+
+message ValidateRFRequest {
+  string lab_id    = 1;
+  double freq_hz  = 2;
+  double power_dbm = 3;
+  string method    = 4;
+}
+
+message RFValidationMessage {
+  string validation_id = 1;
+  string lab_id        = 2;
+  double freq_hz       = 3;
+  double power_dbm     = 4;
+  bool   isolated      = 5;
+  double leakage_dbm   = 6;
+  string method        = 7;
+  double timestamp     = 8;
+}
+
+message GetRFValidationRequest {
+  string validation_id = 1;
+}
+
+message LatestRFValidationRequest {
+  string lab_id = 1;
+}
+
+message RFIsValidResponse {
+  bool   valid      = 1;
+  string message    = 2;
+  double timestamp  = 3;
+}
+
+message ListRFChecksRequest {
+  string lab_id = 1;
+  int32  limit  = 2;
+}
+
+message RFValidationList {
+  repeated RFValidationMessage validations = 1;
+}
+
+// =====================================================================
+// O5: Attack Vector Library Service
+// =====================================================================
+
+service AttackVectorService {
+  rpc Register(RegisterVectorRequest) returns (AttackVectorMessage);
+  rpc Get(GetVectorRequest) returns (AttackVectorMessage);
+  rpc ListVectors(ListVectorsRequest) returns (AttackVectorList);
+  rpc Publish(PublishVectorRequest) returns (AttackVectorMessage);
+  rpc Deprecate(GetVectorRequest) returns (AttackVectorMessage);
+  rpc GetStats(sylion.common.v1.Empty) returns (AttackVectorStats);
+}
+
+message RegisterVectorRequest {
+  string vector_id   = 1;
+  string name        = 2;
+  string category    = 3;  // interception|dos|impersonation|downgrade|injection
+  string description = 4;
+  string severity    = 5;  // low|medium|high|critical
+  string payload_json = 6;
+}
+
+message AttackVectorMessage {
+  string vector_id   = 1;
+  string name        = 2;
+  string category    = 3;
+  string description = 4;
+  string severity    = 5;
+  string status      = 6;  // draft|published|deprecated
+  string payload_json = 7;
+  double created_at  = 8;
+}
+
+message GetVectorRequest {
+  string vector_id = 1;
+}
+
+message ListVectorsRequest {
+  string category = 1;
+  string severity = 2;
+  string status   = 3;
+}
+
+message AttackVectorList {
+  repeated AttackVectorMessage vectors = 1;
+}
+
+message PublishVectorRequest {
+  string vector_id = 1;
+}
+
+message AttackVectorStats {
+  int32 total_vectors = 1;
+  int32 published     = 2;
+  int32 deprecated    = 3;
+  map<string, int64> by_category = 4;
+}
+
+// =====================================================================
+// O6: Control Plane Analyzer Service
+// =====================================================================
+
+service ControlPlaneService {
+  rpc Analyze(AnalyzeCPRequest) returns (CPAnalysisMessage);
+  rpc Get(GetCPAnalysisRequest) returns (CPAnalysisMessage);
+  rpc ListAnalyses(ListCPAnalysesRequest) returns (CPAnalysisList);
+  rpc DetectAnomalies(DetectAnomaliesRequest) returns (AnomalyList);
+}
+
+message AnalyzeCPRequest {
+  string capture_id  = 1;
+  string protocol    = 2;  // rrc|nas|s1ap|ngap
+  string filters_json = 3;
+}
+
+message CPAnalysisMessage {
+  string analysis_id = 1;
+  string capture_id  = 2;
+  string protocol    = 3;
+  int32  messages_found = 4;
+  string summary_json = 5;
+  double timestamp   = 6;
+}
+
+message GetCPAnalysisRequest {
+  string analysis_id = 1;
+}
+
+message ListCPAnalysesRequest {
+  string capture_id = 1;
+  string protocol   = 2;
+  int32  limit      = 3;
+}
+
+message CPAnalysisList {
+  repeated CPAnalysisMessage analyses = 1;
+}
+
+message DetectAnomaliesRequest {
+  string analysis_id = 1;
+  double threshold   = 2;
+}
+
+message AnomalyList {
+  repeated AnomalyMessage anomalies = 1;
+}
+
+message AnomalyMessage {
+  string anomaly_id  = 1;
+  string type        = 2;
+  string description = 3;
+  double severity    = 4;
+  double timestamp   = 5;
+}
+
+// =====================================================================
+// O7: Cellular Evidence Writer Service
+// =====================================================================
+
+service CellularEvidenceService {
+  rpc Write(WriteCellEvidenceRequest) returns (CellEvidenceMessage);
+  rpc Get(GetCellEvidenceRequest) returns (CellEvidenceMessage);
+  rpc ListEvidence(ListCellEvidenceRequest) returns (CellEvidenceList);
+  rpc Validate(ValidateCellEvidenceRequest) returns (ValidateCellEvidenceResponse);
+}
+
+message WriteCellEvidenceRequest {
+  string test_id     = 1;
+  string vector_id   = 2;
+  string result      = 3;  // pass|fail|inconclusive
+  string capture_id  = 4;
+  string analysis_json = 5;
+  string description = 6;
+}
+
+message CellEvidenceMessage {
+  string evidence_id  = 1;
+  string test_id      = 2;
+  string vector_id    = 3;
+  string result       = 4;
+  string capture_id   = 5;
+  string analysis_json = 6;
+  string content_hash = 7;
+  double timestamp    = 8;
+}
+
+message GetCellEvidenceRequest {
+  string evidence_id = 1;
+}
+
+message ListCellEvidenceRequest {
+  string test_id   = 1;
+  string vector_id = 2;
+  int32  limit     = 3;
+}
+
+message CellEvidenceList {
+  repeated CellEvidenceMessage evidence = 1;
+}
+
+message ValidateCellEvidenceRequest {
+  string evidence_id = 1;
+}
+
+message ValidateCellEvidenceResponse {
+  bool   valid        = 1;
+  string content_hash = 2;
+  string message      = 3;
+}

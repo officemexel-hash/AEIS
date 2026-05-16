@@ -1,0 +1,132 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_guardian_alert
+  name_pl: Alert guardian W14
+  name_en: W14 Guardian Alert
+  version: v1.0
+  description_pl: 'Alert raised by guardian monitorujący drift, governance lub dowody.
+
+    Kolumny wspierają filtrowanie po guardianie, severity i ack,
+
+    a dowody oraz powód są przechowywane w rozszerzeniu.'
+  description_en: 'Alert raised by a guardian monitoring drift, governance, or evidence.
+
+    Columns support filtering by guardian, severity, and acknowledgment,
+
+    while evidence and reason details live in the extension.'
+  tags:
+  - w14
+  - testing
+  - guardian
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: guardian
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - sot_guardian
+    - masterplan_guardian
+    - test_integrity_guardian
+    - mock_fallback_guardian
+    - evidence_guardian
+    - gate_guardian
+    - council_guardian
+    - release_guardian
+    - loop_guardian
+    - llm_drift_guardian
+    - cost_sentinel
+    - pii_guardian
+    - trace_completeness_guardian
+    default: sot_guardian
+  - name: severity
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - P0
+    - P1
+    - P2
+    - P3
+    - P4
+    default: P3
+  - name: source_event
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  - name: acknowledged
+    type: boolean
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    default: false
+  - name: reason
+    type: text
+    nullable: false
+    indexed: false
+    searchable: true
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: finding
+    target: w14_finding
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - guardian
+    - severity
+    - acknowledged
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - reason
+  actions:
+  - id: acknowledge_guardian_alert
+    description_pl: Potwierdza alert i odblokowuje dalszą obsługę operatora.
+    description_en: Acknowledges the alert and unblocks further operator handling.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: acknowledged
+      to: true
+    - type: emit_event
+      topic: aeis.w14.guardian_alert.acknowledged
+  - id: promote_guardian_alert
+    description_pl: Promuje alert do ścieżki eskalacyjnej lub findingu.
+    description_en: Promotes the alert into an escalation or finding path.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.guardian_alert.promoted

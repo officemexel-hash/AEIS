@@ -1,0 +1,27 @@
+{
+  "module_id": "rebuild.cft_runner",
+  "module_kind": "K",
+  "owner_plan": "P17",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D4",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "rebuild.cft.started",
+    "rebuild.cft.passed",
+    "rebuild.cft.failed"
+  ],
+  "consumes_events": [
+    "rebuild.plan.created"
+  ],
+  "description": "Cross-Functional Test runner for rebuild validation.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

@@ -1,0 +1,43 @@
+# =============================================================================
+# SYLION AEIS — Ingress
+# =============================================================================
+# Exposes the API (/api/*) and frontend (/*) via a single ingress controller.
+# Adjust the ingressClassName and TLS host for your environment.
+# =============================================================================
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sylion-ingress
+  namespace: sylion
+  labels:
+    app.kubernetes.io/name: sylion-ingress
+    app.kubernetes.io/part-of: sylion-aeis
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # API routes — proxied to the api Service
+          - path: /api(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          # Frontend routes — proxied to the frontend Service
+          - path: /(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000

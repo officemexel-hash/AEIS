@@ -1,0 +1,19 @@
+{
+  "module_id": "sylion.aeis.advisor.variants",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.pricing"
+  ],
+  "lifecycle_stage": "DRAFT",
+  "events_emit": [
+    "aeis.advisor.variants.generated",
+    "aeis.advisor.variants.compared"
+  ],
+  "events_subscribe": [],
+  "storage": {
+    "postgres_schemas": []
+  }
+}

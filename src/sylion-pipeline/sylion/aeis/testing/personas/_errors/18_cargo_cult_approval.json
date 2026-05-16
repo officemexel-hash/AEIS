@@ -1,0 +1,13 @@
+{
+  "error_class": "cargo_cult_approval",
+  "target_action": "approve_because_previous_approver_did",
+  "context": "second-line reviewer approves only because first reviewer approved, without independent verification",
+  "timing": "during_council_vote",
+  "expected_system_response": [
+    "hide_first_reviewer_signature_until_independent_verdict",
+    "require_unique_rationale_per_reviewer"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D3"
+}

@@ -1,0 +1,75 @@
+#
+# Optional local-development layer.
+# This file is intentionally opt-in so production `docker compose up -d`
+# never depends on plaintext `./secrets/dev_*` files.
+#
+name: sylion
+
+secrets:
+  sylion_api_key:
+    external: false
+    file: ./secrets/dev_api_key.txt
+  sylion_db_password:
+    external: false
+    file: ./secrets/dev_db_password.txt
+  sylion_vault_secret:
+    external: false
+    file: ./secrets/dev_vault_secret.txt
+  caddy_tls_cert:
+    external: false
+    file: ./secrets/dev_tls.crt
+  caddy_tls_key:
+    external: false
+    file: ./secrets/dev_tls.key
+
+services:
+  sylion-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: sylion-dashboard:dev
+    volumes:
+      - .:/app
+      - sylion-data:/var/lib/sylion
+    environment:
+      SYLION_ENV: development
+      SYLION_HOME: /var/lib/sylion
+      SYLION_VAULT_SECRET_FILE: /run/secrets/sylion_vault_secret
+      SYLION_WORKERS: "1"
+      SYLION_DEBUG: "true"
+      SYLION_LOG_LEVEL: "DEBUG"
+      REDIS_URL: redis://redis:6379/0
+    command:
+      - /bin/sh
+      - -ec
+      - |
+          export SYLION_INTERNAL_API_KEY="$$(cat /run/secrets/sylion_api_key)"
+          exec python -m sylion.server --host 0.0.0.0 --http-port 8421
+    read_only: false
+    tmpfs: []
+
+  caddy:
+    volumes:
+      - ./deploy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  adminer:
+    image: adminer:4.8.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: sylion-dashboard

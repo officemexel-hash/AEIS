@@ -1,0 +1,126 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_requirement
+  name_pl: Wymaganie testowe W14
+  name_en: W14 Test Requirement
+  version: v1.0
+  description_pl: 'Testowalne wymaganie wyprowadzone ze źródła prawdy, masterplanu
+
+    lub decyzji człowieka albo councilu. Służy jako podstawowa kotwica
+
+    śledzenia pokrycia, krytyczności i obowiązku wykonania testów.'
+  description_en: 'Testable requirement derived from source of truth, masterplan,
+
+    human decision, or council decision. It anchors coverage,
+
+    criticality, and the obligation to execute testing.'
+  tags:
+  - w14
+  - testing
+  - requirement
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: source
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - SoT
+    - Masterplan
+    - HumanDecision
+    - CouncilDecision
+  - name: source_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: true
+    unique: false
+  - name: criticality
+    type: text
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    enum:
+    - D0
+    - D1
+    - D2
+    - D3
+    - D4
+    - D5
+    default: D0
+  - name: test_required
+    type: boolean
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: true
+  - name: description
+    type: text
+    nullable: false
+    indexed: false
+    searchable: true
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations: []
+  audit:
+    enabled: true
+    track_fields:
+    - source
+    - source_ref
+    - criticality
+    - test_required
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - source_ref
+    - description
+  actions:
+  - id: mark_requirement_covered
+    description_pl: Oznacza wymaganie jako objęte aktywnym planem testów i emituje
+      zdarzenie pokrycia.
+    description_en: Marks the requirement as covered by an active test plan and emits
+      a coverage event.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: emit_event
+      topic: aeis.w14.requirement.covered
+  - id: waive_requirement_test
+    description_pl: Wyłącza obowiązek testu dla wymagania po decyzji człowieka.
+    description_en: Disables the test obligation for the requirement after human decision.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: test_required
+      to: false
+    - type: emit_event
+      topic: aeis.w14.requirement.waived

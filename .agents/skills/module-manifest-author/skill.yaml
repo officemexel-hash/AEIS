@@ -1,0 +1,14 @@
+name: module-manifest-author
+version: 1.0.0
+description: Creates manifest.yaml for SYLION modules
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: class
+    type: string
+    required: true
+outputs:
+  - manifest.yaml

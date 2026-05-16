@@ -1,0 +1,30 @@
+{
+  "module_id": "governance.council_workflow",
+  "module_kind": "E",
+  "owner_plan": "P05",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus",
+    "core.evidence_spine",
+    "core.decision_gate_engine"
+  ],
+  "publishes_events": [
+    "governance.council.proposed",
+    "governance.council.vote",
+    "governance.council.ratified"
+  ],
+  "consumes_events": [
+    "governance.decision.proposed",
+    "governance.evidence.collected"
+  ],
+  "description": "Council voting workflow: propose, deliberate, vote, ratify.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

@@ -1,0 +1,177 @@
+{
+  "class": "A",
+  "module": "core.contract_registry",
+  "description": "Golden set for ContractRegistry: publish, get, check_compatibility, list_versions.",
+  "tests": [
+    {
+      "id": "publish_initial",
+      "method": "publish",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "name": "golden.contract_auth",
+        "contract_type": "grpc_service",
+        "version": "1.0.0",
+        "schema_def": "service AuthService { rpc Login(LoginReq) returns (LoginRes); }",
+        "producer_module": "golden.mod_auth",
+        "consumer_modules": ["golden.mod_api"],
+        "description": "Auth service contract v1"
+      },
+      "expected": {
+        "name": "golden.contract_auth",
+        "version": "1.0.0",
+        "breaking": false
+      }
+    },
+    {
+      "id": "publish_minor_version",
+      "method": "publish",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_initial",
+      "input": {
+        "name": "golden.contract_auth",
+        "contract_type": "grpc_service",
+        "version": "1.1.0",
+        "schema_def": "service AuthService { rpc Login(LoginReq) returns (LoginRes); rpc Logout(LogoutReq) returns (LogoutRes); }",
+        "producer_module": "golden.mod_auth",
+        "consumer_modules": ["golden.mod_api", "golden.mod_ui"],
+        "description": "Auth service contract v1.1 with Logout"
+      },
+      "expected": {
+        "name": "golden.contract_auth",
+        "version": "1.1.0",
+        "breaking": false
+      }
+    },
+    {
+      "id": "publish_major_breaking",
+      "method": "publish",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_minor_version",
+      "input": {
+        "name": "golden.contract_auth",
+        "contract_type": "grpc_service",
+        "version": "2.0.0",
+        "schema_def": "service AuthService { rpc Authenticate(AuthReq) returns (AuthRes); }",
+        "producer_module": "golden.mod_auth",
+        "consumer_modules": [],
+        "description": "Auth service contract v2 breaking"
+      },
+      "expected": {
+        "name": "golden.contract_auth",
+        "version": "2.0.0",
+        "breaking": true
+      }
+    },
+    {
+      "id": "publish_second_contract",
+      "method": "publish",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "name": "golden.contract_event",
+        "contract_type": "event_schema",
+        "version": "1.0.0",
+        "schema_def": "{ \"type\": \"object\", \"properties\": { \"event\": { \"type\": \"string\" } } }",
+        "producer_module": "golden.mod_events",
+        "consumer_modules": ["golden.mod_sub"],
+        "description": "Event schema contract"
+      },
+      "expected": {
+        "name": "golden.contract_event",
+        "version": "1.0.0",
+        "breaking": false
+      }
+    },
+    {
+      "id": "get_latest",
+      "method": "get",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_major_breaking",
+      "input": {"name": "golden.contract_auth"},
+      "expected": {
+        "name": "golden.contract_auth",
+        "version": "2.0.0",
+        "is_latest": 1
+      }
+    },
+    {
+      "id": "get_specific_version",
+      "method": "get",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_major_breaking",
+      "input": {"name": "golden.contract_auth", "version": "1.0.0"},
+      "expected": {
+        "name": "golden.contract_auth",
+        "version": "1.0.0",
+        "is_latest": 0
+      }
+    },
+    {
+      "id": "get_nonexistent",
+      "method": "get",
+      "setup": {"db_path": ":memory:"},
+      "input": {"name": "nonexistent.contract"},
+      "expected": null
+    },
+    {
+      "id": "check_compat_minor",
+      "method": "check_compatibility",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_major_breaking",
+      "input": {"name": "golden.contract_auth", "new_version": "2.1.0"},
+      "expected": {
+        "compatible": true,
+        "breaking": false,
+        "message": "compatible"
+      }
+    },
+    {
+      "id": "check_compat_major_breaking",
+      "method": "check_compatibility",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_major_breaking",
+      "input": {"name": "golden.contract_auth", "new_version": "3.0.0"},
+      "expected": {
+        "compatible": false,
+        "breaking": true,
+        "message": "breaking change detected"
+      }
+    },
+    {
+      "id": "check_compat_no_existing",
+      "method": "check_compatibility",
+      "setup": {"db_path": ":memory:"},
+      "input": {"name": "brand.new.contract", "new_version": "1.0.0"},
+      "expected": {
+        "compatible": true,
+        "breaking": false,
+        "message": "no existing version"
+      }
+    },
+    {
+      "id": "list_versions_multi",
+      "method": "list_versions",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_major_breaking",
+      "input": {"name": "golden.contract_auth"},
+      "expected_type": "list",
+      "expected_length": 3
+    },
+    {
+      "id": "list_versions_single",
+      "method": "list_versions",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "publish_second_contract",
+      "input": {"name": "golden.contract_event"},
+      "expected_type": "list",
+      "expected_length": 1
+    },
+    {
+      "id": "list_versions_empty",
+      "method": "list_versions",
+      "setup": {"db_path": ":memory:"},
+      "input": {"name": "nonexistent.contract"},
+      "expected_type": "list",
+      "expected_length": 0
+    }
+  ]
+}

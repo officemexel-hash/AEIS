@@ -1,0 +1,132 @@
+{
+  "class": "F",
+  "module": "core.evidence_spine",
+  "description": "Golden set for EvidenceSpine: append, query, verify_chain.",
+  "tests": [
+    {
+      "id": "append_genesis",
+      "method": "append",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "source_plan": "P01",
+        "event_type": "decision.made",
+        "payload": {"decision": "deploy", "module": "golden.test", "class": "D3"},
+        "actor_id": "agent.alpha"
+      },
+      "expected": {
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "id": "append_second",
+      "method": "append",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_genesis",
+      "input": {
+        "source_plan": "P01",
+        "event_type": "review.completed",
+        "payload": {"verdict": "approved", "reviewer": "council"},
+        "actor_id": "agent.beta"
+      },
+      "expected_has": ["entry_id", "hash", "prev_hash"]
+    },
+    {
+      "id": "append_with_large_payload",
+      "method": "append",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_genesis",
+      "input": {
+        "source_plan": "P05",
+        "event_type": "audit.snapshot",
+        "payload": {
+          "modules": ["mod_a", "mod_b", "mod_c"],
+          "contracts": 12,
+          "evidence_count": 847,
+          "metadata": {"phase": "M3", "timestamp_iso": "2025-01-15T10:30:00Z"}
+        },
+        "actor_id": "system.auditor"
+      },
+      "expected_has": ["entry_id", "hash", "prev_hash"]
+    },
+    {
+      "id": "append_empty_payload",
+      "method": "append",
+      "setup": {"db_path": ":memory:"},
+      "input": {
+        "source_plan": "P03",
+        "event_type": "heartbeat",
+        "payload": {},
+        "actor_id": "monitor"
+      },
+      "expected_has": ["entry_id", "hash"]
+    },
+    {
+      "id": "query_by_plan",
+      "method": "query",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_genesis",
+      "input": {"source_plan": "P01"},
+      "expected_type": "list"
+    },
+    {
+      "id": "query_by_event_type",
+      "method": "query",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_genesis",
+      "input": {"event_type": "decision.made"},
+      "expected_type": "list"
+    },
+    {
+      "id": "query_combined_filters",
+      "method": "query",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_second",
+      "input": {"source_plan": "P01", "event_type": "review.completed"},
+      "expected_type": "list",
+      "expected_min_length": 1
+    },
+    {
+      "id": "query_no_match",
+      "method": "query",
+      "setup": {"db_path": ":memory:"},
+      "input": {"source_plan": "ZZZZ_NO_EXIST"},
+      "expected_type": "list",
+      "expected_length": 0
+    },
+    {
+      "id": "query_with_limit",
+      "method": "query",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_second",
+      "input": {"source_plan": "P01", "limit": 1},
+      "expected_type": "list",
+      "expected_max_length": 1
+    },
+    {
+      "id": "verify_chain_empty",
+      "method": "verify_chain",
+      "setup": {"db_path": ":memory:"},
+      "input": {},
+      "expected_type": "tuple",
+      "expected_first": true
+    },
+    {
+      "id": "verify_chain_after_appends",
+      "method": "verify_chain",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_second",
+      "input": {},
+      "expected_type": "tuple",
+      "expected_first": true
+    },
+    {
+      "id": "verify_chain_after_many_appends",
+      "method": "verify_chain",
+      "setup": {"db_path": ":memory:"},
+      "prerequisite": "append_with_large_payload",
+      "input": {},
+      "expected_type": "tuple",
+      "expected_first": true
+    }
+  ]
+}

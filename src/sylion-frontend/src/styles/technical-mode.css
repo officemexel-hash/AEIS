@@ -1,0 +1,96 @@
+/* ============================================================
+   Technical Mode Theme — SYLION AEIS
+   Compact, dense, developer-friendly. Cool undertones, monospace accents.
+   ============================================================ */
+
+.technical-mode {
+  --sidebar-bg: oklch(0.11 0.005 240);
+  --sidebar-border: oklch(0.16 0.005 240);
+  --section-header-color: oklch(0.55 0.05 200);
+  --label-color: oklch(0.85 0.005 200);
+  --label-size: 12px;
+  --icon-size: 14px;
+  --spacing-y: 4px;
+  --active-bg: oklch(0.18 0.02 200);
+  --active-border: oklch(0.5 0.15 30);
+  --content-padding: 16px;
+  --mono-font: 'JetBrains Mono', 'Fira Code', monospace;
+  --transition-duration: 300ms;
+
+  /* Cool sidebar & surface tokens */
+  --mode-sidebar-bg: oklch(0.11 0.005 240);
+  --mode-surface-bg: oklch(0.12 0.004 240 / 40%);
+  --mode-border-subtle: oklch(0.22 0.005 240 / 30%);
+  --mode-border-accent: oklch(0.5 0.08 240 / 15%);
+
+  /* Accent — amber/orange for technical energy */
+  --mode-accent: oklch(0.65 0.14 45);
+  --mode-accent-dim: oklch(0.65 0.14 45 / 12%);
+  --mode-accent-glow: oklch(0.65 0.14 45 / 20%);
+
+  /* Typography — crisp, slightly smaller, mono-friendly */
+  --mode-text-primary: oklch(0.9 0.005 240);
+  --mode-text-secondary: oklch(0.6 0.005 240);
+  --mode-text-muted: oklch(0.45 0.005 240);
+
+  /* Spacing — compact density */
+  --mode-density: 0.85;
+}
+
+.technical-mode .sidebar-section-header {
+  color: var(--section-header-color);
+  font-family: var(--mono-font);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.technical-mode .sidebar-item {
+  font-size: var(--label-size);
+  padding: var(--spacing-y) 8px;
+  border-radius: 4px;
+  font-family: var(--mono-font);
+}
+
+.technical-mode .sidebar-item.active {
+  background: var(--active-bg);
+  border-left: 2px solid var(--active-border);
+}
+
+/* Dense developer table */
+.technical-mode .data-table {
+  font-family: var(--mono-font);
+  font-size: 12px;
+}
+
+.technical-mode ::selection {
+  background: oklch(0.55 0.12 260 / 25%);
+  color: oklch(0.95 0.005 240);
+}
+
+.technical-mode ::-webkit-scrollbar-thumb {
+  background: oklch(0.25 0.005 240 / 50%);
+}
+
+.technical-mode ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.35 0.005 240 / 60%);
+}
+
+/* Monospace accents for IDs, paths, technical labels */
+.technical-mode code,
+.technical-mode .font-mono,
+.technical-mode [class*="font-mono"] {
+  font-size: 0.9em;
+  letter-spacing: -0.01em;
+}
+
+/* Compact card hover — less glow, more precision */
+.technical-mode .card-hover:hover {
+  border-color: oklch(0.5 0.08 240 / 20%);
+  box-shadow: 0 0 12px oklch(0.5 0.08 240 / 8%);
+}
+
+.technical-mode .technical-topbar {
+  background-color: var(--mode-sidebar-bg);
+}

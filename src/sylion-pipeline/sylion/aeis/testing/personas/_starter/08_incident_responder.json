@@ -1,0 +1,29 @@
+{
+  "name": "incident_responder",
+  "description": "Adam - on-call SRE, P0 alerts, working under high pressure.",
+  "baseline": {
+    "capability_level": "expert",
+    "expertise_domains": ["rollback", "incident_response", "release"],
+    "error_proneness": 0.15,
+    "attention_span_min": 60,
+    "trust_in_ai_baseline": 0.55,
+    "risk_tolerance": "medium"
+  },
+  "dynamic_state_initial": {
+    "fatigue_level": 0.5,
+    "cognitive_load": 0.9,
+    "time_pressure": 0.95,
+    "trust_in_ai": 0.55,
+    "current_interruptions": 4,
+    "hours_into_shift": 1.5,
+    "consecutive_decisions_count": 2
+  },
+  "behavior_modifiers": {
+    "decision_latency_multiplier": 0.4,
+    "hesitation_probability": 0.1,
+    "double_check_probability": 0.5,
+    "asks_help_probability": 0.05,
+    "skips_warnings_probability": 0.25,
+    "panic_action_probability": 0.2
+  }
+}

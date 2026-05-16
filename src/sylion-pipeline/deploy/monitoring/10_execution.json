@@ -1,0 +1,71 @@
+{
+  "__inputs": [{"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus"}],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"}
+  ],
+  "title": "SYLION — Execution / Pipeline",
+  "uid": "sylion-execution",
+  "description": "Phase 3 W3.1 — pipeline runs, deployment orchestrator, agent runtime.",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 38,
+  "tags": ["sylion", "phase3", "execution"],
+  "time": {"from": "now-3h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Pipeline runs per minute by status",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "id": 1,
+      "targets": [
+        {"expr": "60 * sum by (status) (rate(aeis_pipeline_runs_total[5m]))", "refId": "A", "legendFormat": "{{status}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pipeline duration p50/p95/p99 (cross-layer)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "id": 2,
+      "targets": [
+        {"expr": "sylion:latency:p50", "refId": "A", "legendFormat": "p50 {{layer}}"},
+        {"expr": "sylion:latency:p95", "refId": "B", "legendFormat": "p95 {{layer}}"},
+        {"expr": "sylion:latency:p99", "refId": "C", "legendFormat": "p99 {{layer}}"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Active worker pool size",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 0, "y": 8, "w": 6, "h": 8},
+      "id": 3,
+      "targets": [{"expr": "sum(aeis_worker_pool_size)", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Orphan workers (alerting)",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 6, "y": 8, "w": 6, "h": 8},
+      "id": 4,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {"steps": [{"value": null, "color": "green"}, {"value": 1, "color": "red"}]}
+        }
+      },
+      "targets": [{"expr": "aeis_worker_pool_orphans_total", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Audit events per minute by source",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "id": 5,
+      "targets": [
+        {"expr": "60 * sum by (source) (rate(aeis_audit_events_total[5m]))", "refId": "A", "legendFormat": "{{source}}"}
+      ]
+    }
+  ]
+}

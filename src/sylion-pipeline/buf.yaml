@@ -1,0 +1,21 @@
+version: v2
+modules:
+  - path: sylion/contracts/proto
+    name: buf.build/sylion/contracts
+  - path: proto
+    name: buf.build/sylion/legacy
+lint:
+  use:
+    - STANDARD
+    - PACKAGE_DIRECTORY_MATCH
+  enum_zero_value_suffix: _UNSPECIFIED
+  rpc_allow_same_request_response: false
+  service_suffix: Service
+breaking:
+  use:
+    - FILE
+    - PACKAGE
+    - WIRE_JSON
+  except:
+    - EXTENSION_NO_DELETE
+    - FIELD_SAME_DEFAULT

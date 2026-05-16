@@ -1,0 +1,24 @@
+{
+  "module_id": "aeis.self_limitation",
+  "module_kind": "H",
+  "owner_plan": "P16",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D5",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "aeis.limitation.enforced",
+    "aeis.limitation.violation"
+  ],
+  "consumes_events": [],
+  "description": "Enforces hard limits on system capabilities. Cannot be bypassed.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

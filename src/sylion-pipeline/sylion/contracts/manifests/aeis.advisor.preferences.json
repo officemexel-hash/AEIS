@@ -1,0 +1,26 @@
+{
+  "module_id": "sylion.aeis.advisor.preferences",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.preferences.created",
+    "aeis.advisor.preferences.updated",
+    "aeis.advisor.preferences.reset",
+    "aeis.advisor.preferences.disabled",
+    "aeis.advisor.preferences.hard_change_requested",
+    "aeis.advisor.preferences.hard_change_confirmed",
+    "aeis.advisor.preferences.catalog_extended"
+  ],
+  "events_subscribe": [
+    "aeis.advisor.history.learning_signal_emitted"
+  ],
+  "storage": {
+    "postgres_schemas": [
+      "advisor_preferences"
+    ]
+  }
+}

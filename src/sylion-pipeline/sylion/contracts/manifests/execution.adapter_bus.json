@@ -1,0 +1,24 @@
+{
+  "module_id": "execution.adapter_bus",
+  "module_kind": "C",
+  "owner_plan": "P08",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D2",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "execution.adapter.message",
+    "execution.adapter.error"
+  ],
+  "consumes_events": [],
+  "description": "Message bus for inter-adapter communication with protocol translation.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

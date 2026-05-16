@@ -1,0 +1,60 @@
+﻿# SYLION v5.9.1 â€” systemd unit file
+#
+# FIXES:
+#   R3.13: entry point zmieniony na unified runtime `python -m sylion.server`
+#         legacy app/dashboard package removed in R3.13.
+#   B-02: --workers 1 jest WYMAGANE â€” rate limiter logowania (FIX-01) jest
+#         in-memory; dwa workery = dwa niezaleĹĽne sliding-window buckety =
+#         skuteczny bypass.
+#         gdy WEB_CONCURRENCY > 1.
+#   B-02: --proxy-headers + --forwarded-allow-ips=127.0.0.1 wymagane za Caddy,
+#         inaczej rate limiter widzi tylko 127.0.0.1 dla wszystkich klientĂłw.
+#
+# Deployment: sudo cp sylion-dashboard.service /etc/systemd/system/
+#             sudo systemctl daemon-reload
+#             sudo systemctl enable --now sylion-dashboard
+
+[Unit]
+Description=SYLION AEIS Runtime (FastAPI/gRPC)
+Documentation=file:///opt/sylion/sylion-pipeline/docs/RUNBOOK_DEPLOY.md
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=sylion
+Group=sylion
+WorkingDirectory=/opt/sylion/sylion-pipeline
+
+# EnvironmentFile separuje sekrety (SYLION_HOME, API keys) od kodu.
+# Plik musi mieÄ‡ chmod 600 i chown root:sylion.
+# PrzykĹ‚ad: echo "OPENAI_API_KEY=sk-..." > /etc/sylion/secrets.env
+EnvironmentFile=-/etc/sylion/secrets.env
+Environment=SYLION_HOME=/var/lib/sylion
+
+# R3.13: unified FastAPI + gRPC runtime, bez legacy app.
+# Rate limiting and proxy handling live in the unified runtime/middleware.
+# Caddy remains the edge proxy for operator traffic.
+ExecStart=/opt/sylion/sylion-pipeline/.venv/bin/python \
+    -m sylion.server \
+    --host 127.0.0.1 \
+    --http-port 8421 \
+    --grpc-port 50051 \
+    --log-level info
+
+Restart=on-failure
+RestartSec=5s
+
+# Hardening systemd (OWASP/CIS baseline)
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/sylion
+PrivateDevices=yes
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

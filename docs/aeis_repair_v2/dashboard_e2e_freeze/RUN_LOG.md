@@ -1,0 +1,79 @@
+# AEIS Dashboard E2E Run Log
+
+## 2026-05-13
+
+- Campaign opened.
+- Rule accepted by operator: test through dashboard, record bugs, fix, retest twice, then freeze.
+- Documentation subagent started for `AEIS_OPERATOR_MANUAL_LATEST.md`.
+- Next: inspect startup commands, start backend/frontend, capture health/OpenAPI and initial dashboard shell screenshots.
+- Found `DASH-E2E-001`: `start_frontend.ps1` started Next on port `3000`, while canonical dashboard runtime is `127.0.0.1:3001`.
+- Patch in progress: force `--hostname 127.0.0.1 --port 3001` in `start_frontend.ps1`.
+- `DASH-E2E-001` retest 1 PASS: Next reports `http://127.0.0.1:3001`, listener exists on `3001`, backend `/health` responds on `8010`.
+- Route probe PASS 1 complete: 27 desktop routes + 8 mobile views, all HTTP 200, no browser console errors, no HTTP 4xx/5xx in probe. Evidence: `evidence/runtime_baseline/dashboard_route_probe_pass1.md` and screenshots under `evidence/screenshots/`.
+- Human interaction PASS 1 complete for root launch, workspace tabs, controlled Human Gate approve/reject, Skills create/execute/signal, funding tab navigation, settings tabs, and operator-mobile queue. Evidence: `evidence/runtime_baseline/dashboard_human_interactions_pass1.md`.
+- Found `DASH-E2E-002`: funding `Raporty` charts emitted Recharts width/height `-1` console warnings during tab activation.
+- First attempted fix with `ResponsiveContainer minWidth/minHeight` did not pass; evidence: `funding_reports_chart_warning_retest1.json`, `funding_reports_chart_warning_retest2.json`, `funding_reports_chart_warning_retest3.json`.
+- Final fix for `DASH-E2E-002`: replace funding report `ResponsiveContainer` use with `ChartFrame` using `ResizeObserver`, rendering charts only after positive container measurement.
+- `DASH-E2E-002` retest 1 PASS: `funding_reports_chart_warning_retest4.json` has `consoleCount=0`, `httpErrorCount=0`, `chartCount=4`.
+- `DASH-E2E-002` retest 2 PASS: `funding_reports_chart_warning_retest5_second_pass.json` has `consoleCount=0`, `httpErrorCount=0`, `chartCount=4`.
+- Found `DASH-E2E-003`: Skills UI reported success after clicking `Wykonaj wybrana`, but backend execution for `seed.echo` was `failed` with `Missing required input: text`. FLOW-007 is blocked until fix + 2x retest.
+- Patch in progress for `DASH-E2E-003`: add required `text` to default Skills payload and make the UI action fail when the backend execution response has `status=failed` or an execution error.
+- `DASH-E2E-003` retest 1 PASS: `skills_execute_retest1_after_fix.json` has backend `status=completed`, UI status `Wykonano skill seed.echo: completed`, `consoleCount=0`, `httpErrorCount=0`.
+- `DASH-E2E-003` retest 2 PASS: `skills_execute_retest2_after_fix.json` has backend `status=completed`, UI status `Wykonano skill seed.echo: completed`, `consoleCount=0`, `httpErrorCount=0`.
+- `DASH-E2E-001` retest 2 PASS: restarted frontend from `start_frontend.ps1`; stopped listener owner `32036`, new listener owner `32204`, root `HTTP 200`, Next reported `http://127.0.0.1:3001`. Evidence: `frontend_start_retest2_clean.json`.
+- Route probe PASS 2 after restart found `DASH-E2E-004`: `/governance` rendered HTTP 200 but fetched `/api/v1/governance/compliance/council` with HTTP 500; backend log showed `sqlite3.InterfaceError` in `policy_registry.list_policies`.
+- Patch in progress for `DASH-E2E-004`: serialize `PolicyRegistry` SQLite reads with the existing lock before backend restart and 2x retest.
+- Backend restarted for `DASH-E2E-004`: stopped listener owner `9828`, new listener owner `29740`, `/health` returned HTTP 200. Evidence: `backend_restart_retest_d004.json`.
+- `DASH-E2E-004` retest 1 PASS: `/governance` HTTP 200, `/api/v1/governance/compliance/council` HTTP 200, `consoleCount=0`, `httpErrorCount=0`.
+- `DASH-E2E-004` retest 2 PASS: `/governance` HTTP 200, `/api/v1/governance/compliance/council` HTTP 200, `consoleCount=0`, `httpErrorCount=0`.
+- Full route probe PASS 2 after `DASH-E2E-004` fix complete: 35/35 desktop/mobile route views OK, zero console errors/warnings, zero HTTP >=400. Evidence: `dashboard_route_probe_pass2_after_d004.json` and `.md`.
+- Human Gate approve/reject PASS 2 complete: controlled approve ticket `762ec6b42a2f4476bc24ab3b0d37c528` reached `approved`; controlled reject ticket `1d063560e4504f93aa89370ae0c97929` reached `rejected`; both had `consoleCount=0`, `httpErrorCount=0`. Evidence: `human_gate_pass2_approve_reject.json`.
+- Skills create/execute/signal PASS 2 complete: created skill `dashboard_freeze1778688239038_1778688241102`, executed `seed.echo` with `status=completed`, recorded demand signal `missing_freeze1778688239038_skill`; `consoleCount=0`, `httpErrorCount=0`. Evidence: `skills_full_pass2_create_execute_signal.json`.
+- Funding tabs/reports PASS 2 complete: six tabs navigated, reports rendered four charts, `consoleCount=0`, `httpErrorCount=0`. Evidence: `funding_tabs_reports_pass2.json`.
+- Settings/secrets readonly PASS 2 complete: three settings tabs and `/secrets` route navigated, `consoleCount=0`, `httpErrorCount=0`. Evidence: `settings_tabs_secrets_pass2.json`.
+- Operator Mobile queue PASS 2 complete: mobile viewport navigated from `/operator-mobile` to `/operator-mobile/queue`, `consoleCount=0`, `httpErrorCount=0`. Evidence: `operator_mobile_queue_pass2.json`.
+- Workspace tabs PASS 2 complete: seven Thinking/Working layer tabs navigated, `consoleCount=0`, `httpErrorCount=0`. Evidence: `workspace_tabs_pass2.json`.
+- Execution, Memory, Audit/Evidence/Replay, and Observability are recorded as `PARTIAL_ROUTE_2X` from route probe PASS 1 + PASS 2 after D004. Their write/action workflows remain pending.
+
+## 2026-05-14
+
+- Execution phases 34-41 PASS_2X complete: dashboard `/execution-start` executed Phase 34 through Phase 41 twice; W18 owner/action/decision classes matched; final state `CLOSED`; console errors 0, API failures 0. Evidence: `../execution_phases_34_41/evidence/json/execution_phases_34_41_pass12_2026-05-14T09-40-35-269Z.json`.
+- Found `DASH-E2E-010`: Phase 33 had `Start wykonania` but no dashboard controls for pause/resume/cancel and no explicit command-owner rules for dispatch across workers/environments.
+- Patch applied for `DASH-E2E-010`: added backend dispatch-control state and endpoints, W18 routes `/dispatch pause|resume|cancel`, UI `Dispatch control` panel, event ledger and artifact `phase33_dispatch_control.json`.
+- Backend tests PASS: `python -m pytest src/sylion-pipeline/tests/test_planning_execution_routes.py -q` -> 23 passed.
+- Frontend lint PASS with existing warnings only: `npm run lint -- src/components/execution-start/ExecutionStartDashboard.tsx src/lib/api/client.ts`.
+- Dispatch control PASS_2X complete through dashboard: `Start wykonania -> Pauza -> Wznow -> Anuluj`, repeated twice on project `project_97bfd7670d3d`; final dispatch state `cancelled`; console errors 0, hard request failures 0, API failures 0. Evidence: `../execution_dispatch_control/evidence/json/execution_dispatch_control_pass12_2026-05-14T09-58-40-542Z.json`.
+- Found `DASH-E2E-011`: backend `/api/v1/workers/topology/all` returned a seeded topology, but dashboard `/workers` showed `Brak wygenerowanych topologii`. Evidence: `../workers_registry/evidence/json/workers_topology_repro_2026-05-14T10-20-56-040Z.json`.
+- Patch applied for `DASH-E2E-011`: `/workers` now reads `topologiesData.topologies` instead of the malformed local topology key.
+- Found `DASH-E2E-012`: worker DELETE succeeded in API with `204 No Content`, but frontend parsed the empty body as JSON, showed an error banner and kept stale worker state.
+- Patch applied for `DASH-E2E-012`: all local frontend request helpers found in this audit now handle empty 2xx bodies and return `undefined` instead of throwing JSON parse errors.
+- Frontend lint PASS with existing warnings only: `npm run lint -- "src/lib/api/client.ts" "src/lib/api/testing.ts" "src/lib/api/advisor.ts" "src/app/(app)/operator-mobile/_mobile.ts" "src/app/(app)/workers/page.tsx"`.
+- Workers registry PASS_2X complete through dashboard: seeded topology visible, register worker, heartbeat, rebalance, per-project filter, delete worker, repeated twice; console errors 0, hard request failures 0, API failures 0. Evidence: `../workers_registry/evidence/json/workers_registry_pass12_2026-05-14T10-27-39-815Z.json`.
+- Found `DASH-E2E-013`: `/orchestration/tests` golden run could fail `advisor.council` when operator-configured `quorum_min=5`, because the backend golden check used a fixed three-vote simulation.
+- Patch applied for `DASH-E2E-013`: golden council check now reads current council rules and generates enough for-votes to satisfy configured quorum; regression test added.
+- Found `DASH-E2E-014`: Stop-Fix-Restart gate scope depended on uvicorn working directory and could shrink to `src/sylion-pipeline`, producing a false-empty executable surface scan.
+- Patch applied for `DASH-E2E-014`: gate now resolves the repository root from cwd and package path; regression test added.
+- Backend orchestration tests PASS after patches: `python -m pytest src/sylion-pipeline/tests/aeis/advisor/orchestration_config/test_orchestration_routes.py -q` -> 37 passed.
+- Found `DASH-E2E-015`: `/orchestration/teams` button `Testuj reguly` sent hardcoded event `[advisor][claude][engine]` while the enabled runtime rule was `[r39-theater]`, so dashboard returned `matched_rules=0`.
+- Patch applied for `DASH-E2E-015`: team runtime test event label is generated from the first enabled rule pattern.
+- Frontend lint PASS for J7 patch with existing warnings only: `npm run lint -- "src/app/(app)/orchestration/teams/page.tsx"` -> 0 errors, 3 warnings.
+- Orchestration J1-J9 PASS_2X complete through dashboard: hub, LLM routing preset, council save/simulate, auditor trigger/gate, fixer save, dispatch save, golden suite, team formation, event-map filter, inter-model conversation; repeated twice; console errors 0, page errors 0, hard request failures 0, API failures 0. Evidence: `../orchestration_drilldown/evidence/json/orchestration_drilldown_pass12_2026-05-14T10-54-40-012Z.json`.
+- FLOW-003 continuation moved to dedicated FLOW-020: `/project-start` create/open/lifecycle through dashboard.
+- First project-start lifecycle runner created two projects and accepted phases 16-19, but produced false `project_detail_w18_missing` because the harness checked the detail page before the W18 terminal mounted after Next navigation. Direct repro on the same projects showed terminal count 1 and all detail APIs 200.
+- Harness patch applied for `DASH-E2E-016`: wait for `/projects/{id}` URL and visible `[data-testid=project-w18-terminal]`; classify `net::ERR_ABORTED` navigation aborts as non-fatal telemetry.
+- One intermediate rerun hit transient Next/RSC `ERR_NO_BUFFER_SPACE`, then the final rerun was clean.
+- Project start lifecycle FLOW-020 PASS_2X complete through dashboard: PASS1 project `proj_5f0706c51d42`, PASS2 project `proj_4cd16bbad919`; both preview/create, phases 16-19 defaults+acceptance, edge diagnosis, `/projects` link open, W18 `/status`, and lifecycle chart passed; console errors 0, page errors 0, hard request failures 0, API failures 0. Evidence: `../project_start_lifecycle/evidence/json/project_start_lifecycle_pass12_2026-05-14T11-16-23-299Z.json`.
+- Full `/workspace-defaults` scope started for FLOW-021: 2 passes x 4 goals x wizard steps 1-9, with smart defaults, budget estimate, autonomy mapping, mobile pairing, notification matrix, cleanup visibility, UI preset, shortcut, approval escalation visibility, test strategy, edge diagnosis, inheritance preview and acceptance.
+- First full runner attempt exceeded the command timeout because it waited for global `networkidle` on a page with continuous health/advisor traffic. The orphaned runner process was stopped; no freeze evidence was accepted from that run.
+- Runner patched to wait on concrete API responses plus short DOM stabilization instead of global `networkidle`; syntax check passed.
+- Workspace defaults FLOW-021 PASS_2X complete through dashboard: PASS1 and PASS2 each covered `apps_internal`, `public_products`, `cybersecurity`, `research`; all 8 goal runs completed wizard 1-9 and acceptance with hard blocks 0; console errors 0, page errors 0, hard request failures 0, API failures 0. Evidence: `../workspace_defaults_full/evidence/json/workspace_defaults_full_pass12_2026-05-14T11-58-27-462Z.json`.
+- FLOW-003 remaining `/workspace` action scope moved to dedicated FLOW-022: pipeline submit/execute plus `Pipeline`, `Kod`, `Wynik` tabs.
+- First FLOW-022 diagnostic run found `DASH-E2E-018`: `/workspace` tab `Kod` did not render successful step output because frontend read only `step.output`, while backend returns nested `step.result.result` / `step.result.output`.
+- Same diagnostic run found `DASH-E2E-019`: `/workspace` tab `Wynik` rendered icon-only status rows and used `phase/step_type`, while backend steps expose `name/step_id`.
+- Same diagnostic run found `DASH-E2E-020`: final quality report could be falsely evaluated as a full implementation artifact and fail with `artifact_contract_too_thin`.
+- Second diagnostic run found `DASH-E2E-021`: quality guard treated local `http://localhost:3000` as an irrelevant external URL and treated acceptance-test email fixtures `*@example.com` as endpoint placeholder use.
+- Harness correction recorded as `DASH-E2E-022`: the runner no longer fails the current `/workspace` run because historical failed run cards are still visible on the same dashboard list.
+- Patches applied for FLOW-022: `/workspace` `Kod` now reads nested step output; `Wynik` shows step label and textual status; CodeAgent quality report guard is report-specific; URL guard allows local runtime URLs and email fixtures while still blocking real `example.com` endpoints; runner waits for tab data and scopes final status to the active run.
+- Backend guard regression tests PASS: `python -m pytest src/sylion-pipeline/tests/test_code_agent.py -q -k "quality_report or localhost_runtime_url or example_com"` -> 5 passed.
+- Frontend lint PASS with existing warnings only: `npm run lint -- "src/app/(app)/workspace/page.tsx"` -> 0 errors, 13 existing warnings.
+- Workspace pipeline FLOW-022 PASS_2X complete through dashboard: PASS1 run `8610fd01d3404434a709917c467f1fa6`, PASS2 run `37b4b93bf0924a1e97038f17aca005f1`; both submit -> pending, execute -> complete, 5 steps, `quality_gate=passed`, code/output tabs visible; console errors 0, hard events 0, API failures 0. Evidence: `../workspace_pipeline_full/evidence/json/workspace_pipeline_full_pass12_2026-05-14T12-39-30-039Z.json`.

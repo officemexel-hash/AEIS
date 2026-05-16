@@ -1,0 +1,21 @@
+[Unit]
+Description=SYLION Dashboard — SQLite Backup Timer (codziennie 02:00 UTC)
+Documentation=file:///opt/sylion/deploy/BACKUP_STRATEGY.md
+Requires=sylion-backup.service
+
+[Timer]
+# Codziennie o 02:00 UTC (UTC — niezależnie od strefy czasowej serwera)
+OnCalendar=*-*-* 02:00:00 UTC
+
+# Losowe opóźnienie do 5 minut — rozłożenie obciążenia jeśli wiele timerów startuje równocześnie
+RandomizedDelaySec=300
+
+# Persistent=true — jeśli system był wyłączony w czasie planowanego backup,
+# uruchomi zadanie przy następnym starcie systemu (catchup)
+Persistent=true
+
+# Jednostka do uruchomienia
+Unit=sylion-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,144 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_test_charter
+  name_pl: Karta testów W14
+  name_en: W14 Test Charter
+  version: v1.0
+  description_pl: 'Strategia testowania dla projektu, zatwierdzana przed wykonaniem.
+
+    Definiuje zakres, klasy testów, persony oraz blokery releasowe,
+
+    a resztę parametrów przenosi do rozszerzenia JSONB.'
+  description_en: 'Per-project testing strategy approved before execution.
+
+    It defines scope, test classes, personas, and release blockers,
+
+    while richer policy details remain in the JSONB extension.'
+  tags:
+  - w14
+  - testing
+  - charter
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: source_of_truth_version
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: masterplan_version
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: status
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - draft
+    - proposed
+    - approved
+    - rejected
+    - archived
+    default: draft
+  - name: hg_ticket
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  - name: council_session
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: project
+    target: project
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: idea
+    target: idea
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - status
+    - source_of_truth_version
+    - masterplan_version
+    - hg_ticket
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index:
+    - source_of_truth_version
+    - masterplan_version
+  actions:
+  - id: propose_charter
+    description_pl: Przesuwa kartę do stanu proposed i zgłasza ją do przeglądu.
+    description_en: Moves the charter to proposed and submits it for review.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: proposed
+    - type: emit_event
+      topic: aeis.w14.charter.proposed
+  - id: approve_charter
+    description_pl: Zatwierdza kartę testów do użycia wykonawczego.
+    description_en: Approves the charter for execution use.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: status
+      to: approved
+    - type: emit_event
+      topic: aeis.w14.charter.approved
+  - id: archive_charter
+    description_pl: Archiwizuje kartę po zamknięciu cyklu testowego.
+    description_en: Archives the charter after the testing cycle closes.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: status
+      to: archived
+    - type: emit_event
+      topic: aeis.w14.charter.archived

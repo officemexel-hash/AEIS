@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.mobile_gateway.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "sylion/aeis/advisor/v1;advisorv1";
+
+// Etap 1 sketch only. Etap 2 implementations will: replace REST in-process
+// translation with full gRPC bidi streaming for push channels (urgent
+// recommendations, human-gate pending, funding alerts, scaling alerts,
+// weekly summary) and add device pairing surfaces.
+
+service MobileGatewayService {
+  rpc PairDevice(PairDeviceRequest) returns (PairDeviceResponse);
+  rpc UnpairDevice(UnpairDeviceRequest) returns (UnpairDeviceResponse);
+  rpc StreamPushNotifications(StreamPushRequest) returns (stream PushEnvelope);
+  rpc FetchSyncSnapshot(SyncSnapshotRequest) returns (SyncSnapshotResponse);
+  rpc SubmitCardAction(CardActionRequest) returns (CardActionResponse);
+}
+
+message PairDeviceRequest {
+  string operator_id = 1;
+  string device_token = 2;
+  string platform = 3;       // "android" | "ios"
+  string device_label = 4;
+}
+
+message PairDeviceResponse {
+  string device_id = 1;
+  google.protobuf.Timestamp paired_at = 2;
+}
+
+message UnpairDeviceRequest {
+  string device_id = 1;
+}
+
+message UnpairDeviceResponse {
+  bool ok = 1;
+}
+
+message StreamPushRequest {
+  string operator_id = 1;
+  string device_id = 2;
+  repeated string channels = 3;  // see manifest §11 push_channels
+}
+
+message PushEnvelope {
+  string topic = 1;
+  google.protobuf.Struct payload = 2;
+  google.protobuf.Timestamp emitted_at = 3;
+}
+
+message SyncSnapshotRequest {
+  string operator_id = 1;
+}
+
+message SyncSnapshotResponse {
+  google.protobuf.Struct snapshot = 1;
+  google.protobuf.Timestamp taken_at = 2;
+}
+
+message CardActionRequest {
+  string card_id = 1;
+  string action = 2;
+  string operator_note = 3;
+  string modified_recommendation = 4;
+  bool biometric_verified = 5;
+}
+
+message CardActionResponse {
+  string card_id = 1;
+  bool accepted = 2;
+  bool biometric_required = 3;
+}

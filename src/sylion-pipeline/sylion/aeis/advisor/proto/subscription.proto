@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.subscription;
+
+service SubscriptionService {
+  rpc RecordUsage(RecordUsageRequest) returns (RecordUsageResponse);
+  rpc GetUsageReport(GetUsageReportRequest) returns (UsageReport);
+  rpc ComputeROI(ComputeROIRequest) returns (ROICalculation);
+  rpc ListAvailablePlans(ListAvailablePlansRequest) returns (ListAvailablePlansResponse);
+  rpc RegisterCustomPlan(RegisterCustomPlanRequest) returns (RegisterCustomPlanResponse);
+}
+
+message RecordUsageRequest {
+  string operator_id = 1;
+  string provider_id = 2;
+  string model_id = 3;
+  int32 tokens_in = 4;
+  int32 tokens_out = 5;
+  double cost = 6;
+}
+
+message RecordUsageResponse {
+  string record_id = 1;
+}
+
+message GetUsageReportRequest {
+  string operator_id = 1;
+  double period_start = 2;
+  double period_end = 3;
+}
+
+message UsageReport {
+  string operator_id = 1;
+  double period_start = 2;
+  double period_end = 3;
+  int64 total_tokens_in = 4;
+  int64 total_tokens_out = 5;
+  double total_cost_usd = 6;
+  int32 record_count = 7;
+}
+
+message ComputeROIRequest {
+  string operator_id = 1;
+  string plan_id = 2;
+  int32 observation_window_days = 3;
+}
+
+message ROICalculation {
+  string operator_id = 1;
+  string plan_id = 2;
+  int32 observation_window_days = 3;
+  double usage_cost_without_plan = 4;
+  double plan_cost = 5;
+  double break_even_days = 6;
+  string recommendation = 7;
+}
+
+message ListAvailablePlansRequest {
+  string provider_id = 1;
+}
+
+message Plan {
+  string plan_id = 1;
+  string provider_id = 2;
+  double monthly_price_usd = 3;
+  int64 included_tokens = 4;
+  string rate_limits_json = 5;
+  bool is_assumption = 6;
+  string source_url = 7;
+}
+
+message ListAvailablePlansResponse {
+  repeated Plan plans = 1;
+}
+
+message RegisterCustomPlanRequest {
+  Plan plan = 1;
+}
+
+message RegisterCustomPlanResponse {
+  bool success = 1;
+}

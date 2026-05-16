@@ -1,0 +1,151 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: project
+  name_pl: Projekt
+  name_en: Project
+  version: v1.0
+  description_pl: |
+    Typ obiektu dla projektów operacyjnych i rozwojowych,
+    z budżetem, terminem oraz powiązaniem do idei i klienta.
+    Ma odzwierciedlać tryb pracy zbliżony do v1 project_mode.
+  description_en: |
+    Object type for operational and development projects
+    with budget, deadline, and links to ideas and customers.
+    It mirrors the intent of the v1 project_mode.
+  tags: [project, delivery, planning, w15]
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+    - name: title
+      type: text
+      nullable: false
+      indexed: true
+      searchable: true
+    - name: status
+      type: text
+      nullable: false
+      indexed: true
+      searchable: false
+      enum: [draft, definition_in_progress, active, paused, completed, archived, deleted]
+      default: draft
+    - name: idea
+      type: text
+      nullable: true
+      indexed: false
+      searchable: true
+    - name: owner_id
+      type: uuid
+      nullable: false
+      indexed: true
+      searchable: false
+    - name: deadline
+      type: timestamptz
+      nullable: true
+      indexed: true
+      searchable: false
+    - name: budget_usd
+      type: numeric
+      nullable: true
+      indexed: false
+      searchable: false
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+      properties:
+        masterplan:
+          type: object
+          additionalProperties: true
+        council_plan:
+          type: object
+          additionalProperties: true
+        audit_plan:
+          type: object
+          additionalProperties: true
+  relations:
+    - name: customer
+      target: customer
+      cardinality: many_to_one
+      on_delete: set_null
+    - name: parent_idea
+      target: idea
+      cardinality: many_to_one
+      on_delete: set_null
+  audit:
+    enabled: true
+    track_fields: ["title", "status", "owner_id", "deadline", "budget_usd"]
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: ["title", "idea"]
+    embeddings:
+      enabled: false
+      source_columns: ["title", "idea"]
+      dim: 1024
+  actions:
+    - id: pause_project
+      description_pl: |
+        Wstrzymuje projekt bez usuwania jego kontekstu
+        i zatrzymuje działania operacyjne do wznowienia.
+      description_en: |
+        Pauses the project without deleting its context
+        and halts operations until resumed.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: paused
+        - type: emit_event
+          topic: aeis.project.paused
+    - id: resume_project
+      description_pl: |
+        Wznawia projekt po okresie pauzy
+        i przywraca go do aktywnej realizacji.
+      description_en: |
+        Resumes the project after a pause
+        and returns it to active execution.
+      d_level: D2
+      hg_required: false
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: active
+        - type: emit_event
+          topic: aeis.project.resumed
+    - id: archive_project
+      description_pl: |
+        Archiwizuje projekt po zakończeniu lub decyzji
+        governance i wymaga przejścia przez Human Gate.
+      description_en: |
+        Archives the project after closure or governance
+        decision and requires Human Gate approval.
+      d_level: D3
+      hg_required: true
+      input_schema:
+        type: object
+        properties:
+          reason:
+            type: string
+        required: [reason]
+      effects:
+        - type: update_field
+          field: status
+          to: archived
+        - type: emit_event
+          topic: aeis.project.archived

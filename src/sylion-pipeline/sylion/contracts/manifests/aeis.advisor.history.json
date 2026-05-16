@@ -1,0 +1,45 @@
+{
+  "module_id": "sylion.aeis.advisor.history",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.actions"
+  ],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.history.action_recorded",
+    "aeis.advisor.history.learning_signal_emitted",
+    "aeis.advisor.history.soft_learning_applied",
+    "aeis.advisor.history.hard_change_requested",
+    "aeis.advisor.history.skip_learning_recorded",
+    "aeis.advisor.history.partition_created",
+    "aeis.advisor.history.confidence_components_calculated"
+  ],
+  "events_subscribe": [
+    "aeis.advisor.actions.action_routed",
+    "aeis.advisor.engine.recommendation_emitted"
+  ],
+  "storage": {
+    "postgres_schemas": ["advisor_history"],
+    "sqlite_tables_dev": [
+      "advisor_history_card_actions",
+      "advisor_history_learning_signals",
+      "advisor_history_card_emissions"
+    ]
+  },
+  "golden_tests": {
+    "path": "tests/aeis/advisor/history/",
+    "minimum_required": [
+      "record_action_persists_row_and_emits_event",
+      "dont_learn_flag_skips_learning_signal_creation",
+      "soft_learning_triggers_after_threshold_accept_streak",
+      "hard_change_request_emits_event_and_pendable_for_confirmation",
+      "confidence_provider_history_match_returns_expected_shape",
+      "confidence_provider_historical_acceptance_returns_expected_shape",
+      "partition_manager_noop_on_sqlite_returns_zero"
+    ]
+  }
+}

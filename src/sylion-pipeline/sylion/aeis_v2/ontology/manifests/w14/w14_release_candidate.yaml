@@ -1,0 +1,131 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_release_candidate
+  name_pl: Kandydat releasowy W14
+  name_en: W14 Release Candidate
+  version: v1.0
+  description_pl: 'Gałąź promowana do kandydata produkcyjnego po przejściu testów.
+
+    Status bramki i identyfikator evidence pack są dedykowane,
+
+    a podsumowanie testów i blokery trafiają do rozszerzenia.'
+  description_en: 'Branch promoted to a production release candidate after testing.
+
+    Gate status and evidence pack reference are dedicated,
+
+    while test summaries and blockers remain in the extension.'
+  tags:
+  - w14
+  - testing
+  - release_candidate
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: project_ref
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+  - name: gate_status
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - NOT_TESTED
+    - TESTING_IN_PROGRESS
+    - BLOCKED_BY_FINDINGS
+    - BLOCKED_BY_GOVERNANCE
+    - READY_FOR_RELEASE_CANDIDATE
+    - RELEASE_CANDIDATE
+    - READY_FOR_PRODUCTION
+    - PRODUCTION_RELEASED
+    - ROLLBACK_REQUIRED
+    - ARCHIVED
+    default: NOT_TESTED
+  - name: evidence_pack
+    type: text
+    nullable: true
+    indexed: true
+    searchable: false
+    unique: false
+  - name: unresolved_finding_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: blocker_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: branch
+    target: w14_branch
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  audit:
+    enabled: true
+    track_fields:
+    - project_ref
+    - gate_status
+    - unresolved_finding_count
+    - blocker_count
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: []
+  actions:
+  - id: promote_release_candidate
+    description_pl: Promuje kandydaturę do gotowości produkcyjnej.
+    description_en: Promotes the candidate to production readiness.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: gate_status
+      to: READY_FOR_PRODUCTION
+    - type: emit_event
+      topic: aeis.w14.release_candidate.promoted
+  - id: rollback_release_candidate
+    description_pl: Oznacza konieczność rollbacku po krytycznym sygnale ryzyka.
+    description_en: Marks the candidate as requiring rollback after a critical risk
+      signal.
+    d_level: D4
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: gate_status
+      to: ROLLBACK_REQUIRED
+    - type: emit_event
+      topic: aeis.w14.release_candidate.rollback_required

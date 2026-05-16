@@ -1,0 +1,161 @@
+api_version: sylion.aeis.v2/Object
+kind: ObjectType
+metadata:
+  id: w14_repair_attempt
+  name_pl: Próba naprawy W14
+  name_en: W14 Repair Attempt
+  version: v1.0
+  description_pl: 'Pojedyncza iteracja kontrolera auto-repair dla danego findingu.
+
+    Kolumny przechowują numer próby, fazę, wynik, koszt i czas,
+
+    a reszta przebiegu pozostaje w rozszerzeniu.'
+  description_en: 'Single iteration of the auto-repair controller for a finding.
+
+    Columns store attempt number, phase, result, cost, and timing,
+
+    while richer execution detail stays in the extension.'
+  tags:
+  - w14
+  - testing
+  - repair
+  d_level: D2
+spec:
+  primary_key: id
+  dedicated_columns:
+  - name: legacy_w14_id
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: true
+  - name: attempt_number
+    type: integer
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    default: 1
+  - name: r_phase
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - OPEN
+    - TRIAGED
+    - REPRODUCED
+    - CLASSIFIED
+    - REPAIR_PROPOSED
+    - WAITING_FOR_HUMAN_GATE
+    - REPAIRING
+    - READY_FOR_RETEST
+    - REGRESSION_FAILED
+    - VERIFIED
+    - ESCALATED
+    - WAIVED_BY_HUMAN
+    - CLOSED
+    default: REPAIRING
+  - name: result
+    type: text
+    nullable: false
+    indexed: true
+    searchable: false
+    unique: false
+    enum:
+    - success
+    - failed_same
+    - failed_new
+    - regression_failed
+    - blocked_by_loop
+    default: success
+  - name: files_touched_count
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: diff_lines
+    type: integer
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0
+  - name: time_in_phase_s
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0.0
+  - name: cost_usd
+    type: numeric
+    nullable: false
+    indexed: false
+    searchable: false
+    unique: false
+    default: 0.0
+  jsonb_extension:
+    field: extension
+    schema:
+      type: object
+      additionalProperties: true
+  relations:
+  - name: finding
+    target: w14_finding
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: false
+  - name: patch_proposal
+    target: w14_patch_proposal
+    cardinality: many_to_one
+    on_delete: set_null
+    nullable: true
+  audit:
+    enabled: true
+    track_fields:
+    - attempt_number
+    - r_phase
+    - result
+    - cost_usd
+    hash_chain: true
+  search:
+    enabled: true
+    columns_to_index: []
+  actions:
+  - id: mark_repair_attempt_verified
+    description_pl: Oznacza próbę naprawy jako zweryfikowaną po retescie.
+    description_en: Marks the repair attempt as verified after retest.
+    d_level: D2
+    hg_required: false
+    input_schema:
+      type: object
+      properties: {}
+    effects:
+    - type: update_field
+      field: r_phase
+      to: VERIFIED
+    - type: emit_event
+      topic: aeis.w14.repair_attempt.verified
+  - id: escalate_repair_attempt
+    description_pl: Eskaluje próbę naprawy po braku postępu lub ryzyku ubocznym.
+    description_en: Escalates the repair attempt after lack of progress or side-effect
+      risk.
+    d_level: D3
+    hg_required: true
+    input_schema:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+      - reason
+    effects:
+    - type: update_field
+      field: r_phase
+      to: ESCALATED
+    - type: emit_event
+      topic: aeis.w14.repair_attempt.escalated

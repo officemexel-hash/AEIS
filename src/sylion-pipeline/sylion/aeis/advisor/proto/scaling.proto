@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package sylion.aeis.advisor.scaling;
+
+service ScalingService {
+  rpc RecommendTopology(RecommendTopologyRequest) returns (ScalingCard);
+  rpc ProposeStagingPlan(ProposeStagingPlanRequest) returns (StagingPlan);
+  rpc GetEnvInventory(GetEnvInventoryRequest) returns (GetEnvInventoryResponse);
+  rpc RegisterEnv(RegisterEnvRequest) returns (RegisterEnvResponse);
+}
+
+message RecommendTopologyRequest {
+  string operator_id = 1;
+  string project_id = 2;
+  WorkloadProfile workload_profile = 3;
+}
+
+message WorkloadProfile {
+  int64 estimated_tokens_per_day = 1;
+  int32 parallelism = 2;
+  double latency_target_seconds = 3;
+}
+
+message ScalingCard {
+  string card_id = 1;
+  string operator_id = 2;
+  string project_id = 3;
+  string recommended = 4;
+  repeated string alternatives = 5;
+  string d_level = 6;
+  string evidence_pack_id = 7;
+  bool human_gate_required = 8;
+  string impacts_json = 9;
+}
+
+message ProposeStagingPlanRequest {
+  string current_topology = 1;
+  string target_topology = 2;
+}
+
+message StagingPlan {
+  string plan_id = 1;
+  string current_topology = 2;
+  string target_topology = 3;
+  repeated StagingPhase phases = 4;
+}
+
+message StagingPhase {
+  int32 phase = 1;
+  string action = 2;
+  string topology = 3;
+  string description = 4;
+}
+
+message GetEnvInventoryRequest {
+  string operator_id = 1;
+}
+
+message Env {
+  string env_id = 1;
+  string operator_id = 2;
+  string name = 3;
+  string kind = 4;
+  int64 capacity_tokens_per_day = 5;
+  double registered_at = 6;
+}
+
+message GetEnvInventoryResponse {
+  repeated Env envs = 1;
+}
+
+message RegisterEnvRequest {
+  Env env = 1;
+}
+
+message RegisterEnvResponse {
+  string env_id = 1;
+}

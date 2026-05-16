@@ -1,0 +1,14 @@
+{
+  "error_class": "multi_tab_confusion",
+  "target_action": "approve_in_tab_a_action_meant_for_tab_b",
+  "context": "operator has two project tabs open; takes action on the wrong project",
+  "timing": "while_switching_tabs",
+  "expected_system_response": [
+    "show_active_project_indicator",
+    "diff_against_action_origin_tab",
+    "require_re_select_project_for_d3"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D2"
+}

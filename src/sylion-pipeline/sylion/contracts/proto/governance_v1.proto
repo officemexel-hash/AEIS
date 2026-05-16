@@ -1,0 +1,684 @@
+// SYLION AEIS -- Class E: Governance (7 modules)
+// Version: 1.0.0 (Contract Freeze)
+//
+// Modules: DecisionLadder, CouncilWorkflow, Roles,
+//          GatesRegistry, EvidenceWorkflow, PolicyRegistry,
+//          SelfExplanationValidator
+
+syntax = "proto3";
+
+package sylion.governance.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/governance/v1;governancev1";
+option java_package = "com.sylion.aeis.governance.v1";
+
+// =====================================================================
+// E1: Decision Ladder Service
+// =====================================================================
+
+service DecisionLadderService {
+  rpc Propose(ProposeRequest) returns (ProposeResponse);
+  rpc Approve(ApproveRequest) returns (ApproveResponse);
+  rpc Reject(RejectRequest) returns (RejectResponse);
+  rpc Execute(ExecuteDecisionRequest) returns (ExecuteDecisionResponse);
+  rpc GetProposal(GetProposalRequest) returns (ProposalMessage);
+  rpc ListProposals(ListProposalsRequest) returns (ProposalList);
+}
+
+message ProposeRequest {
+  string title             = 1;
+  string description       = 2;
+  string source_plan       = 3;
+  string module_id         = 4;
+  string change_type       = 5;
+  string blast_radius      = 6;
+  bool   reversible        = 7;
+  bool   affects_contracts = 8;
+  bool   affects_kernel    = 9;
+  string proposed_by       = 10;
+  string rollback_plan     = 11;
+}
+
+message ProposeResponse {
+  string proposal_id    = 1;
+  string decision_class = 2;
+  string status         = 3;
+  string requirements_json = 4;
+}
+
+message ApproveRequest {
+  string proposal_id = 1;
+  string approved_by = 2;
+  string notes       = 3;
+}
+
+message ApproveResponse {
+  bool   approved    = 1;
+  string proposal_id = 2;
+  string status      = 3;
+  string message     = 4;
+}
+
+message RejectRequest {
+  string proposal_id = 1;
+  string rejected_by = 2;
+  string reason      = 3;
+}
+
+message RejectResponse {
+  bool   rejected    = 1;
+  string proposal_id = 2;
+  string message     = 3;
+}
+
+message ExecuteDecisionRequest {
+  string proposal_id = 1;
+}
+
+message ExecuteDecisionResponse {
+  bool   executed    = 1;
+  string proposal_id = 2;
+  string message     = 3;
+}
+
+message GetProposalRequest {
+  string proposal_id = 1;
+}
+
+message ProposalMessage {
+  string proposal_id     = 1;
+  string title           = 2;
+  string description     = 3;
+  string source_plan     = 4;
+  string module_id       = 5;
+  string change_type     = 6;
+  string blast_radius    = 7;
+  bool   reversible      = 8;
+  bool   affects_contracts = 9;
+  bool   affects_kernel  = 10;
+  string proposed_by     = 11;
+  string decision_class  = 12;
+  string status          = 13;
+  string rollback_plan   = 14;
+  double created_at      = 15;
+  double classified_at   = 16;
+  double resolved_at     = 17;
+}
+
+message ListProposalsRequest {
+  string status         = 1;
+  string decision_class = 2;
+  string source_plan    = 3;
+}
+
+message ProposalList {
+  repeated ProposalMessage proposals = 1;
+}
+
+// =====================================================================
+// E2: Council Workflow Service
+// =====================================================================
+
+service CouncilWorkflowService {
+  rpc OpenSession(OpenSessionRequest) returns (OpenSessionResponse);
+  rpc CastVote(CastVoteRequest) returns (CastVoteResponse);
+  rpc Tally(TallyRequest) returns (TallyResponse);
+  rpc HumanGateDecide(HumanGateRequest) returns (HumanGateResponse);
+  rpc GetSession(GetSessionRequest) returns (CouncilSessionMessage);
+  rpc ListSessions(ListSessionsRequest) returns (CouncilSessionList);
+}
+
+message OpenSessionRequest {
+  string proposal_id    = 1;
+  string decision_class = 2;
+  string title          = 3;
+  string description    = 4;
+  string evidence_ref   = 5;
+  int32  required_quorum = 6;
+}
+
+message OpenSessionResponse {
+  string session_id = 1;
+  string status     = 2;
+}
+
+message CastVoteRequest {
+  string session_id = 1;
+  string member_id  = 2;
+  string value      = 3;  // approve|reject|abstain
+  string rationale  = 4;
+}
+
+message CastVoteResponse {
+  bool   cast     = 1;
+  string vote_id  = 2;
+  TallyResponse tally = 3;
+  string message = 4;
+}
+
+message TallyRequest {
+  string session_id = 1;
+}
+
+message TallyResponse {
+  string session_id = 1;
+  int32  approves   = 2;
+  int32  rejects    = 3;
+  int32  abstains   = 4;
+  int32  total      = 5;
+  int32  quorum     = 6;
+  bool   resolved   = 7;
+  string outcome    = 8;
+}
+
+message HumanGateRequest {
+  string session_id = 1;
+  string decision   = 2;  // approved|rejected
+  string by         = 3;
+}
+
+message HumanGateResponse {
+  bool   decided    = 1;
+  string session_id = 2;
+  string human_gate = 3;
+  string message    = 4;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message CouncilSessionMessage {
+  string session_id        = 1;
+  string proposal_id       = 2;
+  string decision_class    = 3;
+  string title             = 4;
+  string description       = 5;
+  string evidence_ref      = 6;
+  string status            = 7;
+  int32  required_quorum   = 8;
+  bool   human_gate_required = 9;
+  string human_gate_status = 10;
+  bool   external_required = 11;
+  string external_status   = 12;
+  double opened_at         = 13;
+  double closed_at         = 14;
+}
+
+message ListSessionsRequest {
+  string status = 1;
+}
+
+message CouncilSessionList {
+  repeated CouncilSessionMessage sessions = 1;
+}
+
+// =====================================================================
+// E3: Roles Service (ATLP)
+// =====================================================================
+
+service RolesService {
+  rpc Register(RegisterRoleRequest) returns (RoleSummary);
+  rpc Deregister(DeregisterRoleRequest) returns (sylion.common.v1.Status);
+  rpc Get(GetRoleRequest) returns (RoleMessage);
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+  rpc ListAgents(ListAgentsRequest) returns (RoleList);
+  rpc GrantPermission(GrantPermissionRequest) returns (PermissionResponse);
+  rpc RevokePermission(RevokePermissionRequest) returns (PermissionResponse);
+}
+
+message RegisterRoleRequest {
+  string agent_id    = 1;
+  string name        = 2;
+  string department  = 3;
+  repeated string permissions = 4;
+  repeated string skills      = 5;
+  int32  level       = 6;
+}
+
+message RoleSummary {
+  string agent_id    = 1;
+  string department  = 2;
+}
+
+message DeregisterRoleRequest {
+  string agent_id = 1;
+}
+
+message GetRoleRequest {
+  string agent_id = 1;
+}
+
+message RoleMessage {
+  string agent_id       = 1;
+  string name           = 2;
+  string department     = 3;
+  repeated string permissions = 4;
+  repeated string skills      = 5;
+  int32  level            = 6;
+  bool   active           = 7;
+  double registered_at    = 8;
+}
+
+message CheckPermissionRequest {
+  string agent_id   = 1;
+  string permission = 2;
+}
+
+message CheckPermissionResponse {
+  bool has_permission = 1;
+}
+
+message ListAgentsRequest {
+  string department = 1;
+  bool   active_only = 2;
+}
+
+message RoleList {
+  repeated RoleMessage agents = 1;
+}
+
+message GrantPermissionRequest {
+  string agent_id   = 1;
+  string permission = 2;
+}
+
+message RevokePermissionRequest {
+  string agent_id   = 1;
+  string permission = 2;
+}
+
+message PermissionResponse {
+  bool   success    = 1;
+  string agent_id   = 2;
+  string permission = 3;
+  string message    = 4;
+}
+
+// =====================================================================
+// E4: Gates Registry Service
+// =====================================================================
+
+service GatesRegistryService {
+  rpc RegisterGate(RegisterGateMessage) returns (GateSummary);
+  rpc Evaluate(EvaluateGateMessage) returns (EvaluateGateResult);
+  rpc GetGate(GetGateRequest) returns (GateDefinitionMessage);
+  rpc ListGates(sylion.common.v1.Empty) returns (GateList);
+  rpc GetEvaluations(GetEvaluationsRequest) returns (GateEvaluationList);
+  rpc CheckBlocking(CheckBlockingRequest) returns (CheckBlockingResponse);
+}
+
+message RegisterGateMessage {
+  string gate_id             = 1;
+  string name                = 2;
+  string description         = 3;
+  string fail_condition      = 4;
+  string blocks              = 5;
+  string decision_class_min  = 6;
+  string owner_plan          = 7;
+  string severity            = 8;  // advisory|blocking|veto
+}
+
+message GateSummary {
+  string gate_id  = 1;
+  string name     = 2;
+  string severity = 3;
+}
+
+message EvaluateGateMessage {
+  string gate_id   = 1;
+  string module_id = 2;
+  string result    = 3;  // pass|fail|conditional|skipped
+  string severity  = 4;
+  string message   = 5;
+  string details_json = 6;
+  string evaluated_by  = 7;
+}
+
+message EvaluateGateResult {
+  bool   evaluated     = 1;
+  string evaluation_id = 2;
+  string gate_id       = 3;
+  string result        = 4;
+  string severity      = 5;
+  string message       = 6;
+}
+
+message GetGateRequest {
+  string gate_id = 1;
+}
+
+message GateDefinitionMessage {
+  string gate_id            = 1;
+  string name               = 2;
+  string description        = 3;
+  string fail_condition     = 4;
+  string blocks             = 5;
+  string decision_class_min = 6;
+}
+
+message GateList {
+  repeated GateDefinitionMessage gates = 1;
+}
+
+message GetEvaluationsRequest {
+  string gate_id   = 1;
+  string module_id = 2;
+  int32  limit     = 3;
+}
+
+message GateEvaluationList {
+  repeated GateEvaluationMessage evaluations = 1;
+}
+
+message GateEvaluationMessage {
+  string evaluation_id = 1;
+  string gate_id       = 2;
+  string module_id     = 3;
+  string result        = 4;
+  string severity      = 5;
+  string message       = 6;
+  string details_json  = 7;
+  string evaluated_by  = 8;
+  double timestamp     = 9;
+}
+
+message CheckBlockingRequest {
+  string module_id = 1;
+}
+
+message CheckBlockingResponse {
+  string module_id           = 1;
+  bool   blocked             = 2;
+  repeated GateEvaluationMessage blocked_by = 3;
+}
+
+// =====================================================================
+// E5: Evidence Workflow Service
+// =====================================================================
+
+service EvidenceWorkflowService {
+  rpc CreatePack(CreatePackRequest) returns (PackSummary);
+  rpc AddArtefact(AddArtefactRequest) returns (AddArtefactResponse);
+  rpc ValidatePack(ValidatePackRequest) returns (ValidatePackResponse);
+  rpc SubmitPack(SubmitPackRequest) returns (SubmitPackResponse);
+  rpc GetPack(GetPackRequest) returns (EvidencePackMessage);
+  rpc ListPacks(ListPacksRequest) returns (EvidencePackList);
+}
+
+message CreatePackRequest {
+  string proposal_id    = 1;
+  string decision_class = 2;
+  string created_by     = 3;
+}
+
+message PackSummary {
+  string pack_id = 1;
+  string status  = 2;
+}
+
+message AddArtefactRequest {
+  string pack_id        = 1;
+  string artefact_id    = 2;
+  string name           = 3;
+  string artefact_type  = 4;
+  string content_hash   = 5;
+  string description    = 6;
+  string source         = 7;
+}
+
+message AddArtefactResponse {
+  bool   added        = 1;
+  string artefact_id  = 2;
+  string pack_hash    = 3;
+  string message      = 4;
+}
+
+message ValidatePackRequest {
+  string pack_id = 1;
+}
+
+message ValidatePackResponse {
+  string pack_id        = 1;
+  bool   valid          = 2;
+  int32  artefacts_count = 3;
+  repeated string missing_types = 4;
+  repeated string no_hash = 5;
+  string status        = 6;
+}
+
+message SubmitPackRequest {
+  string pack_id = 1;
+}
+
+message SubmitPackResponse {
+  bool   submitted = 1;
+  string pack_id   = 2;
+  string message   = 3;
+}
+
+message GetPackRequest {
+  string pack_id = 1;
+}
+
+message EvidencePackMessage {
+  string pack_id        = 1;
+  string proposal_id    = 2;
+  string decision_class = 3;
+  string pack_hash      = 4;
+  string status         = 5;
+  string created_by     = 6;
+  double created_at     = 7;
+  repeated ArtefactMessage artefacts = 8;
+}
+
+message ArtefactMessage {
+  string artefact_id   = 1;
+  string name          = 2;
+  string type          = 3;
+  string hash          = 4;
+  string description   = 5;
+}
+
+message ListPacksRequest {
+  string proposal_id = 1;
+  string status      = 2;
+}
+
+message EvidencePackList {
+  repeated EvidencePackMessage packs = 1;
+}
+
+// =====================================================================
+// E6: Policy Registry Service
+// =====================================================================
+
+service PolicyRegistryService {
+  rpc Register(RegisterPolicyRequest) returns (PolicyMessage);
+  rpc Get(GetPolicyRequest) returns (PolicyMessage);
+  rpc ListPolicies(ListPoliciesRequest) returns (PolicyList);
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (PolicyMessage);
+  rpc Disable(GetPolicyRequest) returns (PolicyMessage);
+  rpc Enable(GetPolicyRequest) returns (PolicyMessage);
+  rpc Apply(ApplyPolicyRequest) returns (ApplyPolicyResponse);
+  rpc GetApplications(GetApplicationsRequest) returns (PolicyApplicationList);
+}
+
+message RegisterPolicyRequest {
+  string policy_id    = 1;
+  string name         = 2;
+  string category     = 3;
+  string description  = 4;
+  string rules_json   = 5;
+  string enforcement  = 6;  // advisory|blocking|veto
+}
+
+message PolicyMessage {
+  string policy_id    = 1;
+  string name         = 2;
+  string category     = 3;
+  string description  = 4;
+  string rules_json   = 5;
+  string enforcement  = 6;
+  int32  version      = 7;
+  bool   enabled      = 8;
+  double created_at   = 9;
+  double updated_at   = 10;
+}
+
+message GetPolicyRequest {
+  string policy_id = 1;
+}
+
+message ListPoliciesRequest {
+  string category    = 1;
+  string enforcement = 2;
+  bool   enabled_only = 3;
+}
+
+message PolicyList {
+  repeated PolicyMessage policies = 1;
+}
+
+message UpdatePolicyRequest {
+  string policy_id   = 1;
+  string rules_json  = 2;
+  string enforcement = 3;
+}
+
+message ApplyPolicyRequest {
+  string policy_id   = 1;
+  string target_type = 2;
+  string target_id   = 3;
+  string result      = 4;
+  string applied_by  = 5;
+}
+
+message ApplyPolicyResponse {
+  string application_id = 1;
+  string policy_id      = 2;
+  string target_type    = 3;
+  string target_id      = 4;
+  string result         = 5;
+}
+
+message GetApplicationsRequest {
+  string policy_id = 1;
+  int32  limit     = 2;
+}
+
+message PolicyApplicationList {
+  repeated PolicyApplicationMessage applications = 1;
+}
+
+message PolicyApplicationMessage {
+  string application_id = 1;
+  string policy_id      = 2;
+  string target_type    = 3;
+  string target_id      = 4;
+  string result         = 5;
+  string applied_by     = 6;
+  double timestamp      = 7;
+}
+
+// =====================================================================
+// E7: Self-Explanation Validator Service
+// =====================================================================
+
+service SelfExplanationValidatorService {
+  rpc RegisterRule(RegisterValidationRuleRequest) returns (ValidationRuleSummary);
+  rpc ListRules(ListRulesRequest) returns (ValidationRuleList);
+  rpc Validate(ValidateExplanationRequest) returns (ValidateExplanationResponse);
+  rpc GetValidation(GetValidationRequest) returns (ValidationMessage);
+  rpc GetValidations(GetValidationsRequest) returns (ValidationList);
+  rpc GetPassRate(sylion.common.v1.Empty) returns (PassRateResponse);
+}
+
+message RegisterValidationRuleRequest {
+  string rule_id      = 1;
+  string name         = 2;
+  string meta_zasada  = 3;
+  string check_type   = 4;  // coherence|completeness|consistency
+  double threshold    = 5;
+}
+
+message ValidationRuleSummary {
+  string rule_id    = 1;
+  string name       = 2;
+  string check_type = 3;
+  double threshold  = 4;
+}
+
+message ListRulesRequest {
+  bool enabled_only = 1;
+}
+
+message ValidationRuleList {
+  repeated ValidationRuleMessage rules = 1;
+}
+
+message ValidationRuleMessage {
+  string rule_id     = 1;
+  string name        = 2;
+  string meta_zasada = 3;
+  string check_type  = 4;
+  double threshold   = 5;
+  bool   enabled     = 6;
+}
+
+message ValidateExplanationRequest {
+  string explanation_id   = 1;
+  string explanation_text = 2;
+  repeated string reasoning_steps = 3;
+}
+
+message ValidateExplanationResponse {
+  string explanation_id = 1;
+  string overall_result = 2;  // pass|fail
+  int32  total_rules    = 3;
+  int32  rules_passed   = 4;
+  int32  rules_failed   = 5;
+  double average_score  = 6;
+  repeated RuleResultMessage results = 7;
+}
+
+message RuleResultMessage {
+  string validation_id = 1;
+  string rule_id       = 2;
+  string rule_name     = 3;
+  string result        = 4;
+  double score         = 5;
+  double threshold     = 6;
+}
+
+message GetValidationRequest {
+  string validation_id = 1;
+}
+
+message ValidationMessage {
+  string validation_id  = 1;
+  string explanation_id = 2;
+  string rule_id        = 3;
+  string result         = 4;
+  double score          = 5;
+  string details_json   = 6;
+  double timestamp      = 7;
+}
+
+message GetValidationsRequest {
+  string explanation_id = 1;
+  int32  limit          = 2;
+}
+
+message ValidationList {
+  repeated ValidationMessage validations = 1;
+}
+
+message PassRateResponse {
+  int32  total_validations = 1;
+  int32  pass_count        = 2;
+  int32  fail_count        = 3;
+  double pass_rate         = 4;
+}

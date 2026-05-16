@@ -1,0 +1,92 @@
+# SYLION v5.9.1 — Dependabot configuration
+#
+# Updates:
+#   - pip (requirements.in)  → weekly, Monday
+#   - github-actions          → weekly, Monday
+#
+# Assignees: @sylion-sre
+# Reviewers: @sylion-core (docs/legal), @sylion-sre (infrastructure)
+
+version: 2
+
+updates:
+  # ── Python dependencies ──────────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 10
+    assignees:
+      - "sylion-sre"
+    reviewers:
+      - "sylion-sre"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      fastapi-group:
+        patterns:
+          - "fastapi"
+          - "uvicorn"
+          - "aiofiles"
+          - "python-multipart"
+      pydantic-group:
+        patterns:
+          - "pydantic"
+      security-group:
+        patterns:
+          - "argon2-cffi"
+          - "python-dotenv"
+      ai-group:
+        patterns:
+          - "litellm"
+      dev-tools:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "bandit"
+          - "safety"
+          - "pip-audit"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]   # only minor + major auto-PRs
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:30"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    assignees:
+      - "sylion-sre"
+    reviewers:
+      - "sylion-sre"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+    groups:
+      actions-group:
+        patterns:
+          - "actions/*"
+      docker-group:
+        patterns:
+          - "docker/*"
+      security-group:
+        patterns:
+          - "sigstore/*"
+          - "aquasecurity/*"
+          - "gitleaks/*"
+          - "github/codeql-action"

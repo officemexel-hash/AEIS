@@ -1,0 +1,98 @@
+# SYLION Pipeline — Manifest Validation CI
+#
+# Blocks merge/build when:
+#   - Agent count is inconsistent across agents.yaml / README.md / definitions.py / agents/README.md
+#   - §9.5 metadata is missing or invalid for any enabled agent
+#   - Stage assignments are invalid
+#   - Coordinator prompt has stale agent count
+#   - requirements.json is not marked as derived artifact
+#
+# Run manually: python scripts/validate_agents_manifest.py --strict
+
+name: Validate Agent Manifest
+
+on:
+  push:
+    paths:
+      - 'agents.yaml'
+      - 'agents/**'
+      - 'README.md'
+      - 'scripts/validate_agents_manifest.py'
+      - 'orchestrator.py'
+      - '.github/workflows/validate-manifest.yml'
+  pull_request:
+    paths:
+      - 'agents.yaml'
+      - 'agents/**'
+      - 'README.md'
+      - 'scripts/validate_agents_manifest.py'
+      - 'orchestrator.py'
+
+jobs:
+  validate-manifest:
+    name: Single Source of Truth Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate agent manifest (strict)
+        run: python scripts/validate_agents_manifest.py --strict
+
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check syntax of all Python files
+        run: |
+          python -c "
+          import ast, sys, os
+          failures = []
+          for root, dirs, files in os.walk('.'):
+              dirs[:] = [d for d in dirs if d not in ('__pycache__', '.pytest_cache', 'skills', '.git')]
+              for f in files:
+                  if f.endswith('.py'):
+                      path = os.path.join(root, f)
+                      try:
+                          with open(path) as fh:
+                              ast.parse(fh.read())
+                      except SyntaxError as e:
+                          failures.append(f'{path}: {e}')
+                          print(f'FAIL: {path}: {e}')
+          if failures:
+              print(f'\n{len(failures)} syntax errors found')
+              sys.exit(1)
+          else:
+              print('All Python files OK')
+          "
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml pytest
+
+      - name: Run tests
+        run: python -m pytest test_file_verification.py test_e2e_changelog.py -v

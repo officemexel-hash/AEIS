@@ -1,0 +1,26 @@
+{
+  "module_id": "cellular.control_plane",
+  "module_kind": "O",
+  "owner_plan": "P20",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D4",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "cellular.cp.message",
+    "cellular.cp.anomaly"
+  ],
+  "consumes_events": [
+    "cellular.ran.measurement"
+  ],
+  "description": "Control plane message analysis and protocol fuzzing.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

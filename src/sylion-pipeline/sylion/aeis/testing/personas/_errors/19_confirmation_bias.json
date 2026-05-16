@@ -1,0 +1,13 @@
+{
+  "error_class": "confirmation_bias",
+  "target_action": "ignore_evidence_contradicting_initial_belief",
+  "context": "operator dismisses Evidence Pack item that contradicts their preferred outcome",
+  "timing": "during_council_vote",
+  "expected_system_response": [
+    "highlight_contradicting_evidence",
+    "require_explicit_dismissal_rationale"
+  ],
+  "severity_if_system_allows_error": "D4",
+  "simulated_target_d_level": "D3",
+  "action_d_level": "D3"
+}

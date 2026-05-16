@@ -1,0 +1,27 @@
+{
+  "module_id": "memory.self_model_store",
+  "module_kind": "D",
+  "owner_plan": "P12",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "memory.self_model.updated",
+    "memory.self_model.snapshot"
+  ],
+  "consumes_events": [
+    "aeis.observation.snapshot",
+    "aeis.limitation.enforced"
+  ],
+  "description": "Persistent store for self-model (capabilities, limits, identity).",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

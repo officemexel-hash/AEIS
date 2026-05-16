@@ -1,0 +1,17 @@
+{
+  "module_id": "aeis.self_healing_orchestrator",
+  "module_kind": "H",
+  "owner_plan": "P07",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D3",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [],
+  "description": "Self-healing orchestration engine for AEIS.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "stable"
+}

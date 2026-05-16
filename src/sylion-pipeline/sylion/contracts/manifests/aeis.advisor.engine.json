@@ -1,0 +1,85 @@
+{
+  "module_id": "sylion.aeis.advisor.engine",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.preferences",
+    "sylion.aeis.advisor.pricing",
+    "sylion.aeis.advisor.role_resolver",
+    "governance.council_workflow"
+  ],
+  "lifecycle_stage": "draft",
+  "events_emit": [
+    "aeis.advisor.engine.recommendation_emitted",
+    "aeis.advisor.engine.recommendation_skipped",
+    "aeis.advisor.engine.llm_judge_call_started",
+    "aeis.advisor.engine.llm_judge_call_completed",
+    "aeis.advisor.engine.llm_judge_call_failed",
+    "aeis.advisor.engine.confidence_calculated",
+    "aeis.advisor.engine.evidence_pack_required",
+    "aeis.advisor.engine.evidence_pack_finalized",
+    "aeis.advisor.engine.deploy_blocked",
+    "aeis.advisor.engine.deploy_proceeded",
+    "aeis.advisor.engine.deploy_deferred_to_human_gate",
+    "aeis.advisor.engine.local_fallback_used",
+    "aeis.advisor.engine.cost_ceiling_hit",
+    "aeis.advisor.events.validation_failed"
+  ],
+  "events_subscribe": [
+    "aeis.system.model_setup_requested",
+    "aeis.system.api_provider_setup_requested",
+    "aeis.system.budget_config_requested",
+    "aeis.idea.intake.completed",
+    "aeis.idea.sot_model_selection_requested",
+    "aeis.council.formation_requested",
+    "aeis.system.autonomy_policy_change_requested",
+    "aeis.idea.sot_drafted",
+    "aeis.masterplan.created",
+    "aeis.system.runtime_topology_change_requested",
+    "aeis.system.vps_scaling_requested",
+    "aeis.system.skill_selection_requested",
+    "aeis.production.deploy_requested",
+    "aeis.testing.started",
+    "aeis.human_gate.ticket_pending",
+    "aeis.final_approval.requested",
+    "aeis.system.budget_threshold_crossed",
+    "aeis.council.formed",
+    "aeis.advisor.preferences.updated",
+    "aeis.advisor.pricing.refreshed",
+    "aeis.advisor.subscription.roi_computed"
+  ],
+  "storage": {
+    "postgres_schemas": ["advisor_engine", "advisor_evidence"],
+    "sqlite_tables_dev": [
+      "advisor_engine_recommendations",
+      "advisor_engine_llm_judge_audit",
+      "advisor_engine_rule_definitions",
+      "advisor_engine_rule_firing_history",
+      "advisor_evidence_packs",
+      "advisor_evidence_pack_signatures"
+    ]
+  },
+  "loc_budget": {
+    "loc_max": 3500,
+    "loc_max_default": 1500,
+    "exception_evidence_pack": "docs/claude_parallel/aeis_advisor/_handoff/evidence_pack_b003_loc_budget.md",
+    "exception_decision_class": "D3",
+    "rationale_summary": "Engine module aggregates rule_engine + d_ladder + confidence + card_builder + service into a single coherent boundary; splitting would shred a tightly-coupled card-emission pipeline."
+  },
+  "golden_tests": {
+    "path": "tests/aeis/advisor/engine/",
+    "minimum_required": [
+      "rule_fires_on_matching_event",
+      "llm_judge_audit_recorded_with_full_prompt_and_response",
+      "confidence_components_match_expected_formula",
+      "local_fallback_multiplies_confidence_by_0_8",
+      "d5_card_without_evidence_pack_is_rejected",
+      "subscription_card_auto_d3_with_evidence_pack",
+      "blocked_provider_card_not_emitted",
+      "dont_learn_flag_propagates_to_history",
+      "schema_validation_failure_emits_validation_failed_event"
+    ]
+  }
+}

@@ -1,0 +1,663 @@
+// SYLION AEIS -- Class J: Surface (8 modules)
+// Version: 1.1.0 (Extended: +5 surface modules)
+//
+// D3+ DECISION: Adding 5 modules to surface class.
+// Rationale: Surface layer was incomplete per dashboard skill spec.
+// Rollback: Revert to v1.0.0 (3 modules only).
+// Approval: Masterplan compliance - no architecture change.
+//
+// Modules: ConsoleAPI, ConsoleUI, WSGateway,
+//          CommandBus, EventSourcingStore, ArtifactControl,
+//          ProcessCanvas, ReadinessEngine
+
+syntax = "proto3";
+
+package sylion.surface.v1;
+
+import "common.proto";
+
+option go_package = "github.com/sylion/aeis/api/surface/v1;surfacev1";
+option java_package = "com.sylion.aeis.surface.v1";
+
+// =====================================================================
+// J1: Console API Service
+// =====================================================================
+
+service ConsoleAPIService {
+  rpc Register(RegisterEndpointRequest) returns (EndpointMessage);
+  rpc RecordRequest(RecordAPIRequestRequest) returns (sylion.common.v1.Status);
+  rpc GetEndpoint(GetEndpointRequest) returns (EndpointMessage);
+  rpc ListEndpoints(sylion.common.v1.Empty) returns (EndpointList);
+  rpc GetStats(sylion.common.v1.Empty) returns (APIStats);
+}
+
+message RegisterEndpointRequest {
+  string endpoint_id = 1;
+  string path        = 2;
+  string method      = 3;  // GET|POST|PUT|DELETE
+  string description = 4;
+  string auth_required = 5;
+}
+
+message EndpointMessage {
+  string endpoint_id  = 1;
+  string path         = 2;
+  string method       = 3;
+  string description  = 4;
+  bool   auth_required = 5;
+  bool   active       = 6;
+}
+
+message RecordAPIRequestRequest {
+  string endpoint_id = 1;
+  string user_id     = 2;
+  int32  status_code = 3;
+  int64  duration_ms = 4;
+}
+
+message GetEndpointRequest {
+  string endpoint_id = 1;
+}
+
+message EndpointList {
+  repeated EndpointMessage endpoints = 1;
+}
+
+message APIStats {
+  int32 total_endpoints = 1;
+  int64 total_requests  = 2;
+  double avg_duration_ms = 3;
+}
+
+// =====================================================================
+// J2: Console UI Service
+// =====================================================================
+
+service ConsoleUIService {
+  rpc RegisterComponent(RegisterComponentRequest) returns (ComponentMessage);
+  rpc CreateLayout(CreateLayoutRequest) returns (LayoutMessage);
+  rpc GetLayout(GetLayoutRequest) returns (LayoutMessage);
+  rpc ListComponents(sylion.common.v1.Empty) returns (ComponentList);
+  rpc ListLayouts(sylion.common.v1.Empty) returns (LayoutList);
+}
+
+message RegisterComponentRequest {
+  string component_id = 1;
+  string name         = 2;
+  string type         = 3;  // panel|widget|chart|table|form
+  string config_json  = 4;
+}
+
+message ComponentMessage {
+  string component_id = 1;
+  string name         = 2;
+  string type         = 3;
+  string config_json  = 4;
+}
+
+message CreateLayoutRequest {
+  string layout_id   = 1;
+  string name        = 2;
+  repeated string component_ids = 3;
+  string config_json = 4;
+}
+
+message LayoutMessage {
+  string layout_id   = 1;
+  string name        = 2;
+  repeated string component_ids = 3;
+  string config_json = 4;
+}
+
+message GetLayoutRequest {
+  string layout_id = 1;
+}
+
+message ComponentList {
+  repeated ComponentMessage components = 1;
+}
+
+message LayoutList {
+  repeated LayoutMessage layouts = 1;
+}
+
+// =====================================================================
+// J3: WS Gateway Service
+// =====================================================================
+
+service WSGatewayService {
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
+  rpc Disconnect(DisconnectRequest) returns (sylion.common.v1.Status);
+  rpc Subscribe(SubscribeWSRequest) returns (sylion.common.v1.Status);
+  rpc Send(SendMessageRequest) returns (sylion.common.v1.Status);
+  rpc Broadcast(BroadcastRequest) returns (BroadcastResponse);
+  rpc GetConnections(sylion.common.v1.Empty) returns (ConnectionList);
+  rpc GetMessages(GetMessagesRequest) returns (MessageList);
+  rpc GetStats(sylion.common.v1.Empty) returns (WSStats);
+}
+
+message ConnectRequest {
+  string client_id  = 1;
+  string user_id    = 2;
+  string metadata_json = 3;
+}
+
+message ConnectResponse {
+  string connection_id = 1;
+  bool   connected     = 2;
+}
+
+message DisconnectRequest {
+  string connection_id = 1;
+}
+
+message SubscribeWSRequest {
+  string connection_id = 1;
+  string topic         = 2;
+}
+
+message SendMessageRequest {
+  string connection_id = 1;
+  string topic         = 2;
+  string payload_json  = 3;
+}
+
+message BroadcastRequest {
+  string topic        = 1;
+  string payload_json = 2;
+}
+
+message BroadcastResponse {
+  int32 recipients = 1;
+}
+
+message ConnectionList {
+  repeated ConnectionMessage connections = 1;
+}
+
+message ConnectionMessage {
+  string connection_id = 1;
+  string client_id     = 2;
+  string user_id       = 3;
+  string status        = 4;
+  double connected_at  = 5;
+}
+
+message GetMessagesRequest {
+  string topic = 1;
+  int32  limit = 2;
+}
+
+message MessageList {
+  repeated WSMessage messages = 1;
+}
+
+message WSMessage {
+  string message_id   = 1;
+  string connection_id = 2;
+  string topic        = 3;
+  string payload_json = 4;
+  double timestamp    = 5;
+}
+
+message WSStats {
+  int32 active_connections = 1;
+  int64 total_messages     = 2;
+  int32 active_subscriptions = 3;
+}
+
+// =====================================================================
+// J4: Command Bus Service
+// TWO_PHASE default. IMMEDIATE only for D0-D1 with explicit policy.
+// =====================================================================
+
+service CommandBusService {
+  rpc SubmitIntent(SubmitIntentRequest) returns (IntentMessage);
+  rpc ApproveIntent(IntentIdRequest) returns (IntentMessage);
+  rpc RejectIntent(RejectIntentRequest) returns (IntentMessage);
+  rpc GetIntent(IntentIdRequest) returns (IntentMessage);
+  rpc ListIntents(ListIntentsRequest) returns (IntentList);
+  rpc GetPendingForModule(ModuleRequest) returns (IntentList);
+  rpc GetStats(sylion.common.v1.Empty) returns (CommandBusStats);
+}
+
+message SubmitIntentRequest {
+  string intent_type    = 1;
+  string target_module  = 2;
+  string target_action  = 3;
+  string payload_json   = 4;
+  int32  expected_version = 5;
+  string created_by     = 6;
+  string phase          = 7;  // TWO_PHASE | IMMEDIATE
+}
+
+message IntentIdRequest {
+  string intent_id = 1;
+}
+
+message RejectIntentRequest {
+  string intent_id = 1;
+  string reason    = 2;
+  string rejector  = 3;
+}
+
+message ModuleRequest {
+  string module_id = 1;
+}
+
+message IntentMessage {
+  string intent_id      = 1;
+  string intent_type    = 2;
+  string target_module  = 3;
+  string target_action  = 4;
+  string payload_json   = 5;
+  int32  expected_version = 6;
+  string status         = 7;  // PENDING|APPLIED|REJECTED|ROLLED_BACK
+  string phase          = 8;
+  string created_by     = 9;
+  double created_at     = 10;
+  string resolved_by    = 11;
+  double resolved_at    = 12;
+  string rejection_reason = 13;
+}
+
+message ListIntentsRequest {
+  string status = 1;
+  int32  limit  = 2;
+}
+
+message IntentList {
+  repeated IntentMessage intents = 1;
+}
+
+message CommandBusStats {
+  int32 total_intents = 1;
+  map<string, int32> by_status = 2;
+  map<string, int32> by_phase  = 3;
+}
+
+// =====================================================================
+// J5: Event Sourcing Store Service
+// APPEND-ONLY event store. NEVER UPDATE/DELETE event history.
+// =====================================================================
+
+service EventSourcingStoreService {
+  rpc Append(AppendEventRequest) returns (StoredEventMessage);
+  rpc GetEvents(GetEventsRequest) returns (StoredEventList);
+  rpc GetEvent(GetEventRequest) returns (StoredEventMessage);
+  rpc CreateSnapshot(StreamIdRequest) returns (SnapshotMessage);
+  rpc GetLatestSnapshot(StreamIdRequest) returns (SnapshotMessage);
+  rpc LoadFromSnapshot(StreamIdRequest) returns (StreamStateMessage);
+  rpc ReplayStream(ReplayRequest) returns (StoredEventList);
+  rpc ListStreams(sylion.common.v1.Empty) returns (StreamList);
+  rpc GetStoreStats(sylion.common.v1.Empty) returns (EventStoreStats);
+}
+
+message AppendEventRequest {
+  string stream_id  = 1;
+  string event_type = 2;
+  string payload_json  = 3;
+  string metadata_json = 4;
+}
+
+message StoredEventMessage {
+  string event_id   = 1;
+  string stream_id  = 2;
+  string event_type = 3;
+  int32  version    = 4;
+  string payload_json  = 5;
+  string metadata_json = 6;
+  double timestamp  = 7;
+}
+
+message GetEventsRequest {
+  string stream_id   = 1;
+  int32  from_version = 2;
+  int32  to_version   = 3;
+}
+
+message GetEventRequest {
+  string event_id = 1;
+}
+
+message StoredEventList {
+  repeated StoredEventMessage events = 1;
+}
+
+message StreamIdRequest {
+  string stream_id = 1;
+}
+
+message SnapshotMessage {
+  string snapshot_id = 1;
+  string stream_id   = 2;
+  int32  version     = 3;
+  string state_json  = 4;
+  double timestamp   = 5;
+}
+
+message StreamStateMessage {
+  string stream_id        = 1;
+  int32  snapshot_version = 2;
+  int32  remaining_events = 3;
+  string state_json       = 4;
+}
+
+message ReplayRequest {
+  string stream_id = 1;
+}
+
+message StreamList {
+  repeated StreamMessage streams = 1;
+}
+
+message StreamMessage {
+  string stream_id   = 1;
+  string stream_type = 2;
+  int32  last_version = 3;
+  double created_at  = 4;
+}
+
+message EventStoreStats {
+  int32 total_events   = 1;
+  int32 total_streams  = 2;
+  int32 total_snapshots = 3;
+}
+
+// =====================================================================
+// J6: Artifact Control Service
+// Upload flow: InitiateUpload -> signed HTTP upload -> FinalizeUpload
+// -> validate -> DRAFT/PENDING -> publish via Command Bus
+// Browser uploads via signed HTTP / resumable multipart, NOT gRPC-Web.
+// =====================================================================
+
+service ArtifactControlService {
+  rpc InitiateUpload(InitiateUploadRequest) returns (UploadSessionMessage);
+  rpc FinalizeUpload(FinalizeUploadRequest) returns (sylion.common.v1.Status);
+  rpc Publish(PublishArtifactRequest) returns (sylion.common.v1.Status);
+  rpc Deprecate(DeprecateArtifactRequest) returns (sylion.common.v1.Status);
+  rpc GetArtifact(ArtifactIdRequest) returns (ArtifactMessage);
+  rpc ListArtifacts(ListArtifactsRequest) returns (ArtifactList);
+  rpc GetVersions(ArtifactNameRequest) returns (ArtifactList);
+  rpc GetUploadSession(SessionIdRequest) returns (UploadSessionMessage);
+  rpc GetArtifactStats(sylion.common.v1.Empty) returns (ArtifactStats);
+}
+
+message InitiateUploadRequest {
+  string name          = 1;
+  string artifact_type = 2;  // DOCUMENT|CONFIG|MODEL|DATASET|BINARY
+  string uploaded_by   = 3;
+  int64  size_bytes    = 4;
+}
+
+message FinalizeUploadRequest {
+  string session_id = 1;
+  string checksum   = 2;
+  int64  size_bytes = 3;
+}
+
+message PublishArtifactRequest {
+  string artifact_id = 1;
+  string publisher   = 2;
+}
+
+message DeprecateArtifactRequest {
+  string artifact_id = 1;
+  string reason      = 2;
+  string deprecator  = 3;
+}
+
+message ArtifactIdRequest {
+  string artifact_id = 1;
+}
+
+message ArtifactNameRequest {
+  string name = 1;
+}
+
+message SessionIdRequest {
+  string session_id = 1;
+}
+
+message ArtifactMessage {
+  string artifact_id   = 1;
+  string name          = 2;
+  string artifact_type = 3;
+  int32  version       = 4;
+  string status        = 5;  // DRAFT|PENDING|PUBLISHED|DEPRECATED
+  string checksum      = 6;
+  int64  size_bytes    = 7;
+  string uploaded_by   = 8;
+  double created_at    = 9;
+  double published_at  = 10;
+  string metadata_json = 11;
+}
+
+message UploadSessionMessage {
+  string session_id   = 1;
+  string artifact_id  = 2;
+  string status       = 3;  // INITIATED|COMPLETED|FAILED|EXPIRED
+  string signed_url   = 4;
+  double created_at   = 5;
+}
+
+message ListArtifactsRequest {
+  string status        = 1;
+  string artifact_type = 2;
+  int32  limit         = 3;
+}
+
+message ArtifactList {
+  repeated ArtifactMessage artifacts = 1;
+}
+
+message ArtifactStats {
+  int32 total_artifacts = 1;
+  map<string, int32> by_status = 2;
+  map<string, int32> by_type   = 3;
+}
+
+// =====================================================================
+// J7: Process Canvas Service
+// Yjs is source of truth. SQL = projection only.
+// Yjs + tldraw, NOT React Flow, NOT locking-based editor.
+// =====================================================================
+
+service ProcessCanvasService {
+  rpc CreateCanvas(CreateCanvasRequest) returns (CanvasMessage);
+  rpc AddNode(AddNodeRequest) returns (NodeMessage);
+  rpc AddEdge(AddEdgeRequest) returns (EdgeMessage);
+  rpc RemoveNode(RemoveNodeRequest) returns (sylion.common.v1.Status);
+  rpc RemoveEdge(RemoveEdgeRequest) returns (sylion.common.v1.Status);
+  rpc ValidateDAG(CanvasIdRequest) returns (ValidationResult);
+  rpc GetCanvas(CanvasIdRequest) returns (CanvasDetail);
+  rpc ListCanvases(ListCanvasesRequest) returns (CanvasList);
+  rpc GetDAGProjection(CanvasIdRequest) returns (DAGProjection);
+  rpc GetCanvasStats(sylion.common.v1.Empty) returns (CanvasStats);
+}
+
+message CreateCanvasRequest {
+  string name = 1;
+}
+
+message AddNodeRequest {
+  string canvas_id = 1;
+  string node_type = 2;  // TASK|DECISION|GATE|EVENT|SUBPROCESS
+  string label     = 3;
+  double position_x = 4;
+  double position_y = 5;
+}
+
+message AddEdgeRequest {
+  string canvas_id      = 1;
+  string source_node_id = 2;
+  string target_node_id = 3;
+  string edge_type      = 4;  // SEQUENCE|PARALLEL|CONDITIONAL
+  string label          = 5;
+}
+
+message RemoveNodeRequest {
+  string canvas_id = 1;
+  string node_id   = 2;
+}
+
+message RemoveEdgeRequest {
+  string canvas_id = 1;
+  string edge_id   = 2;
+}
+
+message CanvasIdRequest {
+  string canvas_id = 1;
+}
+
+message ListCanvasesRequest {
+  string status = 1;
+  int32  limit  = 2;
+}
+
+message CanvasMessage {
+  string canvas_id = 1;
+  string name      = 2;
+  string status    = 3;  // DRAFT|VALID|INVALID
+  int32  version   = 4;
+}
+
+message NodeMessage {
+  string node_id   = 1;
+  string canvas_id = 2;
+  string node_type = 3;
+  string label     = 4;
+}
+
+message EdgeMessage {
+  string edge_id         = 1;
+  string canvas_id       = 2;
+  string source_node_id  = 3;
+  string target_node_id  = 4;
+  string edge_type       = 5;
+  string label           = 6;
+}
+
+message ValidationResult {
+  bool              valid  = 1;
+  repeated string   errors = 2;
+}
+
+message CanvasDetail {
+  string canvas_id      = 1;
+  string name           = 2;
+  string status         = 3;
+  repeated NodeMessage nodes = 4;
+  repeated EdgeMessage edges = 5;
+}
+
+message CanvasList {
+  repeated CanvasMessage canvases = 1;
+}
+
+message DAGProjection {
+  string canvas_id          = 1;
+  string status             = 2;
+  map<string, NodeInfo> nodes = 3;
+  map<string, EdgeList> adjacency = 4;
+}
+
+message NodeInfo {
+  string label = 1;
+  string type  = 2;
+}
+
+message EdgeList {
+  repeated AdjEdge edges = 1;
+}
+
+message AdjEdge {
+  string target = 1;
+  string type   = 2;
+  string label  = 3;
+}
+
+message CanvasStats {
+  int32 total_canvases = 1;
+  int32 total_nodes    = 2;
+  int32 total_edges    = 3;
+  map<string, int32> by_status = 4;
+}
+
+// =====================================================================
+// J8: Readiness Engine Service
+// Deterministic primary + ML advisory secondary.
+// =====================================================================
+
+service ReadinessEngineService {
+  rpc RegisterCheck(RegisterCheckRequest) returns (sylion.common.v1.Status);
+  rpc RunCheck(RunCheckRequest) returns (CheckResult);
+  rpc RunAllChecks(ModuleIdRequest) returns (CheckResultList);
+  rpc GenerateReport(ModuleIdRequest) returns (ReadinessReport);
+  rpc GetReport(ReportIdRequest) returns (ReadinessReport);
+  rpc ListReports(ListReportsRequest) returns (ReportList);
+  rpc GetLatestReport(ModuleIdRequest) returns (ReadinessReport);
+  rpc SetMLAdvisory(SetMLAdvisoryRequest) returns (sylion.common.v1.Status);
+  rpc GetReadinessStats(sylion.common.v1.Empty) returns (ReadinessStats);
+}
+
+message RegisterCheckRequest {
+  string module_id  = 1;
+  string check_type = 2;  // DEPENDENCY|CONFIG|HEALTH|POLICY|CONNECTIVITY
+  string check_name = 3;
+}
+
+message RunCheckRequest {
+  string module_id  = 1;
+  string check_type = 2;
+}
+
+message ModuleIdRequest {
+  string module_id = 1;
+}
+
+message ReportIdRequest {
+  string report_id = 1;
+}
+
+message SetMLAdvisoryRequest {
+  string module_id     = 1;
+  string advisory_json = 2;
+}
+
+message ListReportsRequest {
+  string module_id = 1;
+  int32  limit     = 2;
+}
+
+message CheckResult {
+  string module_id  = 1;
+  string check_type = 2;
+  string status     = 3;  // PASS|FAIL|WARN|SKIP
+  string message    = 4;
+  string details_json = 5;
+}
+
+message CheckResultList {
+  repeated CheckResult results = 1;
+}
+
+message ReadinessReport {
+  string report_id         = 1;
+  string module_id         = 2;
+  string overall_status    = 3;  // READY|NOT_READY|DEGRADED
+  double deterministic_score = 4;
+  string ml_advisory_json  = 5;
+  repeated CheckResult check_results = 6;
+  double generated_at     = 7;
+}
+
+message ReportList {
+  repeated ReadinessReport reports = 1;
+}
+
+message ReadinessStats {
+  int32 total_reports = 1;
+  int32 total_registered_checks = 2;
+  map<string, int32> by_status = 3;
+}

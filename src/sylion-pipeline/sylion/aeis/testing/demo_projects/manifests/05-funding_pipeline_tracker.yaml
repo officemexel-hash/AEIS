@@ -1,0 +1,46 @@
+project_id: "proj_demo_05_funding_pipeline_tracker"
+name: "Funding Pipeline Tracker"
+type: "fintech-grants"
+target_d_level: "D4"
+domain: "external_action"
+
+description: |
+  Tracker for grant applications across pipeline stages with auto-submit to
+  external grant portals. Triggers external_action gate; signed PDF assembly;
+  deadline enforcement.
+
+required_personas:
+  - "funding_hunter"  # not in 8 starter
+  - "governance_officer"  # not in 8 starter
+  - "auditor"
+
+domain_specific_human_errors:
+  - error_class: "premature_action"
+    target_action: "submit_after_grant_deadline_due_to_clock_drift"
+    severity_if_system_allows_error: "D4"
+  - error_class: "stale_data_action"
+    target_action: "expired_signature_used_in_external_submit"
+    severity_if_system_allows_error: "D4"
+  - error_class: "premature_action"
+    target_action: "oversized_attachment_silent_truncation"
+    severity_if_system_allows_error: "D3"
+
+required_test_classes: ["T0", "T2", "T3", "T4", "T6", "T7", "T9", "T10", "T11", "T13", "T15"]
+
+release_blockers:
+  - "Submit after deadline (no clock validation)"
+  - "External submit without external_action gate"
+  - "Signature validation bypass"
+  - "Cost spike not caught (per Cost Sentinel)"
+  - "Audit chain broken on submit confirmation"
+
+expected_modules: 9
+expected_api_endpoints: 15
+expected_ui_pages: 6
+
+success_criteria:
+  - "PRODUCTION_RELEASED status reached"
+  - "External-action gate respected for all submits"
+  - "Cost Sentinel zero unresolved alerts"
+  - "Minimum 5 lessons_learned recorded"
+  - "Successful dry-run submit to test grant portal"

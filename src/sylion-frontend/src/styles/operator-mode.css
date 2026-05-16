@@ -1,0 +1,82 @@
+/* ============================================================
+   Operator Mode Theme — SYLION AEIS
+   Warm, friendly, spacious. Designed for daily operator workflow.
+   ============================================================ */
+
+.operator-mode {
+  --sidebar-bg: oklch(0.13 0.005 280);
+  --sidebar-border: oklch(0.18 0.008 280);
+  --section-header-color: oklch(0.65 0.18 240);
+  --label-color: oklch(0.92 0.005 280);
+  --label-size: 15px;
+  --icon-size: 18px;
+  --spacing-y: 8px;
+  --active-bg: oklch(0.22 0.05 240);
+  --active-border: oklch(0.55 0.2 240);
+  --content-padding: 24px;
+  --transition-duration: 300ms;
+
+  /* Warm sidebar & surface tokens */
+  --mode-sidebar-bg: oklch(0.13 0.005 280);
+  --mode-surface-bg: oklch(0.15 0.008 280 / 40%);
+  --mode-border-subtle: oklch(0.25 0.01 280 / 30%);
+  --mode-border-accent: oklch(0.55 0.18 260 / 20%);
+
+  /* Accent — soft blue/violet warmth */
+  --mode-accent: oklch(0.6 0.15 260);
+  --mode-accent-dim: oklch(0.6 0.15 260 / 15%);
+  --mode-accent-glow: oklch(0.6 0.15 260 / 25%);
+
+  /* Typography — friendly, slightly larger */
+  --mode-text-primary: oklch(0.92 0.01 280);
+  --mode-text-secondary: oklch(0.65 0.02 280);
+  --mode-text-muted: oklch(0.5 0.01 280);
+
+  /* Spacing */
+  --mode-density: 1;
+}
+
+.operator-mode .sidebar-section-header {
+  color: var(--section-header-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.operator-mode .sidebar-item {
+  font-size: var(--label-size);
+  padding: var(--spacing-y) 12px;
+  border-radius: 8px;
+  transition: background var(--transition-duration);
+}
+
+.operator-mode .sidebar-item.active {
+  background: var(--active-bg);
+  border-left: 3px solid var(--active-border);
+}
+
+.operator-mode ::selection {
+  background: oklch(0.55 0.18 260 / 30%);
+  color: oklch(0.95 0.01 260);
+}
+
+.operator-mode ::-webkit-scrollbar-thumb {
+  background: oklch(0.3 0.01 280 / 50%);
+}
+
+.operator-mode ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.4 0.02 280 / 60%);
+}
+
+/* Cards and surfaces get a subtle warm tint */
+.operator-mode .surface-elevated,
+.operator-mode [class*="surface-elevated"] {
+  border-color: var(--mode-border-accent);
+}
+
+/* Active nav items in operator mode get a soft glow */
+.operator-mode .operator-topbar {
+  background-color: var(--mode-sidebar-bg);
+}

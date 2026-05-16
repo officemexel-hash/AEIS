@@ -1,0 +1,99 @@
+# Phase 3 W3.2 -- SLO burn-rate alerts.
+#
+# Multi-window burn-rate alerts following Google SRE workbook chapter 5.
+# We page when error budget is consumed faster than the target SLO
+# allows over multiple windows simultaneously, which gives high precision
+# (no false alarms from short blips) and high recall (long incidents
+# escalate quickly).
+#
+# SLO target: 99.5% successful requests (status != 5xx).
+# Error budget: 0.5%.
+#
+# Burn-rate ratio: (observed error rate) / (1 - SLO target).
+# - Fast burn (1h):  ratio > 14.4 -> CRITICAL page
+# - Slow burn (6h):  ratio > 6    -> WARNING ticket
+# - Cumulative (3d): ratio > 1    -> INFO budget exhausted
+#
+# These rely on the recording rules in prometheus_recording_rules.yml.
+
+groups:
+
+  - name: sylion.slo.burn
+    rules:
+
+      - alert: SylionSloBurnFast
+        expr: |
+          (sylion:error_rate:5xx > (14.4 * 0.005))
+          and
+          (sylion:error_rate:5xx_30m > (14.4 * 0.005))
+        for: 2m
+        labels:
+          severity: critical
+          team: sylion-sre
+          slo: api_availability
+          window: fast_1h
+        annotations:
+          summary: "Fast SLO burn: 14.4x error budget on {{ $labels.endpoint }}"
+          description: >
+            Observed error rate {{ $value | humanizePercentage }} on
+            {{ $labels.endpoint }} over both 5m and 30m windows.
+            At this burn rate the entire 30-day error budget will be
+            consumed in under 2 hours.
+          runbook_url: "/docs/phase3/runbooks/slo_burn_fast.md"
+
+      - alert: SylionSloBurnSlow
+        expr: |
+          (sylion:error_rate:5xx_30m > (6 * 0.005))
+          and
+          (sylion:error_rate:5xx_6h > (6 * 0.005))
+        for: 15m
+        labels:
+          severity: warning
+          team: sylion-sre
+          slo: api_availability
+          window: slow_6h
+        annotations:
+          summary: "Slow SLO burn: 6x error budget on {{ $labels.endpoint }}"
+          description: >
+            Sustained 6x SLO burn rate on {{ $labels.endpoint }}.
+            Error budget consumption rate would exhaust the monthly
+            budget in ~5 days. Investigate before the fast-burn alert
+            fires.
+          runbook_url: "/docs/phase3/runbooks/slo_burn_slow.md"
+
+      - alert: SylionSloBurnCumulative
+        expr: sylion:error_rate:5xx_3d > 0.005
+        for: 1h
+        labels:
+          severity: info
+          team: sylion-sre
+          slo: api_availability
+          window: cumulative_3d
+        annotations:
+          summary: "3-day error rate above SLO target on {{ $labels.endpoint }}"
+          description: >
+            Three-day rolling error rate is {{ $value | humanizePercentage }}
+            (target: <0.5%). Error budget is being eroded; backlog
+            reliability work this sprint.
+          runbook_url: "/docs/phase3/runbooks/slo_burn_cumulative.md"
+
+  - name: sylion.slo.latency_burn
+    rules:
+
+      - alert: SylionLatencySloBurn
+        expr: |
+          (sylion:latency:p95{layer="api"} > 0.5)
+          and
+          (sylion:latency:p99{layer="api"} > 1.0)
+        for: 10m
+        labels:
+          severity: warning
+          team: sylion-sre
+          slo: api_latency
+        annotations:
+          summary: "API latency SLO burn: p95 > 500ms AND p99 > 1s for 10 min"
+          description: >
+            Both p95 ({{ $value | humanizeDuration }}) and p99 latency
+            exceed thresholds. Possible causes: slow upstream, missing
+            indexes, cache miss storm.
+          runbook_url: "/docs/phase3/runbooks/latency_slo_burn.md"

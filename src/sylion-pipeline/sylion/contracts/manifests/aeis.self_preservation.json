@@ -1,0 +1,27 @@
+{
+  "module_id": "aeis.self_preservation",
+  "module_kind": "H",
+  "owner_plan": "P16",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "decision_class_entry": "D5",
+  "security_profile": "dev-light",
+  "auth_mode": "bootstrap",
+  "execution_guard": "off",
+  "audit_mode": "basic",
+  "depends_on": [
+    "core.event_bus"
+  ],
+  "publishes_events": [
+    "aeis.preservation.check",
+    "aeis.preservation.integrity_alert"
+  ],
+  "consumes_events": [
+    "aeis.limitation.violation",
+    "security.policy.violation"
+  ],
+  "description": "Protects system integrity. Detects and prevents self-modification attacks.",
+  "version": "1.0.0",
+  "milestone": "M0",
+  "lifecycle_stage": "draft"
+}

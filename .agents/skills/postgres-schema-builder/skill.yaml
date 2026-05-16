@@ -1,0 +1,14 @@
+name: postgres-schema-builder
+version: 1.0.0
+description: Creates PostgreSQL migration scripts
+parallel_safe: true
+idempotent: true
+inputs:
+  - name: module_id
+    type: string
+    required: true
+  - name: schema_definition
+    type: object
+    required: true
+outputs:
+  - migration.sql

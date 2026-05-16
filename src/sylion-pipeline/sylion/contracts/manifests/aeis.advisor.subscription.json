@@ -1,0 +1,22 @@
+{
+  "module_id": "sylion.aeis.advisor.subscription",
+  "module_kind": "ADVISOR",
+  "owner_plan": "advisor_layer_etap1",
+  "implementation_strategy": "greenfield",
+  "contract_version": "1.0.0",
+  "depends_on": [
+    "sylion.aeis.advisor.pricing"
+  ],
+  "lifecycle_stage": "DRAFT",
+  "events_emit": [
+    "aeis.advisor.subscription.usage_recorded",
+    "aeis.advisor.subscription.usage_threshold_crossed",
+    "aeis.advisor.subscription.custom_plan_registered",
+    "aeis.advisor.subscription.purchase_recommended",
+    "aeis.advisor.subscription.downgrade_recommended"
+  ],
+  "events_subscribe": [],
+  "storage": {
+    "postgres_schemas": ["subscription_usage", "subscription_plans", "subscription_custom_plans"]
+  }
+}

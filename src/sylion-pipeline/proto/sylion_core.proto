@@ -1,0 +1,194 @@
+syntax = "proto3";
+
+package sylion;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "sylion_common.proto";
+
+// ──────────────────────────────────────────────
+//  SYLION Core – registry, event bus, evidence
+// ──────────────────────────────────────────────
+
+// ═══════ Module Lifecycle ═══════
+
+/** Lifecycle stage of a module. */
+enum ModuleStage {
+  MODULE_STAGE_UNSPECIFIED = 0;
+  MODULE_CONCEPT           = 1;
+  MODULE_PROTOTYPE         = 2;
+  MODULE_DEVELOPMENT       = 3;
+  MODULE_TESTING           = 4;
+  MODULE_STAGING           = 5;
+  MODULE_PRODUCTION        = 6;
+  MODULE_DEPRECATED        = 7;
+  MODULE_RETIRED           = 8;
+}
+
+/** Full module record stored in the registry. */
+message Module {
+  ModuleId                    module_id       = 1;
+  ModuleStage                 stage           = 2;
+  string                      description     = 3;
+  repeated Contract           contracts       = 4;
+  google.protobuf.Timestamp   registered_at   = 5;
+  google.protobuf.Timestamp   last_transition = 6;
+}
+
+message RegisterModuleRequest {
+  ModuleId  module_id   = 1;
+  string    description = 2;
+  ModuleStage initial_stage = 3;
+}
+
+message RegisterModuleResponse {
+  Module module = 1;
+}
+
+message GetModuleRequest {
+  string module_id = 1;
+}
+
+message GetModuleResponse {
+  Module module = 1;
+}
+
+message ListModulesRequest {
+  ModuleStage stage_filter = 1;
+  string      kind_filter  = 2;
+  int32       page_size    = 3;
+  string      page_token   = 4;
+}
+
+message ListModulesResponse {
+  repeated Module modules    = 1;
+  string          next_token = 2;
+}
+
+message TransitionModuleRequest {
+  string      module_id = 1;
+  ModuleStage target    = 2;
+  string      reason    = 3;
+}
+
+message TransitionModuleResponse {
+  Module module = 1;
+}
+
+/** Module registry – tracks every AEIS module and its lifecycle. */
+service ModuleRegistryService {
+  rpc RegisterModule(RegisterModuleRequest)   returns (RegisterModuleResponse);
+  rpc GetModule(GetModuleRequest)             returns (GetModuleResponse);
+  rpc ListModules(ListModulesRequest)         returns (ListModulesResponse);
+  rpc TransitionModule(TransitionModuleRequest) returns (TransitionModuleResponse);
+}
+
+// ═══════ Event Bus ═══════
+
+/** Severity level for events. */
+enum EventSeverity {
+  EVENT_SEVERITY_UNSPECIFIED = 0;
+  DEBUG                      = 1;
+  INFO                       = 2;
+  WARNING                    = 3;
+  ERROR                      = 4;
+  CRITICAL                   = 5;
+}
+
+message Event {
+  string                      event_id  = 1;
+  string                      topic     = 2;
+  bytes                       payload   = 3;
+  string                      source    = 4;
+  EventSeverity               severity  = 5;
+  google.protobuf.Timestamp   emitted_at = 6;
+}
+
+message PublishEventRequest {
+  string          topic     = 1;
+  bytes           payload   = 2;
+  string          source    = 3;
+  EventSeverity   severity  = 4;
+}
+
+message PublishEventResponse {
+  Event event = 1;
+}
+
+message SubscribeRequest {
+  string            topic_filter  = 1;
+  EventSeverity     min_severity  = 2;
+}
+
+message ListEventsRequest {
+  string          topic_filter = 1;
+  int64           since_epoch  = 2;
+  int32           page_size    = 3;
+  string          page_token   = 4;
+}
+
+message ListEventsResponse {
+  repeated Event  events     = 1;
+  string          next_token = 2;
+}
+
+message AckEventRequest {
+  string event_id = 1;
+}
+
+message AckEventResponse {
+  bool acknowledged = 1;
+}
+
+/** Central event bus – pub/sub with replay and acknowledgement. */
+service EventBusService {
+  rpc PublishEvent(PublishEventRequest)   returns (PublishEventResponse);
+  rpc Subscribe(SubscribeRequest)         returns (stream Event);
+  rpc ListEvents(ListEventsRequest)       returns (ListEventsResponse);
+  rpc AckEvent(AckEventRequest)           returns (AckEventResponse);
+}
+
+// ═══════ Evidence Spine ═══════
+
+message AppendEntryRequest {
+  string  topic         = 1;
+  bytes   payload       = 2;
+  string  source_module = 3;
+}
+
+message AppendEntryResponse {
+  EvidenceEntry entry = 1;
+}
+
+message VerifyChainRequest {
+  string  topic           = 1;
+  int32   from_index      = 2;
+  int32   to_index        = 3;
+}
+
+message VerifyChainResponse {
+  bool    valid           = 1;
+  int32   entries_checked = 2;
+  bytes   computed_root   = 3;
+}
+
+message ReplayRequest {
+  string  topic       = 1;
+  int32   from_index  = 2;
+}
+
+message GetEntryRequest {
+  string  evidence_id = 1;
+}
+
+message GetEntryResponse {
+  EvidenceEntry entry = 1;
+}
+
+/** Cryptographic evidence spine – append-only, verifiable chain. */
+service EvidenceSpineService {
+  rpc AppendEntry(AppendEntryRequest)   returns (AppendEntryResponse);
+  rpc VerifyChain(VerifyChainRequest)   returns (VerifyChainResponse);
+  rpc Replay(ReplayRequest)             returns (stream EvidenceEntry);
+  rpc GetEntry(GetEntryRequest)         returns (GetEntryResponse);
+}
