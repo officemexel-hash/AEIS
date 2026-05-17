@@ -73,8 +73,8 @@ httpx==0.28.1
 anyio==4.9.0
 
 # === LLM providers ===
-# v5.9.1 Security fix: 1.83.10 resolves known 1.83.0/1.83.7 CVEs.
-litellm==1.83.10
+# litellm installed separately via install.sh with --no-deps flag
+# to avoid version conflicts with python-dotenv and other packages.
 # fastuuid is a direct dep of litellm>=1.83.0 (UUID generation performance)
 fastuuid==0.14.0
 

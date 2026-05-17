@@ -6,7 +6,7 @@ Manages contract freeze lifecycle for distributed parallel builds.
 
 from fastapi import APIRouter, HTTPException
 
-from sylion.contracts.freeze_manager import get_freeze_manager
+from sylion.contracts.freeze_manager import ContractFreezeManager, get_freeze_manager
 
 router = APIRouter(prefix="/api/v1")
 

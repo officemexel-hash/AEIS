@@ -55,6 +55,9 @@ from sylion.api.demo_marketplace_routes import (
     router as demo_marketplace_router,
 )
 from sylion.api.router import router
+from sylion.api.dashboard_routes import router as dashboard_router
+from sylion.api.runs_routes import router as runs_router
+from sylion.api.human_gate_routes import router as human_gate_router
 from sylion.core.auto_register import auto_register_modules
 from sylion.core.contract_registry import get_contract_registry
 from sylion.core.event_bus import get_event_bus
@@ -1096,7 +1099,23 @@ app.include_router(metrics_v2_router)
 app.include_router(health_v2_router)
 app.include_router(council_signoff_router)
 app.include_router(replay_v2_router)
+# Missing routes - add simple endpoints for dashboard, runs, and human-gate
+app.include_router(dashboard_router)
+app.include_router(runs_router)
+app.include_router(human_gate_router)
 
+
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return {
+        "name": "SYLION AEIS Pipeline",
+        "version": "3.5.0",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/api/v1/health",
+    }
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():

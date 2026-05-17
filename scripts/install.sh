@@ -20,9 +20,25 @@ case "$PY_VER" in
 esac
 echo "    [OK] Python $PY_VER"
 
-# 2. Build guard (B-002) — żaden *.db / *.sqlite nie może być w źródle
+# 2. Pre-clean — usuń pre-seeded DB z repo (auto-naprawa B-002)
+FOUND_DBS=$(find "$SRC_DIR" -maxdepth 4 -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) 2>/dev/null || true)
+if [ -n "$FOUND_DBS" ]; then
+  echo "    [CLEANUP] Usuwam pre-seeded DB ze źródła:"
+  echo "$FOUND_DBS" | while IFS= read -r f; do
+    echo "              rm $f"
+    rm -f "$f"
+  done
+  # Also untrack from git if inside a repo
+  if git -C "$INSTALL_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+    echo "$FOUND_DBS" | while IFS= read -r f; do
+      git -C "$INSTALL_DIR" rm --cached --quiet "$f" 2>/dev/null || true
+    done
+  fi
+fi
+
+# 2b. Build guard (B-002) — żaden *.db / *.sqlite nie może być w źródle
 if find "$SRC_DIR" -maxdepth 4 -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) 2>/dev/null | grep -q .; then
-  echo "ERROR: B-002 build guard — wykryto pre-seeded DB w źródle. Paczka jest zepsuta."
+  echo "ERROR: B-002 build guard — wykryto pre-seeded DB w źródle po cleanup. Paczka jest zepsuta."
   exit 2
 fi
 echo "    [OK] B-002 build guard"
@@ -39,6 +55,8 @@ echo "    [OK] venv"
 if [ -f "$SRC_DIR/requirements.txt" ]; then
   pip install --quiet --upgrade pip
   pip install --quiet -r "$SRC_DIR/requirements.txt" || echo "    [WARN] requirements.txt install partial — kontynuuję"
+  # SECURITY: upgrade python-dotenv (CVE-2026-28684)
+  pip install --quiet --upgrade python-dotenv
 fi
 echo "    [OK] deps"
 
@@ -71,7 +89,20 @@ else
   echo "    [OK] DB istnieje — in-place upgrade (init_db idempotent)"
 fi
 
-# 8. Smoke
+# 8. Frontend deps + ensure start script is executable
+chmod +x "$INSTALL_DIR/scripts/start_aeis.sh" 2>/dev/null || true
+FRONTEND_DIR="$INSTALL_DIR/src/sylion-frontend"
+if command -v node >/dev/null && command -v npm >/dev/null; then
+  if [ -f "$FRONTEND_DIR/package.json" ]; then
+    echo "    Installing frontend dependencies..."
+    (cd "$FRONTEND_DIR" && npm install --silent 2>&1) || echo "    [WARN] npm install partial — kontynuuję"
+    echo "    [OK] frontend deps"
+  fi
+else
+  echo "    [SKIP] node/npm not found — frontend deps pominięte"
+fi
+
+# 9. Smoke
 if command -v curl >/dev/null; then
   echo "==> Smoke test (opcjonalny, wymaga uruchomionego serwera)"
   if curl -s -m 2 http://127.0.0.1:8422/api/health 2>/dev/null | grep -q '6.2.0'; then
@@ -83,13 +114,20 @@ fi
 
 cat <<EOF
 
-==> Instalacja zakończona
+==> Instalacja zakończona ✔
 
-Następne kroki:
-  1. source $ENV_FILE
-  2. source $INSTALL_DIR/.venv/bin/activate
-  3. cd $SRC_DIR
-  4. SYLION_DB_PATH=$DB_PATH python3 -m sylion.server --host 127.0.0.1 --http-port 8422
+Uruchomienie (backend + frontend jedną komendą):
+  ./scripts/start_aeis.sh
+
+  • Backend:   http://127.0.0.1:8010
+  • Frontend:  http://127.0.0.1:8422
+  • Ctrl+C     zatrzymuje oba procesy naraz
+
+Ręczne uruchomienie (tylko backend):
+  source $ENV_FILE
+  source $INSTALL_DIR/.venv/bin/activate
+  cd $SRC_DIR
+  SYLION_DB_PATH=$DB_PATH python3 -m sylion.server --host 127.0.0.1 --http-port 8422
 
 Weryfikacja:  ./scripts/verify.sh
 Rollback:     ./scripts/rollback.sh

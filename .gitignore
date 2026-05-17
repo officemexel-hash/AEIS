@@ -76,31 +76,13 @@ Thumbs.db
 # ZALEŻNOŚCI I LOGI (To, co pobiera się samo lub generuje automatycznie)
 # ====================================================================
 # Node.js / JavaScript
-node_modules/
 /npm-debug.log*
 /yarn-error.log*
 /yarn-debug.log*
 
 # Python
-__pycache__/
 *.py[cod]
 *$py.class
-.venv/
 venv/
 ENV/
 env/
-
-# Logi ogólne
-*.log
-logs/
-
-# ====================================================================
-# BEZPIECZEŃSTWO (NIGDY nie wrzucaj haseł i kluczy na GitHuba!)
-# ====================================================================
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.pem
-*.key

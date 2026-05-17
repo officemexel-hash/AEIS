@@ -17,6 +17,18 @@ const nextConfig: NextConfig = {
         source: "/api/v1/:path*",
         destination: "http://127.0.0.1:8010/api/v1/:path*",
       },
+      {
+        source: "/api/dashboard/:path*",
+        destination: "http://127.0.0.1:8010/api/dashboard/:path*",
+      },
+      {
+        source: "/api/runs/:path*",
+        destination: "http://127.0.0.1:8010/api/runs/:path*",
+      },
+      {
+        source: "/api/human-gate/:path*",
+        destination: "http://127.0.0.1:8010/api/human-gate/:path*",
+      },
     ];
   },
 };
