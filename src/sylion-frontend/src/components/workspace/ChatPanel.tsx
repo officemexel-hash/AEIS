@@ -1,6 +1,6 @@
 "use client";
 
-import React, { startTransition, useState, useEffect, useRef, useCallback } from "react";
+import React, { Suspense, startTransition, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ interface ChatSession {
   title?: string;
 }
 
-export function ChatPanel() {
+function ChatPanelContent() {
   const { data: health } = useHealth();
   const backendLive = health?.status === "ok";
   const searchParams = useSearchParams();
@@ -212,6 +212,20 @@ export function ChatPanel() {
         )}
       </div>
     </div>
+  );
+}
+
+export function ChatPanel() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center p-8 text-center text-xs text-muted-foreground">
+          Ladowanie czatu...
+        </div>
+      }
+    >
+      <ChatPanelContent />
+    </Suspense>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -374,7 +374,7 @@ function ActiveRunQualityPanel({ run }: { run: PipelineRun }) {
    Main Page Component
    ============================================================ */
 
-export default function PipelinePage() {
+function PipelineContent() {
   const searchParams = useSearchParams();
   const { data: health } = useHealth();
   const backendLive = health?.status === "ok";
@@ -818,5 +818,19 @@ export default function PipelinePage() {
         </Table>
       </Card>
     </div>
+  );
+}
+
+export default function PipelinePage() {
+  return (
+    <Suspense
+      fallback={
+        <Card className="border-[rgba(148,163,184,0.08)] bg-[#0f1629] p-8 text-center text-sm text-muted-foreground">
+          Ladowanie pipeline...
+        </Card>
+      }
+    >
+      <PipelineContent />
+    </Suspense>
   );
 }

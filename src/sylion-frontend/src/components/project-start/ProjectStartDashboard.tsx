@@ -158,8 +158,9 @@ function toCreatePayload(form: typeof initialForm) {
 }
 
 export function ProjectStartDashboard() {
-  const { data: health } = useHealth();
+  const { data: health, loading: healthLoading } = useHealth();
   const backendLive = health.status === "ok";
+  const backendPending = healthLoading || health.status === "unknown";
   const [overview, setOverview] = useState<any | null>(null);
   const [project, setProject] = useState<any | null>(null);
   const [acceptance, setAcceptance] = useState<Record<string, any>>({});
@@ -187,6 +188,11 @@ export function ProjectStartDashboard() {
 
   const load = useCallback(async () => {
     if (!backendLive) {
+      if (backendPending) {
+        setStatus("Łączenie z backendem...");
+        setLoading(false);
+        return;
+      }
       setOverview(null);
       setProject(null);
       setAcceptance({});
@@ -201,13 +207,15 @@ export function ProjectStartDashboard() {
       setOverview(overviewData);
       const active = overviewData.active_project;
       if (active?.project_id) {
-        const [projectData, edgeData] = await Promise.all([
-          api.getProjectStartProject(active.project_id),
-          api.getProjectStartEdgeCases(active.project_id),
-        ]);
+        const projectData = await api.getProjectStartProject(active.project_id);
         setProject(projectData.project);
         setAcceptance(projectData.acceptance || {});
-        setEdgeCases(edgeData);
+        try {
+          const edgeData = await api.getProjectStartEdgeCases(active.project_id);
+          setEdgeCases(edgeData);
+        } catch {
+          setEdgeCases(null);
+        }
       } else {
         setProject(null);
         setAcceptance({});
@@ -219,7 +227,7 @@ export function ProjectStartDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [backendLive]);
+  }, [backendLive, backendPending]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -357,8 +365,8 @@ export function ProjectStartDashboard() {
             <Badge variant="outline" className={cn("text-[10px]", phaseReady ? "border-sylion-green/30 text-sylion-green" : "border-sylion-amber/30 text-sylion-amber")}>
               {phaseReady ? `FAZA ${activePhase} GOTOWA` : `FAZA ${activePhase} AKTYWNA`}
             </Badge>
-            <Badge variant="outline" className={cn("text-[10px]", backendLive ? "border-sylion-green/30 text-sylion-green" : "border-sylion-red/30 text-sylion-red")}>
-            {backendLive ? "BACKEND DZIAŁA" : "BACKEND NIEDOSTĘPNY"}
+            <Badge variant="outline" className={cn("text-[10px]", backendLive ? "border-sylion-green/30 text-sylion-green" : backendPending ? "border-sylion-amber/30 text-sylion-amber" : "border-sylion-red/30 text-sylion-red")}>
+            {backendLive ? "BACKEND DZIAŁA" : backendPending ? "ŁĄCZENIE Z BACKENDEM" : "BACKEND NIEDOSTĘPNY"}
             </Badge>
           </div>
           <div className="mt-1 max-w-4xl text-xs text-muted-foreground">

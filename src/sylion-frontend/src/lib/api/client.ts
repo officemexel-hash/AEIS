@@ -1,11 +1,23 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 const HEALTH_PATH = API_BASE ? "/health" : "/api/v1/health";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...opts?.headers },
-    ...opts,
-  });
+  const method = String(opts?.method || "GET").toUpperCase();
+  const fetchOnce = () =>
+    fetch(`${API_BASE}${path}`, {
+      headers: { "Content-Type": "application/json", ...opts?.headers },
+      ...opts,
+    });
+  let res: Response;
+  try {
+    res = await fetchOnce();
+  } catch (err) {
+    if (method !== "GET") throw err;
+    await sleep(150);
+    res = await fetchOnce();
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${res.status}: ${text}`);

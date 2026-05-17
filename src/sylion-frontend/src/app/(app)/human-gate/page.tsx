@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert, TicketCheck, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -474,7 +474,7 @@ function TicketPayloadDetails({
   return <span>{payloadSummary(payload)}</span>;
 }
 
-export default function HumanGatePage() {
+function HumanGateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusedTicketId = searchParams.get("ticket") || "";
@@ -848,5 +848,19 @@ export default function HumanGatePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function HumanGatePage() {
+  return (
+    <Suspense
+      fallback={
+        <Card className="border-[rgba(148,163,184,0.08)] bg-[#0f1629] p-8 text-center text-sm text-muted-foreground">
+          Ladowanie bramki czlowieka...
+        </Card>
+      }
+    >
+      <HumanGateContent />
+    </Suspense>
   );
 }

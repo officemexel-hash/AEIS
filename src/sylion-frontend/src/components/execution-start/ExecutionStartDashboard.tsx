@@ -981,30 +981,38 @@ export function ExecutionStartDashboard() {
       setOverview(overviewData);
       const active = overviewData.active_project;
       if (active?.project_id) {
-        const [projectData, edgeData, runtimeData, liveData, dispatchData] = await Promise.all([
-          api.getExecutionStartProject(active.project_id),
+        const projectData = await api.getExecutionStartProject(active.project_id);
+        setProject(projectData.project);
+        setAcceptance(projectData.acceptance || {});
+        const [edgeResult, runtimeResult, liveResult, dispatchResult] = await Promise.allSettled([
           api.getExecutionStartEdgeCases(active.project_id),
           api.getExecutionRuntimeConfiguration(active.project_id),
           api.getExecutionLiveWorkers(active.project_id),
           api.getExecutionDispatchControl(active.project_id),
         ]);
-        setProject(projectData.project);
-        setAcceptance(projectData.acceptance || {});
-        setEdgeCases(edgeData);
-        setLiveSpawn(liveData.live_spawn || null);
-        setDispatchControl(dispatchData.dispatch_control || projectData.project?.execution?.dispatch_control || null);
-        const config = runtimeData.runtime_configuration || {};
-        setRuntimeConfiguration(config);
-        setRuntimeForm((previous) => ({
-          ...previous,
-          topology: config.topology || previous.topology,
-          local_workers: String(config.local_workers ?? previous.local_workers),
-          vps_workers: String(config.vps_workers ?? previous.vps_workers),
-          environments: String(config.environments ?? previous.environments),
-          max_parallel_workers: String(config.max_parallel_workers ?? previous.max_parallel_workers),
-          max_monthly_vps_eur: String(config.max_monthly_vps_eur ?? previous.max_monthly_vps_eur),
-          allow_paid_vps: Boolean(config.allow_paid_vps),
-        }));
+        setEdgeCases(edgeResult.status === "fulfilled" ? edgeResult.value : null);
+        setLiveSpawn(liveResult.status === "fulfilled" ? liveResult.value.live_spawn || null : null);
+        setDispatchControl(
+          dispatchResult.status === "fulfilled"
+            ? dispatchResult.value.dispatch_control || projectData.project?.execution?.dispatch_control || null
+            : projectData.project?.execution?.dispatch_control || null,
+        );
+        if (runtimeResult.status === "fulfilled") {
+          const config = runtimeResult.value.runtime_configuration || {};
+          setRuntimeConfiguration(config);
+          setRuntimeForm((previous) => ({
+            ...previous,
+            topology: config.topology || previous.topology,
+            local_workers: String(config.local_workers ?? previous.local_workers),
+            vps_workers: String(config.vps_workers ?? previous.vps_workers),
+            environments: String(config.environments ?? previous.environments),
+            max_parallel_workers: String(config.max_parallel_workers ?? previous.max_parallel_workers),
+            max_monthly_vps_eur: String(config.max_monthly_vps_eur ?? previous.max_monthly_vps_eur),
+            allow_paid_vps: Boolean(config.allow_paid_vps),
+          }));
+        } else {
+          setRuntimeConfiguration(null);
+        }
       } else {
         setProject(null);
         setAcceptance({});

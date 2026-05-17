@@ -79,8 +79,9 @@ function MiniRow({ label, value }: { label: string; value: string | number }) {
 }
 
 export function PlanningDashboard() {
-  const { data: health } = useHealth();
+  const { data: health, loading: healthLoading } = useHealth();
   const backendLive = health.status === "ok";
+  const backendPending = healthLoading || health.status === "unknown";
   const [overview, setOverview] = useState<any | null>(null);
   const [project, setProject] = useState<any | null>(null);
   const [acceptance, setAcceptance] = useState<Record<string, any>>({});
@@ -122,6 +123,11 @@ export function PlanningDashboard() {
 
   const load = useCallback(async () => {
     if (!backendLive) {
+      if (backendPending) {
+        setStatus("Łączenie z backendem...");
+        setLoading(false);
+        return;
+      }
       setOverview(null);
       setProject(null);
       setAcceptance({});
@@ -137,13 +143,15 @@ export function PlanningDashboard() {
       setResourceProfiles(overviewData.resource_profiles || []);
       const active = overviewData.active_project;
       if (active?.project_id) {
-        const [projectData, edgeData] = await Promise.all([
-          api.getPlanningProject(active.project_id),
-          api.getPlanningEdgeCases(active.project_id),
-        ]);
+        const projectData = await api.getPlanningProject(active.project_id);
         setProject(projectData.project);
         setAcceptance(projectData.acceptance || {});
-        setEdgeCases(edgeData);
+        try {
+          const edgeData = await api.getPlanningEdgeCases(active.project_id);
+          setEdgeCases(edgeData);
+        } catch {
+          setEdgeCases(null);
+        }
         setResourceProfiles(projectData.resource_profiles || overviewData.resource_profiles || []);
       } else {
         setProject(null);
@@ -156,7 +164,7 @@ export function PlanningDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [backendLive]);
+  }, [backendLive, backendPending]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -292,7 +300,9 @@ export function PlanningDashboard() {
               <Badge variant={groupComplete ? "default" : "secondary"}>
                 {groupComplete ? "PLANNING PART 1 READY" : "PLANNING ACTIVE"}
               </Badge>
-              <Badge variant={backendLive ? "default" : "destructive"}>{backendLive ? "BACKEND DZIAŁA" : "BACKEND NIEDOSTĘPNY"}</Badge>
+              <Badge variant={backendLive || backendPending ? "default" : "destructive"}>
+                {backendLive ? "BACKEND DZIAŁA" : backendPending ? "ŁĄCZENIE Z BACKENDEM" : "BACKEND NIEDOSTĘPNY"}
+              </Badge>
             </div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">Planowanie wykonania</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
