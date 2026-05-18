@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from sylion.security.rbac import requires_role
 
 router = APIRouter(prefix="/api/v1/workers", tags=["workers"])
 
 _wr = None
 _orch = None
 _compact = None
+_lifecycle = None
 
 
 def _get_registry():
@@ -21,7 +25,8 @@ def _get_registry():
         return _wr
     from sylion.worker.registry import get_worker_registry
     from sylion.core.event_bus import get_event_bus
-    _wr = get_worker_registry(event_bus=get_event_bus())
+    db_path = os.environ.get("SYLION_WORKER_DB_PATH") or os.environ.get("SYLION_DB_PATH")
+    _wr = get_worker_registry(db_path=db_path, event_bus=get_event_bus())
     return _wr
 
 
@@ -42,6 +47,22 @@ def _get_compact_generator():
     manifest_dir = Path(__file__).parent.parent / "contracts" / "manifests"
     _compact = CompactGenerator(worker_registry=_get_registry(), manifest_dir=manifest_dir)
     return _compact
+
+
+def _get_lifecycle():
+    global _lifecycle
+    if _lifecycle is not None:
+        return _lifecycle
+    from sylion.core.event_bus import get_event_bus
+    from sylion.worker.lifecycle import WorkerFleetLifecycle
+
+    db_path = os.environ.get("SYLION_WORKER_DB_PATH") or os.environ.get("SYLION_DB_PATH")
+    _lifecycle = WorkerFleetLifecycle(
+        registry=_get_registry(),
+        db_path=db_path,
+        event_bus=get_event_bus(),
+    )
+    return _lifecycle
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +125,16 @@ class TopologyRequest(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+class WorkerLifecycleDrillRequest(BaseModel):
+    actor_id: str = "operator-dashboard"
+    project_id: str = "worker_fleet_drill"
+
+
+class WorkerShutdownRequest(BaseModel):
+    reason: str = "operator_requested"
+    actor_id: str = "operator-dashboard"
+
+
 # ---------------------------------------------------------------------------
 # Worker CRUD
 # ---------------------------------------------------------------------------
@@ -132,6 +163,36 @@ def list_workers(status: str | None = None, host: str | None = None):
 def list_topologies_alias():
     reg = _get_registry()
     return {"topologies": reg.list_topologies()}
+
+
+@router.post("/fleet/lifecycle-drill", status_code=201)
+def run_worker_fleet_lifecycle_drill(
+    body: WorkerLifecycleDrillRequest,
+    _user: str = Depends(requires_role("operator")),
+):
+    return _get_lifecycle().run_lifecycle_drill(
+        actor_id=body.actor_id,
+        project_id=body.project_id,
+    )
+
+
+@router.get("/fleet/lifecycle-drills")
+def list_worker_fleet_lifecycle_drills(
+    limit: int = Query(default=100, ge=1, le=500),
+    _user: str = Depends(requires_role("operator")),
+):
+    return {"drills": _get_lifecycle().list_drills(limit=limit)}
+
+
+@router.get("/fleet/lifecycle-drills/{drill_id}")
+def get_worker_fleet_lifecycle_drill(
+    drill_id: str,
+    _user: str = Depends(requires_role("operator")),
+):
+    drill = _get_lifecycle().get_drill(drill_id)
+    if not drill:
+        raise HTTPException(status_code=404, detail="Lifecycle drill not found")
+    return drill
 
 
 @router.get("/{worker_id}")
@@ -179,6 +240,22 @@ def heartbeat(worker_id: str, body: HeartbeatRequest | None = None):
         "last_heartbeat": worker.get("last_heartbeat"),
         "load": body.load if body else None,
     }
+
+
+@router.post("/{worker_id}/graceful-shutdown")
+def graceful_shutdown_worker(
+    worker_id: str,
+    body: WorkerShutdownRequest,
+    _user: str = Depends(requires_role("operator")),
+):
+    try:
+        return _get_lifecycle().graceful_shutdown(
+            worker_id,
+            reason=body.reason,
+            actor_id=body.actor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 # ---------------------------------------------------------------------------

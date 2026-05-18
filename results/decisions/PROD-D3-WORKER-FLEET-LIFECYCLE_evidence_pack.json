@@ -1,0 +1,50 @@
+{
+  "decision_id": "PROD-D3-WORKER-FLEET-LIFECYCLE",
+  "decision_class": "D3",
+  "rationale": "AEIS needed a frozen worker fleet lifecycle covering registration, heartbeat, rebalance, graceful shutdown and evidence. Existing worker registry routes covered individual actions but did not provide a single audited production lifecycle drill. This change adds a WorkerFleetLifecycle service and operator API for lifecycle drill and graceful shutdown.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove worker lifecycle drill routes from sylion.api.worker_routes.",
+      "Remove sylion.worker.lifecycle and its export from sylion.worker.__init__.",
+      "Remove worker fleet lifecycle tests.",
+      "Restore worker route registry initialization if SYLION_WORKER_DB_PATH causes compatibility issues.",
+      "Run worker route, worker lifecycle, project worker reconcile and unified truth tests twice."
+    ],
+    "estimated_time": "15 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that worker fleet lifecycle can register workers, record heartbeat, rebalance assignments, drain a worker, move or block assignments safely and register evidence.",
+    "pre_conditions": [
+      "WorkerRegistry is available.",
+      "AssignmentOrchestrator can rebalance assigned modules.",
+      "EvidenceSpine can register inline JSON artifacts.",
+      "Worker API routes are mounted."
+    ],
+    "steps": [
+      "Run compileall for worker lifecycle and worker API.",
+      "Run unit tests for lifecycle drill and blocked shutdown path.",
+      "Run API tests for lifecycle drill listing, drill retrieval and graceful shutdown.",
+      "Run project worker reconcile regression tests.",
+      "Run no-mock scan and git diff whitespace check.",
+      "Repeat the same verification scope as PASS2."
+    ],
+    "expected_outcome": "Worker lifecycle drill completes with evidence, a drained worker ends offline with no active assignments, assignments move to active capacity when possible, and no assignment is silently lost when capacity is missing.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T05:40:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "worker-fleet",
+    "heartbeat",
+    "rebalance",
+    "graceful-shutdown",
+    "evidence-spine"
+  ]
+}
