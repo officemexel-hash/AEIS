@@ -5,6 +5,8 @@ Endpoints for: kanon_access, compact_layer, evidence_store,
 indexer, kb_adapter, retrieval, self_model_store.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -14,6 +16,7 @@ from sylion.memory.evidence_store import get_evidence_store
 from sylion.memory.indexer import get_indexer
 from sylion.memory.kb_adapter import get_kb_adapter
 from sylion.memory.obsidian_sync import ObsidianMemorySync
+from sylion.memory.plane import get_memory_plane
 from sylion.memory.retrieval import get_retrieval
 from sylion.memory.self_model_store import get_self_model_store
 
@@ -25,6 +28,16 @@ class ObsidianSyncRequest(BaseModel):
     related_project_ids: list[str] = Field(default_factory=list)
     force: bool = False
     source: str = "manual_api"
+
+
+class MemoryPlaneWriteRequest(BaseModel):
+    content: str
+    provenance: dict[str, Any]
+    project_id: str = ""
+    evidence_id: str = ""
+    created_by: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    retention_policy: str = "memory-plane"
 
 
 @router.get("/health")
@@ -513,6 +526,7 @@ def get_memory_stats():
         "compact": _safe_call(lambda: get_compact_layer().get_stats(), {}),
         "indexer": _safe_call(lambda: get_indexer().get_stats(), {}),
         "kb": _safe_call(lambda: get_kb_adapter().get_stats(), {}),
+        "plane": _safe_call(lambda: get_memory_plane().stats(), {}),
         "obsidian": _safe_call(lambda: _obsidian_sync().graph()["counts"], {}),
     }
 
@@ -560,3 +574,51 @@ def get_recent_memory(limit: int = 20):
     except Exception as exc:
         items.append({"kind": "obsidian_graph", "error": str(exc)})
     return {"items": items[:limit], "count": len(items)}
+
+
+# ---------------------------------------------------------------------------
+# Canonical MemoryPlane write/read API
+# ---------------------------------------------------------------------------
+
+@router.post("/plane/write", status_code=201)
+def write_memory_plane_entry(body: MemoryPlaneWriteRequest) -> dict:
+    """Write through the canonical memory plane with project scope and provenance."""
+    try:
+        return get_memory_plane().write(
+            content=body.content,
+            provenance=body.provenance,
+            project_id=body.project_id,
+            evidence_id=body.evidence_id,
+            created_by=body.created_by,
+            metadata=body.metadata,
+            retention_policy=body.retention_policy,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/plane/search")
+def search_memory_plane(query: str, limit: int = 10, project_id: str | None = None) -> dict:
+    """Search canonical memory entries, optionally scoped to one project."""
+    return {"results": get_memory_plane().search(query, limit=limit, project_id=project_id)}
+
+
+@router.get("/plane/projects/{project_id}")
+def list_memory_plane_project(project_id: str, limit: int = 100) -> dict:
+    """Return the materialized project view for canonical memory entries."""
+    return {"entries": get_memory_plane().list_project(project_id, limit=limit)}
+
+
+@router.get("/plane/entries/{entry_id}")
+def get_memory_plane_entry(entry_id: str) -> dict:
+    """Return one canonical memory entry."""
+    entry = get_memory_plane().get(entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Memory entry {entry_id} not found")
+    return entry
+
+
+@router.get("/plane/stats")
+def get_memory_plane_stats() -> dict:
+    """Return canonical MemoryPlane entry counts."""
+    return get_memory_plane().stats()

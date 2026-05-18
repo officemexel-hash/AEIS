@@ -1,0 +1,51 @@
+{
+  "decision_id": "PROD-D3-MEMORY-PLANE-CANONICAL-WRITE",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires a single MemoryPlane write source with project scope, provenance and Evidence Spine linkage so global memory and project-specific views do not become conflicting sources of truth. This change introduces a canonical MemoryPlane service, public hooks and API routes for durable memory writes and project-scoped search. It is D3 because it adds a public memory write contract and persistent memory_entries table that future modules must use as the source of truth.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert memory/plane.py and the public hook exports in memory/__init__.py.",
+      "Revert MemoryPlane bootstrap initialization.",
+      "Revert /api/v1/memory/plane routes and stats aggregation changes.",
+      "Revert MemoryPlane-specific tests.",
+      "Run memory, retrieval, indexer, evidence store and API integration tests twice.",
+      "Leave any existing memory_entries rows inert; do not delete production memory data during rollback."
+    ],
+    "estimated_time": "20 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that canonical memory writes require provenance, create evidence links, index content with project_id and return project-scoped search results.",
+    "pre_conditions": [
+      "Memory stores are reset and bootstrapped against a shared SQLite database.",
+      "Evidence Spine and Indexer are available to MemoryPlane.",
+      "FastAPI memory routes are available through the test client."
+    ],
+    "steps": [
+      "Write two memory entries with the same searchable term but different project_id values.",
+      "Verify each entry has entry_id, evidence_id, provenance, metadata and content_hash.",
+      "Verify the Evidence Spine artifact for the auto-created evidence_id exists.",
+      "Search by query with project_id and confirm only that project's entry is returned.",
+      "Use the public sylion.memory.write/search hooks.",
+      "Use /api/v1/memory/plane/write, search, project view, entry fetch and stats endpoints.",
+      "Run the broad memory/API test suite twice."
+    ],
+    "expected_outcome": "All new canonical memory writes carry provenance.source and evidence_id, are indexed by project_id, and project-scoped search does not leak entries across projects.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:31:34Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "memory-plane",
+    "source-of-truth",
+    "provenance",
+    "evidence-spine",
+    "project-scope"
+  ]
+}
