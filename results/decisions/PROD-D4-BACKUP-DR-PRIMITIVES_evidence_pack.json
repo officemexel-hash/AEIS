@@ -1,0 +1,44 @@
+{
+  "decision_id": "PROD-D4-BACKUP-DR-PRIMITIVES",
+  "decision_class": "D4",
+  "rationale": "The production roadmap requires backup and disaster recovery evidence before AEIS can be production-ready. This change introduces operational backup/restore primitives, manifest checksums, RTO/RPO policy validation and an automated local restore drill. It is D4 because backup/DR is an architecture-level operational control.",
+  "rollback_plan": {
+    "strategy": "ROLLBACK",
+    "steps": [
+      "Remove sylion.ops.backup_dr and sylion.ops exports.",
+      "Remove tests/ops/test_backup_dr.py.",
+      "Remove the production roadmap freeze document for backup/DR primitives.",
+      "Run the existing startup/security test group to confirm no unrelated behavior changed."
+    ],
+    "estimated_time": "15 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that a SQLite backup writes a manifest with checksum, can be restored, passes integrity_check and preserves table row counts.",
+    "pre_conditions": [
+      "No production data is used.",
+      "Temporary SQLite databases are created inside pytest tmp_path."
+    ],
+    "steps": [
+      "Run tests/ops/test_backup_dr.py twice.",
+      "Assert backup manifest contains SHA256 and retention policy.",
+      "Assert restored SQLite database preserves rows and integrity_check=ok.",
+      "Assert BackupPolicy enforces backup interval <= 360 minutes, RPO <= 60 minutes, RTO <= 30 minutes and WAL/archive when backup interval exceeds RPO."
+    ],
+    "expected_outcome": "The local backup/restore drill is repeatable and policy validation catches invalid production backup shapes.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:00:02.4742564Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "backup",
+    "restore",
+    "disaster-recovery",
+    "rpo-rto"
+  ]
+}
