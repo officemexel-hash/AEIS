@@ -48,7 +48,15 @@ def _invalidate_audit_cache() -> None:
 # Constants
 # ---------------------------------------------------------------------------
 
-VALID_SOURCES = ("api", "security", "governance", "pipeline", "council", "workspace")
+VALID_SOURCES = (
+    "api",
+    "security",
+    "governance",
+    "pipeline",
+    "council",
+    "workspace",
+    "operator_mobile",
+)
 VALID_OUTCOMES = ("success", "failure", "denied", "error")
 
 

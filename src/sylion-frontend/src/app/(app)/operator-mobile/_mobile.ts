@@ -206,6 +206,9 @@ export function decideMobileTicket(ticketId: string, body: {
   decision: "approved" | "rejected";
   reviewer: string;
   reason: string;
+  device_id?: string;
+  auth_method?: string;
+  geo?: Record<string, unknown>;
 }) {
   return request<MobileTicket>(`/api/v1/mobile/queue/${encodeURIComponent(ticketId)}/decision`, {
     method: "POST",

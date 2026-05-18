@@ -15,6 +15,7 @@ import {
   priorityTone,
   stateTone,
   useOperatorId,
+  useOperatorMobileDevices,
   useOperatorMobileTicket,
 } from "../../_mobile";
 
@@ -23,7 +24,9 @@ export default function OperatorMobileTicketDetailPage() {
   const ticketId = String(params.ticketId || "");
   const { operatorId } = useOperatorId();
   const { data: ticket, loading, refresh } = useOperatorMobileTicket(ticketId, operatorId);
+  const { data: deviceData } = useOperatorMobileDevices(operatorId);
   const [busy, setBusy] = useState<"approved" | "rejected" | null>(null);
+  const activeDeviceId = deviceData.devices[0]?.device_id || "";
 
   const handleDecision = async (decision: "approved" | "rejected") => {
     setBusy(decision);
@@ -32,6 +35,8 @@ export default function OperatorMobileTicketDetailPage() {
         decision,
         reviewer: operatorId,
         reason: `mobile ${decision}`,
+        device_id: activeDeviceId,
+        auth_method: "operator_session",
       });
       refresh();
     } catch {

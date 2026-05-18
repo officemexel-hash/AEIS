@@ -2129,10 +2129,20 @@ export const api = {
     }),
 
   // Phase 2 D-INTEGRATE: Operator Mobile (B5)
-  mobileBindDevice: (operator_id: string, device_label: string) =>
+  mobileBindDevice: (
+    operator_id: string,
+    device_label: string,
+    device_token?: string,
+    platform: string = "web",
+  ) =>
     request<any>(`/api/v1/mobile/devices/bind`, {
       method: "POST",
-      body: JSON.stringify({ operator_id, device_label }),
+      body: JSON.stringify({
+        operator_id,
+        device_label,
+        device_token: device_token || `web-${operator_id}`,
+        platform,
+      }),
     }),
   mobileListDevices: (operator_id?: string) =>
     request<any>(`/api/v1/mobile/devices${operator_id ? `?operator_id=${encodeURIComponent(operator_id)}` : ""}`),
@@ -2142,15 +2152,15 @@ export const api = {
     request<any>(`/api/v1/mobile/queue${operator_id ? `?operator_id=${encodeURIComponent(operator_id)}` : ""}`),
   mobileQueueDetail: (ticket_id: string) =>
     request<any>(`/api/v1/mobile/queue/${encodeURIComponent(ticket_id)}`),
-  mobileApprove: (ticket_id: string, operator_id: string, comment?: string) =>
+  mobileApprove: (ticket_id: string, operator_id: string, comment?: string, device_id?: string) =>
     request<any>(`/api/v1/mobile/queue/${encodeURIComponent(ticket_id)}/approve`, {
       method: "POST",
-      body: JSON.stringify({ operator_id, comment }),
+      body: JSON.stringify({ operator_id, comment, device_id, auth_method: "operator_session" }),
     }),
-  mobileReject: (ticket_id: string, operator_id: string, comment?: string) =>
+  mobileReject: (ticket_id: string, operator_id: string, comment?: string, device_id?: string) =>
     request<any>(`/api/v1/mobile/queue/${encodeURIComponent(ticket_id)}/reject`, {
       method: "POST",
-      body: JSON.stringify({ operator_id, comment }),
+      body: JSON.stringify({ operator_id, comment, device_id, auth_method: "operator_session" }),
     }),
 
   // Phase 2 D-INTEGRATE: Governance unified tickets (A1)

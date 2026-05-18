@@ -7,12 +7,15 @@ shared governance plane, not a second Human Gate.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from sylion.operator_mobile import get_operator_mobile_bridge
+
+log = logging.getLogger("sylion.api.operator_mobile_routes")
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["Operator Mobile"])
 legacy_router = APIRouter(
@@ -48,6 +51,9 @@ class MobileDecisionRequest(BaseModel):
     decision: str
     reviewer: str
     reason: str = ""
+    device_id: str = ""
+    auth_method: str = ""
+    geo: dict[str, Any] | None = None
 
 
 def _serialize_ticket(ticket: Any, bridge_operator_id: str = "") -> dict[str, Any]:
@@ -56,6 +62,68 @@ def _serialize_ticket(ticket: Any, bridge_operator_id: str = "") -> dict[str, An
         bridge = _get_bridge()
         payload["delivery_targets"] = len(bridge.list_devices(bridge_operator_id))
     return payload
+
+
+def _requires_bound_device(ticket: Any, decision: str) -> bool:
+    return (
+        str(getattr(ticket, "decision_class", "")).upper() in {"D3", "D4", "D5"}
+        and decision in {"approved", "rejected"}
+    )
+
+
+def _validate_bound_device(
+    *,
+    reviewer: str,
+    device_id: str,
+) -> dict[str, Any]:
+    if not device_id.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="device_id is required for D3+ mobile governance decisions",
+        )
+    devices = _get_bridge().list_devices(reviewer)
+    for device in devices:
+        if str(device.get("device_id") or "") == device_id:
+            return device
+    raise HTTPException(
+        status_code=403,
+        detail="device_id is not bound to reviewer",
+    )
+
+
+def _record_mobile_decision_audit(
+    *,
+    ticket: Any,
+    body: MobileDecisionRequest,
+    device: dict[str, Any] | None,
+) -> None:
+    try:
+        from sylion.security.audit_trail_aggregator import get_audit_trail_aggregator
+
+        ticket_id = str(getattr(ticket, "ticket_id", "") or "")
+        device_id = str((device or {}).get("device_id") or body.device_id or "")
+        get_audit_trail_aggregator().record(
+            source="operator_mobile",
+            action="operator_mobile.ticket.decision",
+            actor=body.reviewer,
+            resource=f"ticket:{ticket_id}",
+            outcome="success" if body.decision == "approved" else "denied",
+            metadata={
+                "ticket_id": ticket_id,
+                "decision": body.decision,
+                "reason": body.reason,
+                "device_id": device_id,
+                "platform": (device or {}).get("platform", ""),
+                "device_label": (device or {}).get("device_label", ""),
+                "auth_method": body.auth_method,
+                "geo": body.geo or {},
+                "decision_class": str(getattr(ticket, "decision_class", "") or ""),
+                "project_id": getattr(ticket, "project_id", None),
+            },
+            entry_id=f"operator_mobile.ticket.{ticket_id}.{body.decision}.{device_id or 'unbound'}",
+        )
+    except Exception:  # noqa: BLE001
+        log.warning("operator mobile decision audit failed", exc_info=True)
 
 
 @router.post("/v1/devices/bind", status_code=201, include_in_schema=False)
@@ -146,6 +214,15 @@ def resolve_mobile_ticket(ticket_id: str, body: MobileDecisionRequest):
             detail="decision must be approved|rejected|expired",
         )
     fetch_by_id, _, resolve = _get_governance_hooks()
+    ticket_before = fetch_by_id(ticket_id)
+    if ticket_before is None:
+        raise HTTPException(status_code=404, detail=f"ticket {ticket_id} not found")
+    bound_device = None
+    if _requires_bound_device(ticket_before, body.decision):
+        bound_device = _validate_bound_device(
+            reviewer=body.reviewer,
+            device_id=body.device_id,
+        )
     try:
         changed = resolve(
             ticket_id=ticket_id,
@@ -161,6 +238,11 @@ def resolve_mobile_ticket(ticket_id: str, body: MobileDecisionRequest):
             detail=f"ticket {ticket_id} missing or already final",
         )
     ticket = fetch_by_id(ticket_id)
+    _record_mobile_decision_audit(
+        ticket=ticket or ticket_before,
+        body=body,
+        device=bound_device,
+    )
     return ticket.to_dict() if ticket else {"ticket_id": ticket_id, "state": body.decision}
 
 
@@ -170,9 +252,17 @@ def approve_mobile_ticket(ticket_id: str, body: dict[str, Any]):
     """Compatibility alias for dashboard approve buttons."""
     reviewer = str(body.get("operator_id") or body.get("reviewer") or "operator")
     reason = str(body.get("comment") or body.get("reason") or "approved from mobile queue")
+    device_id = str(body.get("device_id") or "")
+    auth_method = str(body.get("auth_method") or "")
     return resolve_mobile_ticket(
         ticket_id,
-        MobileDecisionRequest(decision="approved", reviewer=reviewer, reason=reason),
+        MobileDecisionRequest(
+            decision="approved",
+            reviewer=reviewer,
+            reason=reason,
+            device_id=device_id,
+            auth_method=auth_method,
+        ),
     )
 
 
@@ -182,9 +272,17 @@ def reject_mobile_ticket(ticket_id: str, body: dict[str, Any]):
     """Compatibility alias for dashboard reject buttons."""
     reviewer = str(body.get("operator_id") or body.get("reviewer") or "operator")
     reason = str(body.get("comment") or body.get("reason") or "rejected from mobile queue")
+    device_id = str(body.get("device_id") or "")
+    auth_method = str(body.get("auth_method") or "")
     return resolve_mobile_ticket(
         ticket_id,
-        MobileDecisionRequest(decision="rejected", reviewer=reviewer, reason=reason),
+        MobileDecisionRequest(
+            decision="rejected",
+            reviewer=reviewer,
+            reason=reason,
+            device_id=device_id,
+            auth_method=auth_method,
+        ),
     )
 
 

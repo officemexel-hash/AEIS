@@ -1,0 +1,47 @@
+{
+  "decision_id": "PROD-D3-MOBILE-DEVICE-AUDIT",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires mobile approve/reject to include device binding and audit evidence. This change requires a bound device_id for D3-D5 mobile terminal decisions, records operator_mobile audit trail entries with device/auth metadata, and updates the mobile frontend client to send the active bound device. It is D3 because it changes the public mobile approval contract and the shared audit source taxonomy.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert the device_id validation in operator_mobile_routes.py.",
+      "Revert the operator_mobile audit source addition if no other callers depend on it.",
+      "Revert mobile frontend device_id payload changes.",
+      "Run operator_mobile, audit aggregator and frontend TypeScript checks.",
+      "Confirm another mobile non-repudiation control is active before deploying rollback."
+    ],
+    "estimated_time": "20 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify D3-D5 mobile approvals require a bound device and produce an operator_mobile audit entry while existing mobile queue, dispatcher and payload signing behavior still works.",
+    "pre_conditions": [
+      "Operator mobile store and audit trail aggregator are reset to in-memory stores.",
+      "A D4 mobile governance ticket is created for the bound operator.",
+      "Frontend TypeScript project is available under src/sylion-frontend."
+    ],
+    "steps": [
+      "Run operator_mobile route, bridge, dispatcher and HMAC tests twice.",
+      "Run audit trail aggregator tests twice, including all VALID_SOURCES checks.",
+      "Run S8 operator mobile integration scenario twice.",
+      "Run npx tsc --noEmit twice.",
+      "Run eslint on changed operator-mobile files with --max-warnings=0 and client.ts with --quiet."
+    ],
+    "expected_outcome": "Missing device_id returns 422, unbound device returns 403, valid bound device approval succeeds, audit metadata includes device_id, and frontend type checks pass.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:30:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "operator-mobile",
+    "device-binding",
+    "audit",
+    "human-gate"
+  ]
+}

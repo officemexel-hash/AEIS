@@ -14,16 +14,19 @@ import {
   priorityTone,
   stateTone,
   useOperatorId,
+  useOperatorMobileDevices,
   useOperatorMobileQueue,
 } from "../_mobile";
 
 export default function OperatorMobileQueuePage() {
   const { operatorId } = useOperatorId();
   const { data, error, refresh } = useOperatorMobileQueue(operatorId);
+  const { data: deviceData } = useOperatorMobileDevices(operatorId);
   const [busyTicketId, setBusyTicketId] = useState<string | null>(null);
 
   const backendLive = !error;
   const tickets = data.tickets;
+  const activeDeviceId = deviceData.devices[0]?.device_id || "";
 
   const handleDecision = async (ticketId: string, decision: "approved" | "rejected") => {
     setBusyTicketId(ticketId);
@@ -32,6 +35,8 @@ export default function OperatorMobileQueuePage() {
         decision,
         reviewer: operatorId,
         reason: `mobile ${decision}`,
+        device_id: activeDeviceId,
+        auth_method: "operator_session",
       });
       refresh();
     } catch {
