@@ -210,6 +210,18 @@ class TestAuthenticate:
         )
         assert result["user_id"] == "bob"
 
+    def test_provider_auth_accepts_keyword_contract(self):
+        mgr = _make_provider()
+        p = _register_provider(mgr)
+
+        result = mgr.authenticate(
+            provider_id=p["provider_id"],
+            credentials_json={"user_id": "keyword-user"},
+        )
+
+        assert result["provider_id"] == p["provider_id"]
+        assert result["user_id"] == "keyword-user"
+
     def test_default_user_is_anonymous(self):
         mgr = _make_provider()
         p = _register_provider(mgr)

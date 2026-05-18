@@ -392,8 +392,9 @@ class AuthProvider:
     # Authentication
     # ------------------------------------------------------------------
 
-    def authenticate(self, provider_id_or_username: str,
-                     credentials_or_password: Any = None) -> dict | None:
+    def authenticate(self, provider_id_or_username: str | None = None,
+                     credentials_or_password: Any = None,
+                     **kwargs: Any) -> dict | None:
         """Authenticate.
 
         Polymorphic dispatch by 2nd-arg type:
@@ -404,6 +405,13 @@ class AuthProvider:
 
         Raises ValueError when in provider-mode and the provider is missing.
         """
+        if provider_id_or_username is None:
+            provider_id_or_username = kwargs.pop("provider_id", None)
+        if credentials_or_password is None:
+            credentials_or_password = kwargs.pop("credentials_json", None)
+        if provider_id_or_username is None:
+            raise TypeError("authenticate() missing provider_id_or_username")
+
         # Local-user dispatch -------------------------------------------------
         if isinstance(credentials_or_password, str):
             username = provider_id_or_username

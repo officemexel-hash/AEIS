@@ -1,0 +1,45 @@
+{
+  "decision_id": "PROD-D3-RBAC-AUTH-CONTRACT",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires backend RBAC enforcement for mutating endpoints and no dev-auth bypass in strict tests. This change restores the keyword authentication contract used by RBAC fixtures and forces RBAC enforcement tests into strict auth mode so anonymous mutations return 401, role mismatches return 403, and owner/security/operator paths are verified end-to-end. It is D3 because it affects cross-cutting authentication and authorization behavior.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert AuthProvider.authenticate keyword compatibility if no callers require it.",
+      "Remove the strict auth mode override from security test fixtures.",
+      "Run auth_provider, rbac and rbac_middleware_enforcement tests.",
+      "Confirm production/staging still default to strict auth mode before deploying any rollback."
+    ],
+    "estimated_time": "15 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify RBAC middleware returns 401 for anonymous mutations, 403 for wrong roles, allows owner/security/operator paths, and preserves AuthProvider token lifecycle behavior.",
+    "pre_conditions": [
+      "RBAC bypass flag is unset by the security fixture.",
+      "SYLION_AUTH_MODE is set to strict during RBAC enforcement tests.",
+      "AuthProvider tests use in-memory SQLite."
+    ],
+    "steps": [
+      "Run tests/security/test_rbac_middleware_enforcement.py twice.",
+      "Run tests/security/test_rbac.py twice.",
+      "Run tests/security/test_rbac_coverage.py twice.",
+      "Run tests/test_auth_provider.py twice."
+    ],
+    "expected_outcome": "Anonymous mutations are blocked with 401, wrong-role mutations are blocked with 403, coverage remains above threshold, and AuthProvider accepts both positional and keyword provider authentication.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:50:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "rbac",
+    "auth",
+    "authorization",
+    "strict-mode"
+  ]
+}

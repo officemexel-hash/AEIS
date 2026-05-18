@@ -26,6 +26,7 @@ import pytest
 def enable_rbac(monkeypatch):
     """Force RBAC enforcement on for this test only."""
     monkeypatch.delenv("SYLION_RBAC_DISABLED", raising=False)
+    monkeypatch.setenv("SYLION_AUTH_MODE", "strict")
     yield
 
 
