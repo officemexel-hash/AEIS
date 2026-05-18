@@ -1826,6 +1826,14 @@ def route_action_closure(request: Request) -> dict[str, Any]:
     return RouteActionClosureRunner(app=request.app).run().to_dict()
 
 
+@router.get("/operator-onboarding")
+def operator_onboarding(request: Request) -> dict[str, Any]:
+    """Run a production Phase 1 onboarding probe through real Advisor routes."""
+    from sylion.aeis.testing.operator_onboarding import OperatorOnboardingRunner
+
+    return OperatorOnboardingRunner(app=request.app).run().to_dict()
+
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -1838,7 +1846,8 @@ def health() -> dict:
         "endpoints": [
             "personas", "scenarios", "dashboard", "truth-alignment",
             "simulation", "auto-repair", "release-gate", "catalog",
-            "no-mock-scan", "production-readiness", "route-action-closure", "theater",
+            "no-mock-scan", "production-readiness", "route-action-closure",
+            "operator-onboarding", "theater",
         ],
         "as_of": time.time(),
     }

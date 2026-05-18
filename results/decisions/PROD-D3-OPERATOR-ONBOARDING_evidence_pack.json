@@ -1,0 +1,64 @@
+{
+  "decision_id": "PROD-D3-OPERATOR-ONBOARDING",
+  "decision_class": "D3",
+  "title": "Operator onboarding production freeze",
+  "status": "FROZEN_2X",
+  "created_at": "2026-05-18T08:28:00+02:00",
+  "requirement_id": "PROD-P2-005",
+  "rationale": "A production-ready AEIS instance must let a new operator complete first-run Phase 1 onboarding through backend routes, RBAC, acceptance checks and frontend wizard contracts within the 15-minute budget.",
+  "changed_files": [
+    "src/sylion-pipeline/sylion/aeis/testing/operator_onboarding.py",
+    "src/sylion-pipeline/sylion/api/test_center_routes.py",
+    "src/sylion-pipeline/tests/aeis/testing/test_operator_onboarding.py",
+    "docs/aeis_repair_v2/production_roadmap/PROD_R8_OPERATOR_ONBOARDING_PASS12.md"
+  ],
+  "frozen_flow": [
+    "reset state",
+    "system check",
+    "storage validate",
+    "save steps 1-7",
+    "model gate",
+    "complete phase1",
+    "acceptance test",
+    "has_completed",
+    "state after complete",
+    "frontend wizard/hook/api/banner contract"
+  ],
+  "production_probe": {
+    "status": "PASS",
+    "checked_steps": 15,
+    "failed_steps": 0,
+    "elapsed_minutes_observed": 0.026,
+    "max_minutes": 15,
+    "acceptance_status": "PASS",
+    "has_completed": true,
+    "workspace_folder_count": 15,
+    "secrets_redacted": true,
+    "rbac": "operator bearer token minted and used for full-app mutation probes"
+  },
+  "verification": {
+    "pass1": [
+      "compileall operator_onboarding.py test_center_routes.py: PASS",
+      "pytest test_operator_onboarding.py: 4 passed",
+      "full-app OperatorOnboardingRunner probe: PASS, 15 steps, 0 failed",
+      "pytest test_operator_onboarding.py + test_advisor_rest_routes.py + test_test_center_routes.py: 49 passed",
+      "npx tsc --noEmit --pretty false: PASS",
+      "run_no_mock_scan(limit=500): PASS, blocking_count 0",
+      "git diff --check: PASS"
+    ],
+    "pass2": [
+      "pytest test_operator_onboarding.py + test_advisor_rest_routes.py + test_test_center_routes.py: 49 passed",
+      "npx tsc --noEmit --pretty false: PASS",
+      "run_no_mock_scan(limit=500): PASS, blocking_count 0",
+      "git diff --check: PASS"
+    ]
+  },
+  "rollback_plan": [
+    "Remove PROD_R8_OPERATOR_ONBOARDING_PASS12.md to make ProductionReadinessRunner block PROD_READY again.",
+    "Revert operator_onboarding.py and the Test Center endpoint if the probe has false negatives.",
+    "Keep existing Advisor onboarding routes and tests intact; this change adds a production guard rather than replacing the route implementation."
+  ],
+  "residual_risk": [
+    "The probe is automated and API-driven with static frontend contract checks. Browser click-through screenshots are still useful as an additional manual evidence layer, but the production blocker is closed by the backend/UI contract and PASS1/PASS2 freeze."
+  ]
+}
