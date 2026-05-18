@@ -13,11 +13,12 @@
     "core.event_bus"
   ],
   "publishes_events": [
-    "evidence.appended"
+    "evidence.appended",
+    "evidence.artifact.registered"
   ],
   "consumes_events": [],
-  "description": "Immutable hash-chain audit log. SHA-256 chain with tamper-evident evidence entries.",
+  "description": "Immutable hash-chain audit log and artifact registry. SHA-256 chain with tamper-evident entries and checksummed evidence artifacts.",
   "version": "1.0.0",
   "milestone": "M0",
-  "lifecycle_stage": "draft"
+  "lifecycle_stage": "beta"
 }

@@ -82,6 +82,34 @@ class TestCoreRoutes:
         assert r.status_code == 200
         assert "valid" in r.json()
 
+    def test_register_and_verify_evidence_artifact(self):
+        r = client.post("/api/v1/core/evidence/artifacts/json", params={
+            "source": "api_response",
+            "artifact_type": "funding_preview",
+            "retention_policy": "production-freeze",
+            "payload": '{"status": "pass", "flow": "funding"}',
+            "metadata": '{"route": "/api/v1/funding/submission/preview"}',
+            "actor_id": "operator",
+        })
+        assert r.status_code == 201
+        artifact = r.json()
+        assert artifact["evidence_id"].startswith("ev_")
+        assert artifact["checksum"].startswith("sha256:")
+        assert artifact["retention_policy"] == "production-freeze"
+        assert artifact["chain_entry_id"]
+
+        listed = client.get("/api/v1/core/evidence/artifacts", params={"source": "api_response"})
+        assert listed.status_code == 200
+        assert any(item["evidence_id"] == artifact["evidence_id"] for item in listed.json()["artifacts"])
+
+        fetched = client.get(f"/api/v1/core/evidence/artifacts/{artifact['evidence_id']}")
+        assert fetched.status_code == 200
+        assert fetched.json()["metadata"]["route"] == "/api/v1/funding/submission/preview"
+
+        verified = client.get(f"/api/v1/core/evidence/artifacts/{artifact['evidence_id']}/verify")
+        assert verified.status_code == 200
+        assert verified.json()["valid"] is True
+
     def test_publish_and_list_contracts(self):
         name = _uid("ctr")
         r = client.post("/api/v1/core/contracts", params={

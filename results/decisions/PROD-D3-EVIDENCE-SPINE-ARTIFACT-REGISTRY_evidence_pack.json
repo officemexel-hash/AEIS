@@ -1,0 +1,50 @@
+{
+  "decision_id": "PROD-D3-EVIDENCE-SPINE-ARTIFACT-REGISTRY",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires Evidence Spine to aggregate freeze register items, bug ledger records, audit JSONL, screenshots and API responses with evidence_id, source, checksum and retention_policy. This change extends the public core EvidenceSpine API with a checksummed artifact registry and API endpoints while preserving the existing hash-chain append/query/verify contract. It is D3 because it changes a core public API and introduces a new persistent table used by audit and governance consumers.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert artifact registry methods and EvidenceArtifact from core/evidence_spine.py.",
+      "Revert artifact endpoints from api/core_routes.py.",
+      "Revert core.evidence_spine manifest event and lifecycle changes.",
+      "Revert artifact-specific tests in test_core_evidence_spine.py and test_api_integration.py.",
+      "Run the evidence spine, memory evidence store, signer v2, lifecycle gate and API integration tests twice.",
+      "Leave any existing evidence_artifacts rows inert; do not delete production audit data during rollback."
+    ],
+    "estimated_time": "20 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that Evidence Spine can register JSON and file artifacts, attach them to the hash chain, list/filter them, expose them through API routes and detect file checksum drift.",
+    "pre_conditions": [
+      "Core EvidenceSpine is initialized with a clean SQLite database.",
+      "API integration tests run against the FastAPI app test client.",
+      "Temporary file artifact is available for checksum verification."
+    ],
+    "steps": [
+      "Register a JSON artifact and verify evidence_id, checksum, retention_policy and chain_entry_id.",
+      "Register a file artifact, verify it succeeds, mutate the file and verify checksum_mismatch.",
+      "List artifacts by source and artifact_type.",
+      "Verify the existing Evidence Spine hash chain remains valid.",
+      "Register and verify a JSON artifact through /api/v1/core/evidence/artifacts/json.",
+      "Run the broad evidence/API test suite twice."
+    ],
+    "expected_outcome": "Artifacts have stable evidence_id values, sha256 checksums, retention policy metadata, chain links, API visibility and tamper detection for file-backed artifacts.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:23:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "evidence-spine",
+    "artifact-registry",
+    "checksum",
+    "audit",
+    "core-api"
+  ]
+}

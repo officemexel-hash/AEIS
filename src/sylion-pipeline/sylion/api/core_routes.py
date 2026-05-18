@@ -213,6 +213,64 @@ def replay_evidence(since: float | None = None):
     return {"evidence": spine.replay(since=since)}
 
 
+@router.get("/evidence/artifacts")
+def list_evidence_artifacts(source: str | None = None,
+                            artifact_type: str | None = None,
+                            limit: int = 100):
+    """List registered evidence artifacts with checksums and retention policy."""
+    spine = get_evidence_spine()
+    return {"artifacts": spine.list_artifacts(source=source, artifact_type=artifact_type, limit=limit)}
+
+
+@router.post("/evidence/artifacts/json", status_code=201)
+def register_json_evidence_artifact(source: str,
+                                    payload: str = "{}",
+                                    artifact_type: str = "api_response",
+                                    retention_policy: str = "default",
+                                    metadata: str = "{}",
+                                    actor_id: str = ""):
+    """Register a JSON artifact in Evidence Spine and link it to the hash chain."""
+    import json
+    spine = get_evidence_spine()
+    try:
+        payload_json = json.loads(payload)
+        metadata_json = json.loads(metadata)
+        if not isinstance(payload_json, dict):
+            raise ValueError("payload must be a JSON object")
+        if not isinstance(metadata_json, dict):
+            raise ValueError("metadata must be a JSON object")
+        return spine.register_json_artifact(
+            payload_json,
+            source=source,
+            artifact_type=artifact_type,
+            retention_policy=retention_policy,
+            metadata=metadata_json,
+            actor_id=actor_id,
+        )
+    except (ValueError, json.JSONDecodeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/evidence/artifacts/{evidence_id}")
+def get_evidence_artifact(evidence_id: str):
+    """Get one evidence artifact by evidence_id."""
+    spine = get_evidence_spine()
+    artifact = spine.get_artifact(evidence_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail=f"Evidence artifact {evidence_id} not found")
+    return artifact
+
+
+@router.get("/evidence/artifacts/{evidence_id}/verify")
+def verify_evidence_artifact(evidence_id: str):
+    """Verify an artifact checksum when the original file is still available."""
+    spine = get_evidence_spine()
+    result = spine.verify_artifact(evidence_id)
+    if result.get("reason") == "not_found":
+        raise HTTPException(status_code=404, detail=f"Evidence artifact {evidence_id} not found")
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Decision Gate Engine
 # ---------------------------------------------------------------------------

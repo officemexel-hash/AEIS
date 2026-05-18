@@ -10,6 +10,7 @@ import pytest
 
 from sylion.core.evidence_spine import (
     GENESIS_PREV_HASH,
+    EvidenceArtifact,
     EvidenceEntry,
     EvidenceSpine,
     _canonical_json,
@@ -194,6 +195,96 @@ class TestAppend:
         result = spine.append(entry)
         rows = spine.query()
         assert json.loads(rows[0]["payload"]) == payload
+
+
+# ---------------------------------------------------------------------------
+# Artifact registry
+# ---------------------------------------------------------------------------
+
+class TestArtifactRegistry:
+    def test_register_json_artifact_links_checksum_and_chain(self, spine):
+        artifact = spine.register_json_artifact(
+            {"status": "pass", "flow": "funding-submit"},
+            source="freeze_register",
+            artifact_type="api_response",
+            retention_policy="production-freeze",
+            metadata={"flow_id": "FLOW-001"},
+            actor_id="operator",
+        )
+
+        assert artifact["evidence_id"].startswith("ev_")
+        assert artifact["source"] == "freeze_register"
+        assert artifact["artifact_type"] == "api_response"
+        assert artifact["checksum"].startswith("sha256:")
+        assert artifact["retention_policy"] == "production-freeze"
+        assert artifact["metadata"]["flow_id"] == "FLOW-001"
+        assert artifact["chain_entry_id"]
+        assert artifact["chain_hash"]
+
+        chain_entries = spine.query(event_type="evidence.artifact.registered")
+        assert len(chain_entries) == 1
+        payload = json.loads(chain_entries[0]["payload"])
+        assert payload["evidence_id"] == artifact["evidence_id"]
+        assert payload["checksum"] == artifact["checksum"]
+
+    def test_register_file_artifact_verifies_and_detects_tamper(self, tmp_path):
+        spine = EvidenceSpine()
+        screenshot = tmp_path / "dashboard.png"
+        screenshot.write_bytes(b"fake-png-bytes")
+
+        artifact = spine.register_file_artifact(
+            screenshot,
+            source="screenshot",
+            artifact_type="dashboard_screenshot",
+            retention_policy="production-freeze",
+            metadata={"viewport": "1440x900"},
+        )
+
+        assert artifact["size_bytes"] == len(b"fake-png-bytes")
+        assert spine.verify_artifact(artifact["evidence_id"])["valid"] is True
+
+        screenshot.write_bytes(b"tampered")
+        verification = spine.verify_artifact(artifact["evidence_id"])
+        assert verification["valid"] is False
+        assert verification["reason"] == "checksum_mismatch"
+
+    def test_list_artifacts_filters_by_source_and_type(self, spine):
+        spine.register_artifact(EvidenceArtifact(
+            evidence_id="ev_freeze",
+            source="freeze_register",
+            artifact_type="freeze_doc",
+            checksum="sha256:" + "a" * 64,
+            retention_policy="production-freeze",
+        ))
+        spine.register_artifact(EvidenceArtifact(
+            evidence_id="ev_bug",
+            source="bug_ledger",
+            artifact_type="bug_report",
+            checksum="sha256:" + "b" * 64,
+            retention_policy="incident-retention",
+        ))
+
+        assert [item["evidence_id"] for item in spine.list_artifacts(source="freeze_register")] == ["ev_freeze"]
+        assert [item["evidence_id"] for item in spine.list_artifacts(artifact_type="bug_report")] == ["ev_bug"]
+        valid, message = spine.verify_chain()
+        assert valid is True
+        assert "2 entries" in message
+
+    def test_register_artifact_requires_production_metadata(self, spine):
+        with pytest.raises(ValueError, match="source is required"):
+            spine.register_artifact(EvidenceArtifact(
+                source="",
+                artifact_type="freeze_doc",
+                checksum="sha256:" + "a" * 64,
+                retention_policy="production-freeze",
+            ))
+        with pytest.raises(ValueError, match="checksum is required"):
+            spine.register_artifact(EvidenceArtifact(
+                source="freeze_register",
+                artifact_type="freeze_doc",
+                checksum="",
+                retention_policy="production-freeze",
+            ))
 
 
 # ---------------------------------------------------------------------------
