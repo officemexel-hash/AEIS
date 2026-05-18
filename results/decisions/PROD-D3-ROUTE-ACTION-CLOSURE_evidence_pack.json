@@ -1,0 +1,57 @@
+{
+  "decision_id": "PROD-D3-ROUTE-ACTION-CLOSURE",
+  "decision_class": "D3",
+  "title": "Route-action closure production guard",
+  "status": "FROZEN_2X",
+  "created_at": "2026-05-18T08:01:00+02:00",
+  "requirement_id": "PROD-P2-004",
+  "rationale": "Priority dashboard surfaces must not be considered production ready unless their UI action path, frontend client path, backend FastAPI route and error/no-content handling are all proven together.",
+  "changed_files": [
+    "src/sylion-pipeline/sylion/aeis/testing/route_action_closure.py",
+    "src/sylion-pipeline/sylion/api/test_center_routes.py",
+    "src/sylion-pipeline/tests/aeis/testing/test_route_action_closure.py",
+    "src/sylion-frontend/src/lib/api/client.ts",
+    "docs/aeis_repair_v2/production_roadmap/PROD_R7_ROUTE_ACTION_CLOSURE_PASS12.md"
+  ],
+  "fixed_defects": [
+    "Contracts frontend client used non-proxied /contracts paths instead of /api/v1/contracts.",
+    "No production guard existed to fail closed when a priority UI action lost its backend route or frontend marker."
+  ],
+  "frozen_manifest": [
+    "advisor.card.action",
+    "planning.phase28.masterplan",
+    "source_of_truth.freeze_canon",
+    "masterplan.freeze",
+    "ontology.reload",
+    "contracts.list.active",
+    "contracts.register",
+    "templates_setup.defaults.apply",
+    "environments.create"
+  ],
+  "verification": {
+    "pass1": [
+      "compileall route_action_closure.py test_center_routes.py: PASS",
+      "pytest test_route_action_closure.py: 5 passed",
+      "pytest selected Test Center readiness/health: 2 passed",
+      "pytest test_route_action_closure.py + test_test_center_routes.py: 33 passed",
+      "npm run lint -- src/lib/api/client.ts: 0 errors, existing warnings only",
+      "npx tsc --noEmit --pretty false: PASS",
+      "run_no_mock_scan(limit=500): PASS, blocking_count 0",
+      "git diff --check: PASS"
+    ],
+    "pass2": [
+      "pytest test_route_action_closure.py + test_test_center_routes.py: 33 passed",
+      "npx tsc --noEmit --pretty false: PASS",
+      "run_no_mock_scan(limit=500): PASS, blocking_count 0",
+      "git diff --check: PASS"
+    ]
+  },
+  "rollback_plan": [
+    "Revert route_action_closure.py and its endpoint if the guard blocks a release incorrectly.",
+    "Keep the /api/v1/contracts client path repair unless the backend routing contract changes.",
+    "Remove PROD_R7_ROUTE_ACTION_CLOSURE_PASS12.md to make ProductionReadinessRunner block production ready again."
+  ],
+  "residual_risk": [
+    "This freeze proves route-action contracts and response handling. It does not replace browser click-through testing with real operator data."
+  ]
+}

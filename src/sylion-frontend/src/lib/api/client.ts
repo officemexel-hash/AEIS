@@ -1690,13 +1690,13 @@ export const api = {
 
   // Contracts
   listContractsActive: (activeOnly?: boolean) =>
-    request<any>(`/contracts?active_only=${activeOnly ?? ''}`),
+    request<any>(`/api/v1/contracts?active_only=${activeOnly ?? ""}`),
   getContract: (contractId: string) =>
-    request<any>(`/contracts/${encodeURIComponent(contractId)}`),
+    request<any>(`/api/v1/contracts/${encodeURIComponent(contractId)}`),
   registerContract: (data: Record<string, unknown>) =>
-    request<any>('/contracts', { method: 'POST', body: JSON.stringify(data) }),
+    request<any>("/api/v1/contracts", { method: "POST", body: JSON.stringify(data) }),
   bindContract: (data: Record<string, unknown>) =>
-    request<any>('/contracts/bindings', { method: 'POST', body: JSON.stringify(data) }),
+    request<any>("/api/v1/contracts/bindings", { method: "POST", body: JSON.stringify(data) }),
 
   // Bundles
   listBundles: (status?: string) =>

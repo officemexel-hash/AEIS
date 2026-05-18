@@ -19,7 +19,7 @@ import time
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 log = logging.getLogger("sylion.api.test_center_routes")
@@ -1818,6 +1818,14 @@ def production_readiness_command(payload: ProductionReadinessCommandPayload) -> 
     )
 
 
+@router.get("/route-action-closure")
+def route_action_closure(request: Request) -> dict[str, Any]:
+    """Verify that priority UI actions have live backend routes and error handling."""
+    from sylion.aeis.testing.route_action_closure import RouteActionClosureRunner
+
+    return RouteActionClosureRunner(app=request.app).run().to_dict()
+
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -1830,7 +1838,7 @@ def health() -> dict:
         "endpoints": [
             "personas", "scenarios", "dashboard", "truth-alignment",
             "simulation", "auto-repair", "release-gate", "catalog",
-            "no-mock-scan", "production-readiness", "theater",
+            "no-mock-scan", "production-readiness", "route-action-closure", "theater",
         ],
         "as_of": time.time(),
     }
