@@ -1,8 +1,8 @@
 ﻿# AEIS - pelna dokumentacja systemu 2026
 
-Data: 2026-05-17
+Data: 2026-05-18
 Zakres: runtime lokalny AEIS 3.5.0, frontend Next.js, backend FastAPI, dashboard operatorski, projektowy lifecycle, funding, test center, orchestration, memory, skills, Human Gate i warstwa W1-W19.
-Status dokumentacji: wersja 1.0, oparta o kod, OpenAPI, runtime health, screenshoty i retest dashboardowy P1-P4.
+Status dokumentacji: wersja 1.1, oparta o kod, OpenAPI, runtime health, screenshoty, retest dashboardowy P1-P4 i roadmapa produkcyjna 2026-05-18.
 
 ## Spis tresci
 
@@ -34,6 +34,7 @@ Jezeli jakas funkcja ma route, ale brak pelnego testu akcji, jest opisana jako `
 | [03_PROJEKTY_FAZY_TUTORIAL.md](03_PROJEKTY_FAZY_TUTORIAL.md) | Tutorial tworzenia projektu, fazy 16-41, cztery projekty probne od latwego do trudnego. |
 | [04_KONFIG_ORCHESTRACJA_TESTY.md](04_KONFIG_ORCHESTRACJA_TESTY.md) | Konfiguracja, model council, orchestration J1-J9, skills, memory, test center, freeze policy. |
 | [05_FUNDING_MOBILE_HELPTIPS.md](05_FUNDING_MOBILE_HELPTIPS.md) | Funding end-to-end, mobile operator, HelpTipy, legenda zakladek i funkcji. |
+| [06_ROADMAP_PRODUKCYJNA.md](06_ROADMAP_PRODUKCYJNA.md) | Roadmapa brakow, napraw, zmian i testow wymaganych do statusu production ready. |
 | [screenshots/](screenshots/) | Screenshoty z dzialajacego systemu wykonane 2026-05-17. |
 
 ## Najwazniejsze fakty runtime
