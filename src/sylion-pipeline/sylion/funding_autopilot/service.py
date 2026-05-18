@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import time
 import zipfile
@@ -76,6 +77,17 @@ CATEGORY_RULES = [
 
 def _now() -> float:
     return time.time()
+
+
+def _canonical_payload_hash(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _export_section_label(section_name: str) -> str:
@@ -514,6 +526,91 @@ class FundingAutopilotService:
         if validation.get("review_readiness") != "ready":
             return "blocked_review"
         return ready_status
+
+    def _submission_blockers(self, validation: dict[str, Any]) -> list[dict[str, Any]]:
+        blockers: list[dict[str, Any]] = []
+        missing_documents = list(validation.get("missing_documents", []))
+        if missing_documents:
+            blockers.append(
+                {
+                    "code": "documents_missing",
+                    "message": "Required application documents are missing.",
+                    "evidence": missing_documents,
+                }
+            )
+        review_readiness = str(validation.get("review_readiness", "not_reviewed") or "not_reviewed")
+        if review_readiness != "ready":
+            blockers.append(
+                {
+                    "code": "review_not_ready",
+                    "message": "Application review must be ready before external submit.",
+                    "evidence": {"review_readiness": review_readiness},
+                }
+            )
+        return blockers
+
+    def _build_submission_preview_payload(
+        self,
+        session: dict[str, Any],
+        application: dict[str, Any],
+        validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        company = self._require_company(application["company_id"])
+        project = self._require_project(application["project_id"])
+        call = self.store.get_call(application.get("call_id", ""))
+        blockers = self._submission_blockers(validation)
+        return {
+            "action": "external_funding_submit",
+            "finality": "no_rollback_after_real_submit",
+            "session": {
+                "session_id": session["session_id"],
+                "portal_url": session.get("portal_url", ""),
+                "draft_reference": session.get("draft_reference", ""),
+                "prepared_fields": session.get("prepared_fields_json", {}),
+            },
+            "application": {
+                "application_id": application["application_id"],
+                "company_id": application["company_id"],
+                "project_id": application["project_id"],
+                "call_id": application.get("call_id", ""),
+                "status": application.get("status", ""),
+                "updated_at": application.get("updated_at"),
+                "package": application.get("package_json", {}),
+                "review": application.get("review_json", {}),
+                "exports": application.get("export_json", {}),
+            },
+            "company_profile": company,
+            "project": project,
+            "call": call or {},
+            "validation": validation,
+            "blockers": blockers,
+            "grant_amount": self._grant_amount_for_application(application),
+        }
+
+    def preview_submission(self, session_id: str, actor: str = "") -> dict[str, Any]:
+        session = self._require_submission_session(session_id)
+        application = self._refresh_application_compliance(self._require_application(session["application_id"]), persist=True)
+        validation = self._build_submission_validation(application)
+        payload = self._build_submission_preview_payload(session, application, validation)
+        payload_hash = _canonical_payload_hash(payload)
+        preview = {
+            "session_id": session_id,
+            "application_id": application["application_id"],
+            "ready": not payload["blockers"],
+            "blockers": payload["blockers"],
+            "payload_hash": payload_hash,
+            "payload_json": payload,
+            "finality_notice": "External submit is final after the real portal submission. AEIS can record and track it, but cannot roll it back.",
+        }
+        if actor:
+            self.store.record_audit_event(
+                actor,
+                "funding.submission.previewed",
+                {"session_id": session_id, "payload_hash": payload_hash, "ready": preview["ready"]},
+                company_id=application["company_id"],
+                application_id=application["application_id"],
+            )
+        return preview
 
     def _assert_submission_ready(self, session: dict[str, Any], application: dict[str, Any], *, action_name: str) -> dict[str, Any]:
         validation = self._build_submission_validation(application)
@@ -1457,11 +1554,22 @@ class FundingAutopilotService:
         session = self._require_submission_session(session_id)
         application = self._refresh_application_compliance(self._require_application(session["application_id"]), persist=True)
         validation = self._assert_submission_ready(session, application, action_name="request approval")
+        preview_payload = self._build_submission_preview_payload(session, application, validation)
+        payload_hash = _canonical_payload_hash(preview_payload)
         governance_ticket_id = submit_submission_ticket(
             application_id=application["application_id"],
             session_id=session_id,
             portal=session.get("portal_url", ""),
             amount=self._grant_amount_for_application(application),
+            payload_hash=payload_hash,
+            preview_summary={
+                "application_id": application["application_id"],
+                "session_id": session_id,
+                "portal_url": session.get("portal_url", ""),
+                "draft_reference": session.get("draft_reference", ""),
+                "grant_amount": self._grant_amount_for_application(application),
+                "blockers": [],
+            },
         )
         event = self.store.create_approval_event(
             {
@@ -1474,6 +1582,9 @@ class FundingAutopilotService:
                     "notes": notes,
                     "application_version": application.get("updated_at"),
                     "validation": validation,
+                    "payload_hash": payload_hash,
+                    "preview_payload": preview_payload,
+                    "finality_notice": "External submit is final after the real portal submission. AEIS can record and track it, but cannot roll it back.",
                     "governance_ticket_id": governance_ticket_id,
                     "human_gate_state": "pending",
                 },
@@ -1490,7 +1601,7 @@ class FundingAutopilotService:
                 "receipt": session.get("receipt_json", {}),
             },
         )
-        self.store.record_audit_event(requested_by, "funding.submission.approval_requested", {"session_id": session_id, "approval_event_id": event["approval_event_id"], "governance_ticket_id": governance_ticket_id}, company_id=application["company_id"], application_id=application["application_id"])
+        self.store.record_audit_event(requested_by, "funding.submission.approval_requested", {"session_id": session_id, "approval_event_id": event["approval_event_id"], "governance_ticket_id": governance_ticket_id, "payload_hash": payload_hash}, company_id=application["company_id"], application_id=application["application_id"])
         return event
 
     def _require_submission_human_gate_approval(
@@ -1524,6 +1635,23 @@ class FundingAutopilotService:
             )
         return governance_ticket_id
 
+    def _require_approved_preview_payload(
+        self,
+        session: dict[str, Any],
+        application: dict[str, Any],
+        validation: dict[str, Any],
+        latest_approval: dict[str, Any],
+    ) -> tuple[str, dict[str, Any]]:
+        current_payload = self._build_submission_preview_payload(session, application, validation)
+        current_hash = _canonical_payload_hash(current_payload)
+        approval_payload = latest_approval.get("payload_json", {}) or {}
+        approved_hash = str(approval_payload.get("payload_hash") or "")
+        if not approved_hash:
+            raise ValueError("Approval request is missing a submission payload hash. Request a fresh approval before final submit.")
+        if current_hash != approved_hash:
+            raise ValueError("Submission payload changed since approval request. Request a fresh approval before final submit.")
+        return current_hash, current_payload
+
     def submit(self, session_id: str, approved_by: str, confirm_legal: bool, confirm_budget: bool, confirm_documents: bool, portal_submission_reference: str) -> dict[str, Any]:
         session = self._require_submission_session(session_id)
         application = self._refresh_application_compliance(self._require_application(session["application_id"]), persist=True)
@@ -1539,6 +1667,7 @@ class FundingAutopilotService:
         if latest.get("status") != "pending":
             raise ValueError("Latest approval request is not pending. Request a fresh approval before final submit.")
         governance_ticket_id = self._require_submission_human_gate_approval(session, application, latest)
+        payload_hash, preview_payload = self._require_approved_preview_payload(session, application, validation, latest)
         self.store.update_approval_event(
             latest["approval_event_id"],
             {
@@ -1551,6 +1680,8 @@ class FundingAutopilotService:
                     "governance_ticket_id": governance_ticket_id,
                     "human_gate_state": "approved",
                     "portal_submission_reference": portal_submission_reference,
+                    "payload_hash": payload_hash,
+                    "preview_payload": preview_payload,
                 },
             },
         )
@@ -1561,6 +1692,10 @@ class FundingAutopilotService:
             "submitted_by": approved_by,
             "portal_submission_reference": portal_submission_reference,
             "draft_reference": session.get("draft_reference", ""),
+            "payload_hash": payload_hash,
+            "approval_event_id": latest["approval_event_id"],
+            "governance_ticket_id": governance_ticket_id,
+            "no_rollback_after_real_submit": True,
         }
         updated_session = self.store.update_submission_session(
             session_id,
@@ -1582,7 +1717,7 @@ class FundingAutopilotService:
                 "exports": application.get("export_json", {}),
             },
         )
-        self.store.record_audit_event(approved_by, "funding.submission.submitted", {**receipt, "governance_ticket_id": governance_ticket_id}, company_id=application["company_id"], application_id=application["application_id"])
+        self.store.record_audit_event(approved_by, "funding.submission.submitted", receipt, company_id=application["company_id"], application_id=application["application_id"])
         return {"session": updated_session, "application": updated_application, "receipt": receipt, "governance_ticket_id": governance_ticket_id}
 
     def get_submission_receipt(self, session_id: str) -> dict[str, Any]:

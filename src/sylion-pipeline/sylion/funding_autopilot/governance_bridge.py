@@ -215,6 +215,8 @@ def submit_submission_ticket(
     session_id: str,
     portal: str = "",
     amount: float = 0.0,
+    payload_hash: str = "",
+    preview_summary: dict[str, Any] | None = None,
 ) -> str:
     """Submit a governance ticket for final grant submission.
 
@@ -236,6 +238,8 @@ def submit_submission_ticket(
             "session_id": session_id,
             "portal": portal,
             "amount": amount,
+            "payload_hash": payload_hash,
+            "preview_summary": preview_summary or {},
         },
     ))
 

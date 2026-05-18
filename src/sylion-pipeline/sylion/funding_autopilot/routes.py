@@ -476,6 +476,14 @@ async def save_submission_draft(body: SubmissionSaveDraftRequest, request: Reque
         _raise_http(exc)
 
 
+@router.get("/submission/preview")
+async def preview_submission(request: Request, session_id: str = Query(...)):
+    try:
+        return _service.preview_submission(session_id, resolve_actor(request))
+    except ValueError as exc:
+        _raise_http(exc)
+
+
 @router.post("/submission/request-approval")
 async def request_submission_approval(body: SubmissionApprovalRequest, request: Request):
     try:

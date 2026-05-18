@@ -13,5 +13,5 @@
   "description": "Playwright-based portal automation for form filling, draft saving, and final submission on EU and national funding portals.",
   "version": "1.0.0",
   "milestone": "M0",
-  "lifecycle_stage": "validate"
+  "lifecycle_stage": "beta"
 }

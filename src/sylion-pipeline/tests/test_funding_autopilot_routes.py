@@ -267,6 +267,12 @@ def test_funding_submission_gate_blocks_approval_and_submit_when_documents_are_m
     assert draft.status_code == 200
     assert draft.json()["status"] == "blocked_missing_documents"
 
+    blocked_preview = client.get(f"/api/v1/funding/submission/preview?session_id={session_id}")
+    assert blocked_preview.status_code == 200
+    assert blocked_preview.json()["ready"] is False
+    assert blocked_preview.json()["payload_hash"]
+    assert {item["code"] for item in blocked_preview.json()["blockers"]} == {"documents_missing", "review_not_ready"}
+
     approval = client.post(
         "/api/v1/funding/submission/request-approval",
         json={"session_id": session_id, "notes": "Try to bypass missing documents"},
@@ -582,6 +588,15 @@ def test_funding_autopilot_end_to_end_flow():
     assert draft.status_code == 200
     assert draft.json()["draft_reference"].startswith("draft-")
 
+    preview = client.get(f"/api/v1/funding/submission/preview?session_id={session_id}")
+    assert preview.status_code == 200
+    preview_json = preview.json()
+    assert preview_json["ready"] is True
+    assert preview_json["blockers"] == []
+    assert preview_json["payload_json"]["finality"] == "no_rollback_after_real_submit"
+    preview_hash = preview_json["payload_hash"]
+    assert len(preview_hash) == 64
+
     approval = client.post(
         "/api/v1/funding/submission/request-approval",
         json={"session_id": session_id, "notes": "Final legal review complete"},
@@ -589,12 +604,14 @@ def test_funding_autopilot_end_to_end_flow():
     assert approval.status_code == 200
     approval_json = approval.json()
     assert approval_json["status"] == "pending"
+    assert approval_json["payload_json"]["payload_hash"] == preview_hash
     governance_ticket_id = approval_json["payload_json"]["governance_ticket_id"]
     governance_ticket = fetch_by_id(governance_ticket_id)
     assert governance_ticket is not None
     assert governance_ticket.decision_class == "D4"
     assert governance_ticket.gate_type == "financial"
     assert governance_ticket.state == "pending"
+    assert governance_ticket.payload["payload_hash"] == preview_hash
 
     blocked_submit = client.post(
         "/api/v1/funding/submission/submit",
@@ -610,12 +627,62 @@ def test_funding_autopilot_end_to_end_flow():
     assert blocked_submit.status_code == 400
     assert "Human Gate approval" in blocked_submit.json()["detail"]
 
+    changed_profile = client.put(
+        "/api/v1/funding/company-profile",
+        json={
+            "company_id": "default",
+            "legal_name": "Razor Systems Updated",
+            "tax_id": "1234567890",
+            "registration_id": "KRS0001",
+            "country": "Poland",
+            "legal_form": "sp. z o.o.",
+            "sme_status": "SME",
+            "employees": 24,
+            "annual_revenue": 4200000,
+            "technologies": ["AI", "Computer Vision"],
+            "products": ["Industrial monitoring platform"],
+            "representative_name": "Jan Kowalski",
+            "representative_email": "jan@example.com",
+        },
+    )
+    assert changed_profile.status_code == 200
+
     assert resolve(
         governance_ticket_id,
         "approved",
         reason="operator approved final funding submission",
         reviewer="operator@example.com",
     ) is True
+    drifted_submit = client.post(
+        "/api/v1/funding/submission/submit",
+        json={
+            "session_id": session_id,
+            "approved_by": "operator@example.com",
+            "confirm_legal": True,
+            "confirm_budget": True,
+            "confirm_documents": True,
+            "portal_submission_reference": "PORTAL-REF-001",
+        },
+    )
+    assert drifted_submit.status_code == 400
+    assert "changed since approval" in drifted_submit.json()["detail"]
+
+    fresh_approval = client.post(
+        "/api/v1/funding/submission/request-approval",
+        json={"session_id": session_id, "notes": "Fresh approval after profile update"},
+    )
+    assert fresh_approval.status_code == 200
+    fresh_approval_json = fresh_approval.json()
+    fresh_preview_hash = fresh_approval_json["payload_json"]["payload_hash"]
+    assert fresh_preview_hash != preview_hash
+    fresh_governance_ticket_id = fresh_approval_json["payload_json"]["governance_ticket_id"]
+    assert resolve(
+        fresh_governance_ticket_id,
+        "approved",
+        reason="operator approved refreshed final funding submission",
+        reviewer="operator@example.com",
+    ) is True
+
     submit = client.post(
         "/api/v1/funding/submission/submit",
         json={
@@ -629,11 +696,14 @@ def test_funding_autopilot_end_to_end_flow():
     )
     assert submit.status_code == 200
     assert submit.json()["receipt"]["portal_submission_reference"] == "PORTAL-REF-001"
-    assert submit.json()["governance_ticket_id"] == governance_ticket_id
+    assert submit.json()["receipt"]["payload_hash"] == fresh_preview_hash
+    assert submit.json()["receipt"]["no_rollback_after_real_submit"] is True
+    assert submit.json()["governance_ticket_id"] == fresh_governance_ticket_id
 
     receipt = client.get(f"/api/v1/funding/submission/receipt?session_id={session_id}")
     assert receipt.status_code == 200
     assert receipt.json()["receipt"]["submitted_by"] == "operator@example.com"
+    assert receipt.json()["receipt"]["payload_hash"] == fresh_preview_hash
 
     crm = client.get("/api/v1/funding/crm/applications?company_id=default")
     assert crm.status_code == 200
@@ -649,4 +719,4 @@ def test_funding_autopilot_end_to_end_flow():
 
     report = client.get("/api/v1/funding/reports/executive?company_id=default")
     assert report.status_code == 200
-    assert report.json()["company_name"] == "Razor Systems"
+    assert report.json()["company_name"] == "Razor Systems Updated"

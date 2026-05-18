@@ -1,0 +1,50 @@
+{
+  "decision_id": "PROD-D3-FUNDING-SUBMISSION-PREVIEW-GATE",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires external funding submit to be gated by an exact operator preview, Human Gate approval, immutable audit evidence and a drift check before final submit. This change adds a public submission preview API, stores a deterministic payload hash in approval events and D4 funding tickets, rejects final submit when the current payload differs from the approved preview, and records the hash in receipt and audit payloads. It is D3 because it changes the public funding submission API and the cross-module funding-governance contract.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert the submission preview endpoint in funding_autopilot/routes.py.",
+      "Revert payload_hash and preview_payload enforcement in funding_autopilot/service.py.",
+      "Revert optional payload_hash fields in funding_autopilot/governance_bridge.py.",
+      "Restore the previous funding route test expectations.",
+      "Run the full funding test suite twice before deploying rollback.",
+      "Keep a manual Human Gate submit hold in place until an equivalent preview/hash control is restored."
+    ],
+    "estimated_time": "25 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify the operator can preview the exact funding submit payload, approval freezes its hash, data drift after approval blocks final submit, a fresh approval permits submit, and receipt/audit carry the same hash.",
+    "pre_conditions": [
+      "Funding store and governance ticket store are reset to isolated test databases.",
+      "A ready funding application has required documents, review readiness and a saved draft.",
+      "The funding governance post-resolve hook is registered."
+    ],
+    "steps": [
+      "Call the submission preview endpoint and capture payload_hash.",
+      "Request approval and verify the approval payload and D4 ticket payload contain the same hash.",
+      "Change the company profile after approval, approve the old ticket and verify submit is rejected as changed since approval.",
+      "Request a fresh approval, approve the fresh ticket and submit successfully.",
+      "Verify receipt includes payload_hash and no_rollback_after_real_submit.",
+      "Run src/sylion-pipeline/tests/test_funding_autopilot_routes.py and src/sylion-pipeline/tests/funding twice."
+    ],
+    "expected_outcome": "The system blocks stale approvals, permits only a freshly approved matching payload, and preserves the same hash through preview, approval, ticket, receipt and audit.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:17:46Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "funding",
+    "human-gate",
+    "submission-preview",
+    "audit",
+    "payload-hash"
+  ]
+}
