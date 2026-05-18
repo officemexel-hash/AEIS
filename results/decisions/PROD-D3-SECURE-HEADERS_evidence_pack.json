@@ -1,0 +1,44 @@
+{
+  "decision_id": "PROD-D3-SECURE-HEADERS",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires secure HTTP headers for HSTS, CSP and frame protection. Adding a FastAPI middleware changes the public HTTP response contract across API routes, so this is a D3 cross-cutting security change.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove SecurityHeadersMiddleware from sylion.api.app.",
+      "Delete or disable sylion.api.security_headers.",
+      "Remove the focused security header tests.",
+      "Run tests/api/test_security_headers.py and a health-route smoke test to confirm prior behavior."
+    ],
+    "estimated_time": "10 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify API responses include HSTS, CSP, X-Frame-Options, nosniff, referrer and permissions headers.",
+    "pre_conditions": [
+      "No external services are required.",
+      "Middleware is tested on an isolated Starlette app."
+    ],
+    "steps": [
+      "Run tests/api/test_security_headers.py twice.",
+      "Assert normal API responses receive the restrictive API CSP.",
+      "Assert docs routes receive a docs-compatible CSP.",
+      "Assert an existing explicit CSP header is not overwritten."
+    ],
+    "expected_outcome": "Security headers are consistently attached without breaking existing explicit CSP behavior.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:00:02.4742564Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "security-headers",
+    "hsts",
+    "csp",
+    "fastapi"
+  ]
+}

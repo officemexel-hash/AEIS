@@ -14,6 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from sylion.api.rate_limit import RateLimitMiddleware
 from sylion.api.rbac_enforcement import RBACEnforcementMiddleware
+from sylion.api.security_headers import SecurityHeadersMiddleware
 from sylion.api.faq_routes import router as faq_router
 from sylion.api.testing_routes import router as testing_router
 from sylion.api.test_center_routes import router as test_center_router
@@ -1080,14 +1081,17 @@ class TerminalActivityMiddleware(BaseHTTPMiddleware):
 # Phase 3 W2.3 + W2.4: middleware stack ordering.
 # Starlette wraps middleware so the LAST add_middleware is the OUTERMOST
 # (sees the request first). We need:
-#   request → AuthMiddleware → RBACEnforcement → RateLimit → route
+#   request → SecurityHeaders → AuthMiddleware → RBACEnforcement → RateLimit → route
 # so AuthMiddleware can populate request.state.user before RBAC reads it,
 # and RBAC can deny before rate-limit accounting fires.
-# Source order therefore: RateLimit (innermost), RBAC, Auth (outermost).
+# Source order therefore: RateLimit (innermost), RBAC, Auth, SecurityHeaders.
 app.add_middleware(TerminalActivityMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RBACEnforcementMiddleware)
 app.add_middleware(AuthMiddleware)
+# SecurityHeaders is intentionally last-added so it is outermost and can attach
+# headers to route responses and middleware-generated denials alike.
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(router)
 app.include_router(faq_router)
