@@ -46,6 +46,25 @@ interface ReleaseGateData {
   };
 }
 
+interface ProductionReadinessData {
+  status: string;
+  can_mark_production_ready: boolean;
+  p0_blockers: string[];
+  p1_blockers: string[];
+  warnings: string[];
+  next_blocker?: {
+    requirement_id: string;
+    title: string;
+    priority: string;
+    status: string;
+    next_action?: string;
+  } | null;
+  repair_protocol: {
+    command: string;
+    rules: string[];
+  };
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`);
   if (!response.ok) {
@@ -59,6 +78,7 @@ export default function TestCenterDashboardPage() {
   const backendLive = (healthRaw as { status?: string })?.status === "ok";
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [gate, setGate] = useState<ReleaseGateData | null>(null);
+  const [production, setProduction] = useState<ProductionReadinessData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectId, setProjectId] = useState("");
@@ -72,17 +92,22 @@ export default function TestCenterDashboardPage() {
         ? `?project_id=${encodeURIComponent(projectId.trim())}`
         : "";
       const gateProjectId = projectId.trim() || "proj_test_center_manual";
-      const [dashboardData, gateData] = await Promise.all([
+      const [dashboardData, gateData, productionData] = await Promise.all([
         fetchJson<DashboardData>(`/api/v1/test-center/dashboard${dashboardQuery}`),
         fetchJson<ReleaseGateData>(
           `/api/v1/test-center/release-gate?project_id=${encodeURIComponent(gateProjectId)}`,
         ),
+        fetchJson<ProductionReadinessData>(
+          `/api/v1/test-center/production-readiness?project_id=${encodeURIComponent(gateProjectId)}`,
+        ),
       ]);
       setDashboard(dashboardData);
       setGate(gateData);
+      setProduction(productionData);
     } catch (err) {
       setDashboard(null);
       setGate(null);
+      setProduction(null);
       setError(err instanceof Error ? err.message : "Nie udało się pobrać danych test-center.");
     } finally {
       setLoading(false);
@@ -98,6 +123,9 @@ export default function TestCenterDashboardPage() {
   const criticalCount = dashboard?.findings.open_p0_p1 ?? 0;
   const gateStatus = gate?.report.status ?? "not_evaluated";
   const blockers = gate?.report.blockers ?? [];
+  const productionStatus = production?.status ?? "not_evaluated";
+  const productionBlockers =
+    (production?.p0_blockers.length ?? 0) + (production?.p1_blockers.length ?? 0) + (production?.warnings.length ?? 0);
 
   return (
     <div className="space-y-6 p-6">
@@ -159,7 +187,7 @@ export default function TestCenterDashboardPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="text-xs uppercase text-muted-foreground flex items-center">
             Chartery
@@ -190,6 +218,18 @@ export default function TestCenterDashboardPage() {
           </div>
           <div className="text-[11px] text-muted-foreground">
             blockers {blockers.length}
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs uppercase text-muted-foreground flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> Production readiness
+            <HelpTip text="Twarda bramka roadmapy produkcyjnej. Jezeli jest BLOCKED, obowiazuje repair loop: napraw blad, uruchom PASS1, powtorz PASS2, zapisz freeze, dopiero idz dalej." />
+          </div>
+          <div className="text-2xl font-bold capitalize">
+            {productionStatus.replaceAll("_", " ").toLowerCase()}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            blockers {productionBlockers}
           </div>
         </Card>
       </div>
@@ -229,6 +269,34 @@ export default function TestCenterDashboardPage() {
               <li key={blocker}>{blocker}</li>
             ))}
           </ul>
+        )}
+      </Card>
+
+      <Card className="p-6">
+        <div className="text-sm font-semibold mb-2 flex items-center">
+          Production repair loop
+          <HelpTip text="Backend nie pozwala oznaczyc AEIS jako PROD_READY, dopoki P0/P1/P2 z roadmapy nie maja FROZEN_2X. Ta karta pokazuje nastepny bloker i komende naprawcza." />
+        </div>
+        {!production ? (
+          <div className="text-sm text-muted-foreground">Brak danych production readiness.</div>
+        ) : production.can_mark_production_ready ? (
+          <div className="text-sm text-emerald-700">PROD_READY: wszystkie wymagania bramki sa zamrozone.</div>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <div>
+              Komenda: <span className="font-mono">{production.repair_protocol.command}</span>
+            </div>
+            {production.next_blocker && (
+              <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="font-semibold">
+                  {production.next_blocker.priority} {production.next_blocker.requirement_id}: {production.next_blocker.title}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {production.next_blocker.next_action || "Fix, PASS1, PASS2, freeze, continue."}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </Card>
     </div>

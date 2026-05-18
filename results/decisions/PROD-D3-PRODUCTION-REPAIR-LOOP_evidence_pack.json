@@ -1,0 +1,51 @@
+{
+  "decision_id": "PROD-D3-PRODUCTION-REPAIR-LOOP",
+  "decision_class": "D3",
+  "rationale": "The operator requested a hard command that every detected error must be repaired before moving on, verified twice, frozen, and only then advanced. This change adds a production readiness runner and Test Center API/dashboard surface that blocks false PROD_READY claims while roadmap freeze evidence is missing. It is D3 because it introduces a public production readiness gate and operator command protocol used to govern release decisions.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove sylion.aeis.testing.production_readiness.",
+      "Remove /api/v1/test-center/production-readiness and /command routes.",
+      "Remove Test Center dashboard production readiness card.",
+      "Remove production readiness tests.",
+      "Run Test Center route tests twice.",
+      "Keep existing roadmap freeze evidence intact."
+    ],
+    "estimated_time": "15 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that production readiness cannot be marked ready with missing FROZEN_2X evidence, that the repair-loop command records the next blocker, and that the Test Center dashboard can display the command and status.",
+    "pre_conditions": [
+      "ProductionReadinessRunner can scan a repository root.",
+      "Roadmap freeze evidence files represent completed production items.",
+      "Test Center API is mounted.",
+      "Frontend dashboard page compiles."
+    ],
+    "steps": [
+      "Evaluate a temp repository with one missing P0 freeze file and verify BLOCKED.",
+      "Evaluate a temp repository with all configured freeze files and verify PROD_READY.",
+      "Record a repair-loop command and verify AEIS_PRODUCTION_REPAIR_LOOP plus next blocker.",
+      "Call /api/v1/test-center/production-readiness and /command.",
+      "Run Test Center route tests twice.",
+      "Run ESLint and TypeScript checks for the dashboard change."
+    ],
+    "expected_outcome": "False production-ready claims are blocked until every required item is frozen twice, and the dashboard shows the next repair blocker instead of an optimistic ready state.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T05:13:41Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "production-readiness",
+    "repair-loop",
+    "test-center",
+    "dashboard",
+    "no-false-ready"
+  ]
+}

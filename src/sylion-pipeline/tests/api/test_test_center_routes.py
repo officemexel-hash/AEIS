@@ -260,6 +260,34 @@ def test_release_gate_returns_checklist_for_project(client):
     )
 
 
+def test_production_readiness_endpoint_blocks_false_ready_claims(client):
+    r = client.get("/api/v1/test-center/production-readiness?project_id=proj_test_smoke")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] in {"BLOCKED", "PROD_READY"}
+    assert body["repair_protocol"]["command"] == "AEIS_PRODUCTION_REPAIR_LOOP"
+    assert isinstance(body["results"], list)
+    if body["status"] == "BLOCKED":
+        assert body["can_mark_production_ready"] is False
+        assert body["next_blocker"]["status"] == "FAIL"
+
+
+def test_production_readiness_command_records_repair_loop(client):
+    r = client.post(
+        "/api/v1/test-center/production-readiness/command",
+        json={
+            "project_id": "proj_test_smoke",
+            "actor": "pytest-operator",
+            "action": "start",
+        },
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["repair_protocol"]["command"] == "AEIS_PRODUCTION_REPAIR_LOOP"
+    assert body["report_id"] == body["report"]["report_id"]
+    assert body["allowed_to_continue"] == body["report"]["can_mark_production_ready"]
+
+
 def test_release_gate_accepts_project_mode_ids(client):
     r = client.get(
         "/api/v1/test-center/release-gate?project_id=project_test_smoke",

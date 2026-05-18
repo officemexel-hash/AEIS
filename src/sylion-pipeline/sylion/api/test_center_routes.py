@@ -1237,6 +1237,12 @@ class ProductionReleaseActionPayload(BaseModel):
     rationale: str = ""
 
 
+class ProductionReadinessCommandPayload(BaseModel):
+    project_id: str = ""
+    actor: str = "operator-dashboard"
+    action: str = "start"
+
+
 def _record_production_test_run(
     *,
     project_id: str,
@@ -1788,6 +1794,31 @@ def no_mock_scan(limit: int = Query(default=500, ge=1, le=2000)) -> dict[str, An
 
 
 # ---------------------------------------------------------------------------
+# Production readiness repair loop
+# ---------------------------------------------------------------------------
+
+
+@router.get("/production-readiness")
+def production_readiness(project_id: str | None = Query(default=None)) -> dict[str, Any]:
+    """Evaluate the hard production roadmap and block false READY claims."""
+    from sylion.aeis.testing.production_readiness import get_production_readiness_runner
+
+    return get_production_readiness_runner().evaluate(project_id=project_id or "").to_dict()
+
+
+@router.post("/production-readiness/command", status_code=201)
+def production_readiness_command(payload: ProductionReadinessCommandPayload) -> dict[str, Any]:
+    """Record the operator command: fix every error, run PASS1/PASS2, freeze, continue."""
+    from sylion.aeis.testing.production_readiness import get_production_readiness_runner
+
+    return get_production_readiness_runner().command(
+        project_id=payload.project_id,
+        actor=payload.actor,
+        action=payload.action,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 
@@ -1799,7 +1830,7 @@ def health() -> dict:
         "endpoints": [
             "personas", "scenarios", "dashboard", "truth-alignment",
             "simulation", "auto-repair", "release-gate", "catalog",
-            "no-mock-scan", "theater",
+            "no-mock-scan", "production-readiness", "theater",
         ],
         "as_of": time.time(),
     }
