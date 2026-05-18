@@ -71,8 +71,8 @@ _DEV_AUTH_PATH_PREFIXES = (
     # so the operator dashboard works without a login flow. Previously only
     # /advisor and /orchestration were covered, which left every other
     # /api/v1/* mutation (ideas/projects/workspace/...) returning 401.
-    # In dev mode we intentionally cover the whole /api/v1 surface — prod
-    # operators set SYLION_AUTH_MODE=strict + use real bearer tokens.
+    # In dev mode we intentionally cover the whole /api/v1 surface. Production
+    # and staging default to strict auth unless SYLION_AUTH_MODE is explicit.
     "/api/v1",
 )
 
@@ -976,7 +976,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def _auth_mode() -> str:
-        return os.environ.get("SYLION_AUTH_MODE", "dev").strip().lower()
+        configured = os.environ.get("SYLION_AUTH_MODE")
+        if configured:
+            return configured.strip().lower()
+        runtime_env = os.environ.get("SYLION_AEIS_ENV", "").strip().lower()
+        if runtime_env in {"production", "staging"}:
+            return "strict"
+        return "dev"
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path

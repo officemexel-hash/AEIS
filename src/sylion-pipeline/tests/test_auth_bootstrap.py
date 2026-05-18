@@ -75,3 +75,32 @@ def test_strict_auth_does_not_fall_back_for_stale_bearer(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.json()["user"] is None
     assert response.json()["token"] is None
+
+
+def test_production_default_auth_mode_is_strict(tmp_path, monkeypatch):
+    monkeypatch.delenv("SYLION_AUTH_MODE", raising=False)
+    monkeypatch.setenv("SYLION_AEIS_ENV", "production")
+    reset_auth_provider(tmp_path / "auth.db")
+    client = TestClient(_auth_probe_app())
+
+    response = client.post(
+        "/api/v1/workspace/probe",
+        headers={"Authorization": "Bearer stale-token-after-restart"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["user"] is None
+    assert response.json()["token"] is None
+
+
+def test_staging_default_auth_mode_is_strict(tmp_path, monkeypatch):
+    monkeypatch.delenv("SYLION_AUTH_MODE", raising=False)
+    monkeypatch.setenv("SYLION_AEIS_ENV", "staging")
+    reset_auth_provider(tmp_path / "auth.db")
+    client = TestClient(_auth_probe_app())
+
+    response = client.post("/api/v1/workspace/probe")
+
+    assert response.status_code == 200
+    assert response.json()["user"] is None
+    assert response.json()["token"] is None

@@ -1,0 +1,43 @@
+{
+  "decision_id": "PROD-D3-AUTH-STRICT-DEFAULT",
+  "decision_class": "D3",
+  "rationale": "AuthMiddleware previously defaulted to SYLION_AUTH_MODE=dev when the variable was unset, which could allow dev-bypass behavior in production-like environments. The production roadmap requires backend enforcement and no legacy bypass, so staging and production now default to strict auth unless an operator explicitly overrides the mode.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert AuthMiddleware._auth_mode to the prior default behavior.",
+      "Remove the production/staging default auth regression tests.",
+      "Run tests/test_auth_bootstrap.py to confirm the previous behavior is restored."
+    ],
+    "estimated_time": "10 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that unset SYLION_AUTH_MODE keeps dev behavior only outside staging/production.",
+    "pre_conditions": [
+      "No real credentials are used.",
+      "AuthProvider is reset to a temporary test database."
+    ],
+    "steps": [
+      "Run tests/test_auth_bootstrap.py.",
+      "Assert explicit dev mode still allows the local stale-bearer dev fallback.",
+      "Assert explicit strict mode does not fall back.",
+      "Assert production with SYLION_AUTH_MODE unset does not fall back.",
+      "Assert staging with SYLION_AUTH_MODE unset does not fall back."
+    ],
+    "expected_outcome": "Production-like environments default to strict auth and development keeps its dashboard convenience behavior.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:00:02.4742564Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "auth",
+    "rbac",
+    "startup-policy"
+  ]
+}
