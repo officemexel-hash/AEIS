@@ -161,7 +161,12 @@ def test_canon_freeze_post_approval_sets_timestamp(
         "proj_alpha", "project_freeze", "canon",
     )
 
-    assert tickets_mod.resolve(ticket_id, "approved", reviewer="op1") is True
+    assert tickets_mod.resolve(
+        ticket_id,
+        "approved",
+        reason="canon freeze approved by operator",
+        reviewer="op1",
+    ) is True
 
     project = isolated_store.get_project("proj_alpha")
     assert project is not None
@@ -187,7 +192,12 @@ def test_masterplan_freeze_post_approval_sets_timestamp(
         "proj_alpha", "project_freeze", "masterplan",
     )
 
-    assert tickets_mod.resolve(ticket_id, "approved", reviewer="op1") is True
+    assert tickets_mod.resolve(
+        ticket_id,
+        "approved",
+        reason="masterplan freeze approved by operator",
+        reviewer="op1",
+    ) is True
 
     project = isolated_store.get_project("proj_alpha")
     assert project is not None
@@ -218,7 +228,12 @@ def test_build_authorize_post_approval_sets_timestamp_and_status(
         },
     )
 
-    assert tickets_mod.resolve(ticket_id, "approved", reviewer="op1") is True
+    assert tickets_mod.resolve(
+        ticket_id,
+        "approved",
+        reason="build authorization approved by operator",
+        reviewer="op1",
+    ) is True
 
     project = isolated_store.get_project("proj_alpha")
     assert project is not None
@@ -245,14 +260,24 @@ def test_post_approval_idempotent(
         "proj_alpha", "project_freeze", "canon",
     )
 
-    assert tickets_mod.resolve(ticket_id, "approved", reviewer="op1") is True
+    assert tickets_mod.resolve(
+        ticket_id,
+        "approved",
+        reason="first idempotency approval by operator",
+        reviewer="op1",
+    ) is True
     project_after_first = isolated_store.get_project("proj_alpha")
     assert project_after_first is not None
     first_ts = project_after_first["canon_frozen_at"]
 
     # Second resolve returns False (ticket already final) and must not
     # mutate the timestamp.
-    assert tickets_mod.resolve(ticket_id, "approved", reviewer="op1") is False
+    assert tickets_mod.resolve(
+        ticket_id,
+        "approved",
+        reason="second idempotency approval should be ignored",
+        reviewer="op1",
+    ) is False
     project_after_second = isolated_store.get_project("proj_alpha")
     assert project_after_second is not None
     assert project_after_second["canon_frozen_at"] == first_ts
@@ -361,7 +386,12 @@ def test_post_approval_concurrent_resolves_single_completion(
     statuses_lock = threading.Lock()
 
     def _do_resolve() -> None:
-        ok = tickets_mod.resolve(ticket_id, "approved", reviewer="op1")
+        ok = tickets_mod.resolve(
+            ticket_id,
+            "approved",
+            reason="concurrent canon freeze approval",
+            reviewer="op1",
+        )
         with statuses_lock:
             statuses.append(ok)
 

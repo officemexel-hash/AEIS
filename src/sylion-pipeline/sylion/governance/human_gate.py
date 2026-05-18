@@ -280,6 +280,15 @@ class HumanGate:
             ).fetchone()
             if not req:
                 return None
+            if decision in {"approved", "rejected"}:
+                from sylion.governance.ticket import validate_resolution_policy
+
+                context = self._parse_json(req["context_json"], {})
+                validate_resolution_policy(
+                    decision_class=_mirror_decision_class(context),
+                    decision=decision,
+                    reason=rationale,
+                )
 
             review_id = self._uid()
             now = time.time()

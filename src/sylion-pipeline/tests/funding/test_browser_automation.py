@@ -1,9 +1,8 @@
 """
 Tests for sylion.funding_autopilot.browser_automation (K1.2).
 
-Since Playwright is not installed in the CI venv, these tests use
-``MockPortalDriver`` to validate orchestration logic and verify that
-the module degrades gracefully when Playwright is absent.
+These tests use ``MockPortalDriver`` to validate orchestration logic and
+explicitly simulate Playwright absence for graceful-degradation checks.
 """
 
 from __future__ import annotations
@@ -155,8 +154,12 @@ class TestFieldSelectors:
 # ---------------------------------------------------------------------------
 
 class TestPlaywrightAvailability:
+    @pytest.fixture(autouse=True)
+    def _simulate_missing_playwright(self, monkeypatch):
+        monkeypatch.setattr(browser_automation, "_PLAYWRIGHT_AVAILABLE", False)
+
     def test_playwright_not_installed(self):
-        assert _PLAYWRIGHT_AVAILABLE is False
+        assert browser_automation._PLAYWRIGHT_AVAILABLE is False
 
     def test_playwright_browser_raises_on_enter(self):
         with pytest.raises(BrowserAutomationError, match="Playwright not installed"):
@@ -193,9 +196,10 @@ class TestFundingFormFillerMock:
     def filler(self, mock_driver):
         return FundingFormFiller(driver=mock_driver)
 
-    def test_run_save_draft_without_browser(self, filler, mock_driver):
+    def test_run_save_draft_without_browser(self, filler, mock_driver, monkeypatch):
         """When no browser is started and Playwright is missing, run() returns
         the graceful-degradation dict BEFORE touching the driver."""
+        monkeypatch.setattr(browser_automation, "_PLAYWRIGHT_AVAILABLE", False)
         result = filler.run(
             portal_url="https://test.portal",
             credentials={"username": "u", "password": "p"},
@@ -259,7 +263,12 @@ class TestFundingFormFillerMock:
             portal="mock",
             amount=100_000,
         )
-        assert resolve(ticket_id, "approved", reviewer="operator@example.com") is True
+        assert resolve(
+            ticket_id,
+            "approved",
+            reason="operator approved browser automation submit",
+            reviewer="operator@example.com",
+        ) is True
         monkeypatch.setattr(browser_automation, "_PLAYWRIGHT_AVAILABLE", True)
         filler._browser = FakeBrowser()
 

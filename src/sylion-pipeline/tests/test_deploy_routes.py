@@ -11,6 +11,7 @@ from sylion.execution.deployment_orchestrator import reset_deployment_orchestrat
 from sylion.core.bundle_assembler import reset_bundle_assembler
 from sylion.governance.tickets import (
     GovernanceTicket,
+    clear_post_resolve_hooks,
     fetch_by_id,
     reset_ticket_store,
     resolve,
@@ -60,6 +61,11 @@ def _reset_deploy_surface(tmp_path, monkeypatch):
     monkeypatch.setenv("SYLION_DB_PATH", str(tmp_path / "project_mode.sqlite"))
     monkeypatch.setenv("SYLION_PROJECT_RESULTS_ROOT", str(tmp_path / "project-results"))
     reset_ticket_store()
+    clear_post_resolve_hooks()
+    import sylion.project_mode.round_meta_hooks as _round_meta_hooks
+
+    _round_meta_hooks._REGISTERED = False
+    _round_meta_hooks.register_round_meta_hook()
     reset_bundle_assembler()
     _bundle_routes._bundle_assembler = None
     workspace_conn = getattr(_routes, "_workspace_state_conn", None)
@@ -128,6 +134,8 @@ def _reset_deploy_surface(tmp_path, monkeypatch):
     reset_deployment_orchestrator()
     reset_bundle_assembler()
     _bundle_routes._bundle_assembler = None
+    clear_post_resolve_hooks()
+    _round_meta_hooks._REGISTERED = False
     reset_ticket_store()
 
 
@@ -263,7 +271,12 @@ def test_production_deployment_creation_requires_human_gate():
     assert ticket.gate_type == "production"
     assert ticket.state == "pending"
 
-    assert resolve(ticket_id, "approved", reviewer="operator@example.com") is True
+    assert resolve(
+        ticket_id,
+        "approved",
+        reason="operator approved production deployment gate",
+        reviewer="operator@example.com",
+    ) is True
     allowed = client.post(
         "/api/v1/deployments",
         params={
@@ -366,7 +379,12 @@ def test_production_bundle_deploy_requires_human_gate():
     assert detail["requires_human_gate"] is True
     ticket_id = detail["governance_ticket_id"]
 
-    assert resolve(ticket_id, "approved", reviewer="operator@example.com") is True
+    assert resolve(
+        ticket_id,
+        "approved",
+        reason="operator approved production bundle deployment gate",
+        reviewer="operator@example.com",
+    ) is True
     allowed = client.post(
         "/api/v1/bundles/deploy",
         json={

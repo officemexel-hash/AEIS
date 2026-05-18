@@ -153,10 +153,13 @@ def _sync_idea_human_gate_review(request_record: dict | None, body: SubmitReview
                                         rationale=body.rationale)
                 except (AttributeError, TypeError):
                     # Fallback for older TicketStore signatures
-                    if hasattr(store, "resolve"):
-                        store.resolve(ticket_id, decision=body.decision,
-                                      reviewer=body.reviewer,
-                                      rationale=body.rationale)
+                    if hasattr(store, "resolve") and body.decision != "needs_info":
+                        store.resolve(
+                            ticket_id,
+                            decision=body.decision,
+                            reviewer=body.reviewer,
+                            reason=body.rationale,
+                        )
     except Exception:                                            # noqa: BLE001
         # Mirror is best-effort; a failure here must not break the
         # primary gates/human/requests review path.
@@ -302,12 +305,15 @@ def submit_human_review(body: SubmitReviewRequest):
             detail=f"Invalid decision '{body.decision}'. Must be one of {valid_decisions}",
         )
     request_record = hg.get_request(body.request_id)
-    result = hg.submit_review(
-        request_id=body.request_id,
-        reviewer=body.reviewer,
-        decision=body.decision,
-        rationale=body.rationale,
-    )
+    try:
+        result = hg.submit_review(
+            request_id=body.request_id,
+            reviewer=body.reviewer,
+            decision=body.decision,
+            rationale=body.rationale,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if result is None:
         governance_request = _governance_ticket_request(body.request_id)
         if governance_request is not None:
@@ -322,12 +328,15 @@ def submit_human_review(body: SubmitReviewRequest):
                         "request": governance_request,
                     },
                 )
-            changed = resolve(
-                body.request_id,
-                body.decision,
-                reason=body.rationale,
-                reviewer=body.reviewer,
-            )
+            try:
+                changed = resolve(
+                    body.request_id,
+                    body.decision,
+                    reason=body.rationale,
+                    reviewer=body.reviewer,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
             if not changed:
                 raise HTTPException(status_code=409, detail="Governance ticket is not pending")
             return {

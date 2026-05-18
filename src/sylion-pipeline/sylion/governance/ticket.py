@@ -75,6 +75,8 @@ VALID_PRIORITIES: frozenset[str] = frozenset({"P0", "P1", "P2", "P3", "P4"})
 VALID_STATES: frozenset[str] = frozenset({
     "pending", "approved", "rejected", "expired", "withdrawn", "escalated",
 })
+REASON_REQUIRED_DECISION_CLASSES: frozenset[str] = frozenset({"D3", "D4", "D5"})
+REASON_REQUIRED_DECISIONS: frozenset[str] = frozenset({"approved", "rejected"})
 
 # Default SLA per priority (seconds).
 _DEFAULT_SLA_SECONDS: dict[str, float] = {
@@ -176,6 +178,21 @@ def _validate_ticket(ticket: GovernanceTicket) -> None:
         raise ValueError(f"invalid priority '{ticket.priority}'")
     if ticket.state not in VALID_STATES:
         raise ValueError(f"invalid state '{ticket.state}'")
+
+
+def validate_resolution_policy(
+    *,
+    decision_class: str,
+    decision: str,
+    reason: str | None,
+) -> None:
+    """Enforce the global D0-D5 Human Gate resolution matrix."""
+    if (
+        decision_class in REASON_REQUIRED_DECISION_CLASSES
+        and decision in REASON_REQUIRED_DECISIONS
+        and not str(reason or "").strip()
+    ):
+        raise ValueError("reason is required for D3+ governance ticket resolution")
 
 
 def _record_ticket_audit(
@@ -402,13 +419,19 @@ class TicketStore:
             raise ValueError(f"invalid decision '{decision}'")
         with self._lock:
             row = self._conn.execute(
-                "SELECT state FROM governance_tickets WHERE ticket_id = ?",
+                "SELECT state, decision_class FROM governance_tickets WHERE ticket_id = ?",
                 (ticket_id,),
             ).fetchone()
             if not row:
                 return False
-            if row["state"] != "pending":
+            if row["state"] not in {"pending", "escalated"}:
                 return False
+            validate_resolution_policy(
+                decision_class=str(row["decision_class"] or "D2"),
+                decision=decision,
+                reason=reason,
+            )
+            previous_state = str(row["state"])
 
             from sylion.governance.audit_chain import get_audit_chain
             chain_entry = get_audit_chain().append_ticket_event(
@@ -429,6 +452,7 @@ class TicketStore:
             self._record_event(
                 ticket_id, "resolved", reviewer or "",
                 {"decision": decision, "reason": reason,
+                 "previous_state": previous_state,
                  "audit_chain_entry": chain_entry},
             )
             self._conn.commit()
@@ -575,11 +599,11 @@ class TicketStore:
         """List pending tickets with optional filters.
 
         operator_id is reserved for routing logic (currently no per-operator
-        assignment column — returns all pending). Filter by origin/project/priority
-        for dashboards.
+        assignment column -- returns all pending/escalated reviewable tickets).
+        Filter by origin/project/priority for dashboards.
         """
         with self._lock:
-            q = "SELECT * FROM governance_tickets WHERE state = 'pending'"
+            q = "SELECT * FROM governance_tickets WHERE state IN ('pending', 'escalated')"
             params: list[Any] = []
             if origin:
                 if origin not in VALID_ORIGINS:

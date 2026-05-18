@@ -8,7 +8,7 @@ the corresponding side-effect on the project record:
 * ``project_freeze`` + ``target=canon``        → ``project.canon_frozen_at``
                                                 + ``phase="masterplan_in_progress"``
 * ``project_freeze`` + ``target=masterplan``   → ``project.masterplan_frozen_at``
-                                                + ``phase="build_in_progress"``
+                                                + ``phase="build_authorization"``
 * ``project_build_authorize``                  → ``project.build_authorized_at``
                                                 + cost cap + autonomy level
                                                 + status="building"

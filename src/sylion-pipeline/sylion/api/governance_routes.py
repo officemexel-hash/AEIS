@@ -1920,9 +1920,12 @@ def resolve_governance_ticket(ticket_id: str, body: TicketResolveRequest):
             status_code=422,
             detail="reason is required for D3+ governance ticket resolution",
         )
-    changed = _ticket_resolve(
-        ticket_id, body.decision, reason=body.reason, reviewer=body.reviewer,
-    )
+    try:
+        changed = _ticket_resolve(
+            ticket_id, body.decision, reason=body.reason, reviewer=body.reviewer,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not changed:
         raise HTTPException(status_code=409,
                             detail=f"ticket {ticket_id} missing or already final")

@@ -1,0 +1,50 @@
+{
+  "decision_id": "PROD-D4-HUMAN-GATE-RESOLUTION-POLICY",
+  "decision_class": "D4",
+  "rationale": "The production roadmap identifies Human Gate split-brain and D0-D5 enforcement as a critical governance blocker. This change moves the D3-D5 terminal decision rationale requirement into the canonical governance ticket store, allows escalated tickets to resolve through the same lifecycle, and closes API/mobile/legacy bypass paths so approval behavior is consistent across governance tickets, legacy HumanGate, operator mobile, funding and deploy flows. It is D4 because it changes architecture-level governance enforcement across multiple runtime planes.",
+  "rollback_plan": {
+    "strategy": "ROLLBACK",
+    "steps": [
+      "Revert the TicketStore resolution-policy guard and escalated-ticket resolution change.",
+      "Revert API/mobile/legacy route ValueError-to-422 handling added for D3+ rationale enforcement.",
+      "Revert the test fixture hook-isolation changes if they are no longer needed after rollback.",
+      "Run governance, operator_mobile, funding, round_meta, deploy and integration regression suites twice.",
+      "Confirm that D3-D5 approvals are still blocked by an alternative production policy before deploying any rollback."
+    ],
+    "estimated_time": "30 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify D3-D5 Human Gate approvals and rejections require an operator rationale through canonical, legacy and mobile routes while funding, deploy, skills and round-meta flows still resolve correctly.",
+    "pre_conditions": [
+      "Governance ticket store starts from a clean in-memory database in tests.",
+      "Legacy HumanGate and operator mobile route singletons are reset by test fixtures.",
+      "Funding and round-meta post-resolve hooks are explicitly registered in tests that depend on them."
+    ],
+    "steps": [
+      "Run governance ticket store and legacy HumanGate policy tests.",
+      "Run operator mobile route tests including missing-rationale D4 decision.",
+      "Run round-meta and BE8 post-approval tests.",
+      "Run funding governance bridge, browser automation and funding route tests.",
+      "Run deploy route, unified-truth, S4, S7 and skills Human Gate tests.",
+      "Repeat the same combined suite a second time without code changes."
+    ],
+    "expected_outcome": "D3-D5 approvals without rationale return validation errors or raise ValueError, escalated tickets can be resolved, and all dependent flows pass twice.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:05:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "human-gate",
+    "governance",
+    "d0-d5",
+    "mobile",
+    "funding",
+    "deploy"
+  ]
+}

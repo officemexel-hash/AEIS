@@ -146,12 +146,15 @@ def resolve_mobile_ticket(ticket_id: str, body: MobileDecisionRequest):
             detail="decision must be approved|rejected|expired",
         )
     fetch_by_id, _, resolve = _get_governance_hooks()
-    changed = resolve(
-        ticket_id=ticket_id,
-        decision=body.decision,
-        reason=body.reason,
-        reviewer=body.reviewer,
-    )
+    try:
+        changed = resolve(
+            ticket_id=ticket_id,
+            decision=body.decision,
+            reason=body.reason,
+            reviewer=body.reviewer,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not changed:
         raise HTTPException(
             status_code=409,

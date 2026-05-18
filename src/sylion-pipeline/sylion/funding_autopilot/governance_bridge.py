@@ -262,4 +262,9 @@ def check_pending(ticket_id: str) -> bool:
 
 def approve_for_test(ticket_id: str, reviewer: str = "test_operator") -> bool:
     """Resolve a ticket as approved (intended for tests only)."""
-    return resolve(ticket_id, decision="approved", reviewer=reviewer)
+    return resolve(
+        ticket_id,
+        decision="approved",
+        reason="test approval for funding governance bridge",
+        reviewer=reviewer,
+    )

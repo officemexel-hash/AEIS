@@ -95,6 +95,40 @@ def test_bind_list_queue_and_decide_routes(client):
     assert decision_response.json()["state"] == "approved"
 
 
+def test_mobile_d3_decision_requires_reason(client):
+    ticket_id = submit(
+        GovernanceTicket(
+            origin="mobile",
+            project_id="proj-1",
+            decision_class="D4",
+            gate_type="production",
+            priority="P0",
+            title="Approve production action",
+            summary="D4 approval must carry rationale.",
+            payload={"operator_id": "operator-1"},
+            requested_by="mobile-routes-test",
+        )
+    )
+
+    missing_reason = client.post(
+        f"/api/v1/mobile/queue/{ticket_id}/decision",
+        json={"decision": "approved", "reviewer": "operator-1"},
+    )
+    assert missing_reason.status_code == 422
+    assert "reason is required" in missing_reason.json()["detail"]
+
+    with_reason = client.post(
+        f"/api/v1/mobile/queue/{ticket_id}/decision",
+        json={
+            "decision": "approved",
+            "reviewer": "operator-1",
+            "reason": "operator confirmed legal and rollback checks",
+        },
+    )
+    assert with_reason.status_code == 200
+    assert with_reason.json()["state"] == "approved"
+
+
 def test_unbind_route_returns_404_for_missing_device(client):
     response = client.delete(
         "/api/v1/mobile/devices/missing-device",

@@ -9,7 +9,12 @@ from sylion.api.app import app
 import sylion.funding_autopilot.routes as funding_routes
 import sylion.funding_autopilot.store as funding_store
 from sylion.funding_autopilot.store import reset_funding_store
-from sylion.governance.tickets import fetch_by_id, reset_ticket_store, resolve
+from sylion.governance.tickets import (
+    fetch_by_id,
+    register_post_resolve_hook,
+    reset_ticket_store,
+    resolve,
+)
 
 client = TestClient(app)
 
@@ -21,6 +26,7 @@ def _reset_funding_store(tmp_path, monkeypatch):
     reset_ticket_store()
     reset_funding_store(str(tmp_path / "funding.sqlite"))
     funding_routes.reset_funding_route_service(str(tmp_path / "funding.sqlite"))
+    register_post_resolve_hook(funding_routes._funding_post_resolve)
     yield
     if funding_store._store is not None:
         funding_store._store.close()
@@ -604,7 +610,12 @@ def test_funding_autopilot_end_to_end_flow():
     assert blocked_submit.status_code == 400
     assert "Human Gate approval" in blocked_submit.json()["detail"]
 
-    assert resolve(governance_ticket_id, "approved", reviewer="operator@example.com") is True
+    assert resolve(
+        governance_ticket_id,
+        "approved",
+        reason="operator approved final funding submission",
+        reviewer="operator@example.com",
+    ) is True
     submit = client.post(
         "/api/v1/funding/submission/submit",
         json={

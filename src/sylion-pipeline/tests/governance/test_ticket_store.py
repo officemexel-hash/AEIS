@@ -139,6 +139,17 @@ class TestResolve:
         with pytest.raises(ValueError):
             store.resolve(tid, "maybe")
 
+    def test_resolve_d3_terminal_decision_requires_reason(self, store):
+        t = GovernanceTicket(
+            origin="global",
+            decision_class="D3",
+            title="r5b",
+        )
+        tid = store.submit(t)
+        with pytest.raises(ValueError, match="reason is required"):
+            store.resolve(tid, "approved", reviewer="alice")
+        assert store.get(tid).state == "pending"
+
     def test_resolve_records_event(self, store):
         t = GovernanceTicket(origin="global", title="r6")
         tid = store.submit(t)
@@ -181,6 +192,22 @@ class TestEscalate:
         assert store.escalate(tid, reason="urgent", actor="alice")
         assert store.get(tid).state == "escalated"
 
+    def test_resolve_escalated_ticket(self, store):
+        t = GovernanceTicket(
+            origin="global",
+            decision_class="D3",
+            title="e1b",
+        )
+        tid = store.submit(t)
+        assert store.escalate(tid, reason="urgent", actor="alice")
+        assert store.resolve(
+            tid,
+            "approved",
+            reason="higher tier accepted the D3 change",
+            reviewer="bob",
+        )
+        assert store.get(tid).state == "approved"
+
     def test_escalate_already_resolved_fails(self, store):
         t = GovernanceTicket(origin="global", title="e2")
         tid = store.submit(t)
@@ -203,6 +230,14 @@ class TestFetch:
         pending = store.fetch_pending()
         assert len(pending) == 1
         assert pending[0].ticket_id == b.ticket_id
+
+    def test_fetch_pending_includes_escalated_reviewable_tickets(self, store):
+        t = GovernanceTicket(origin="global", title="needs higher tier")
+        store.submit(t)
+        store.escalate(t.ticket_id, reason="P0 review", actor="alice")
+        pending = store.fetch_pending()
+        assert len(pending) == 1
+        assert pending[0].state == "escalated"
 
     def test_fetch_pending_filters_origin(self, store):
         store.submit(GovernanceTicket(origin="funding", title="f"))
