@@ -68,6 +68,7 @@ from sylion.aeis_v2.terminal import (
     list_commands,
 )
 from sylion.aeis_v2.terminal.command_router import execute_terminal_intent
+from sylion.aeis_v2.terminal.global_policy import get_global_terminal_policy
 from sylion.aeis_v2.terminal.replay import (
     MAX_REPLAY_SLICE_SIZE,
     get_replay_slice,
@@ -981,3 +982,43 @@ def replay_days(
     """
     days = list_replay_days()
     return {"count": len(days), "days": days}
+
+
+# --------------------------------------------------------------------------
+# Global terminal policy read-side
+# --------------------------------------------------------------------------
+
+
+@router.get("/global/commands")
+def list_global_terminal_commands(
+    limit: int = Query(100, ge=1, le=500),
+    user: str = Depends(requires_role("operator")),
+) -> dict[str, Any]:
+    commands = get_global_terminal_policy().list_commands(limit=limit)
+    return {"count": len(commands), "commands": commands}
+
+
+@router.get("/global/commands/{command_id}")
+def get_global_terminal_command(
+    command_id: str,
+    user: str = Depends(requires_role("operator")),
+) -> dict[str, Any]:
+    command = get_global_terminal_policy().get_command(command_id)
+    if command is None:
+        raise HTTPException(404, f"global terminal command not found: {command_id}")
+    return command
+
+
+@router.get("/global/replay/{command_id}")
+def replay_global_terminal_command(
+    command_id: str,
+    environment_id: str = Query(..., min_length=1),
+    user: str = Depends(requires_role("operator")),
+) -> dict[str, Any]:
+    replay = get_global_terminal_policy().replay_isolated(
+        command_id,
+        environment_id=environment_id,
+    )
+    if replay["record_count"] == 0:
+        raise HTTPException(404, f"isolated replay not found for command {command_id}")
+    return replay

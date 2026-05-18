@@ -1,0 +1,53 @@
+{
+  "decision_id": "PROD-D4-GLOBAL-TERMINAL-POLICY",
+  "decision_class": "D4",
+  "rationale": "AEIS needed a frozen global terminal policy because project W18 commands had Human Gate routing, but global commands such as restart, rebuild and policy update could lack actor, environment, risk class, rollback hint and isolated replay evidence.",
+  "rollback_plan": {
+    "strategy": "ROLLBACK",
+    "steps": [
+      "Remove sylion.aeis_v2.terminal.global_policy and its tests.",
+      "Remove terminal.global_policy routing from sylion.aeis_v2.terminal.command_router.",
+      "Remove /api/v1/terminal/global/* read-side routes from sylion.api.terminal_routes.",
+      "Run terminal, replay, intervention and command bus tests twice.",
+      "Run no-mock scan and git diff whitespace check."
+    ],
+    "estimated_time": "15 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that global terminal commands require actor, environment, risk class and rollback hint; D4+ commands create or require approved governance tickets; multi-project commands create per-project tickets; and replay is isolated by command_id and environment_id.",
+    "pre_conditions": [
+      "GlobalTerminalPolicy is importable.",
+      "Governance TicketStore can submit and resolve origin=global tickets.",
+      "EvidenceSpine can register inline JSON artifacts.",
+      "W18 terminal routes are mounted."
+    ],
+    "steps": [
+      "Run compileall for global_policy, command_router and terminal_routes.",
+      "Run global terminal policy tests for missing metadata, D4 Human Gate, approved ticket acceptance, batch tickets and API replay.",
+      "Run terminal parser/router regressions.",
+      "Run replay-as-film regressions.",
+      "Run terminal intervention regressions.",
+      "Run command bus regressions.",
+      "Run RBAC matrix for /api/v1/terminal/exec coverage.",
+      "Run no-mock scan and git diff whitespace check.",
+      "Repeat the core verification scope as PASS2."
+    ],
+    "expected_outcome": "Global restart, rebuild and policy update commands are blocked without required metadata; D4+ global commands cannot execute without matching approved Human Gate evidence; replay returns only isolated records for the requested command and environment.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T05:52:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "global-terminal",
+    "human-gate",
+    "d4",
+    "replay-isolation",
+    "rollback"
+  ]
+}

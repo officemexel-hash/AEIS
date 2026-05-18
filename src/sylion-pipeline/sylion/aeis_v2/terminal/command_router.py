@@ -21,6 +21,11 @@ from typing import Any, Mapping
 from fastapi import HTTPException
 
 from sylion.aeis_v2.terminal.commands import CommandResult, parse_command
+from sylion.aeis_v2.terminal.global_policy import (
+    GlobalCommandPolicyRequest,
+    classify_global_command_line,
+    get_global_terminal_policy,
+)
 
 log = logging.getLogger("sylion.aeis_v2.terminal.command_router")
 
@@ -40,7 +45,9 @@ class CommandIntent:
     worker_id: str = ""
     model_id: str = ""
     decision_class: str = "D1"
+    risk_class: str = ""
     risk_level: str = "low"
+    rollback_hint: str = ""
     created_at: float = 0.0
 
     def __post_init__(self) -> None:
@@ -124,12 +131,32 @@ def _build_intent(line: str, ctx: Mapping[str, Any]) -> CommandIntent:
         agent_id=_ctx_str(ctx, "agent_id"),
         worker_id=_ctx_str(ctx, "worker_id"),
         model_id=_ctx_str(ctx, "model_id"),
+        risk_class=_ctx_str(ctx, "risk_class", "decision_class"),
+        rollback_hint=_ctx_str(ctx, "rollback_hint"),
     )
 
 
 def _route_intent(intent: CommandIntent) -> CommandRoute:
     line = intent.normalized_line
     route = CommandRoute(target_id=intent.project_id)
+    global_action = classify_global_command_line(line)
+    if not intent.project_id and global_action is not None:
+        risk_order = {"D0": 0, "D1": 1, "D2": 2, "D3": 3, "D4": 4, "D5": 5}
+        declared_risk = str(intent.risk_class or "").upper()
+        default_risk = global_action.default_risk_class
+        effective_risk = declared_risk if declared_risk in risk_order and risk_order[declared_risk] >= risk_order[default_risk] else default_risk
+        intent.risk_class = effective_risk
+        intent.decision_class = effective_risk
+        intent.risk_level = global_action.risk_level
+        route.owner = "terminal.global_policy"
+        route.target_kind = "global_environment"
+        route.target_id = intent.environment_id
+        route.target_action = global_action.target_action
+        route.phase = "TWO_PHASE" if intent.decision_class in {"D4", "D5"} else "IMMEDIATE"
+        route.requires_human_gate = intent.decision_class in {"D4", "D5"}
+        route.route_reason = "Global mutating command requires actor, environment, risk class, rollback hint and isolated replay."
+        return route
+
     if line in {"request checkpoint", "checkpoint", "zapisz checkpoint", "punkt kontrolny"}:
         intent.decision_class = "D1"
         route.owner = "terminal.command_router"
@@ -608,6 +635,33 @@ def _execute_checkpoint(intent: CommandIntent) -> CommandResult:
     )
 
 
+def _execute_global_policy_command(
+    intent: CommandIntent,
+    ctx: Mapping[str, Any],
+) -> CommandResult:
+    request = GlobalCommandPolicyRequest.from_context(
+        intent.raw_line,
+        ctx,
+        command_id=intent.command_id,
+    )
+    result = get_global_terminal_policy().evaluate(request)
+    status = str(result.get("status") or "")
+    ticket_ids = list(result.get("ticket_ids") or [])
+    meta = {
+        "global_terminal_policy": result,
+        "status": status,
+        "ticket_ids": ticket_ids,
+        "ticket_id": ticket_ids[0] if ticket_ids else "",
+        "evidence_id": result.get("evidence_id") or "",
+        "replay_scope": "isolated",
+        "environment_id": result.get("environment_id") or "",
+        "command_id": result.get("command_id") or intent.command_id,
+    }
+    if status == "blocked_metadata":
+        return CommandResult(kind="error", text=str(result.get("message") or "Global command blocked."), meta=meta)
+    return CommandResult(kind="text", text=str(result.get("message") or "Global command policy evaluated."), meta=meta)
+
+
 def record_terminal_evidence(
     line: str,
     ctx: Mapping[str, Any] | None = None,
@@ -665,12 +719,17 @@ def execute_terminal_intent(line: str, ctx: Mapping[str, Any] | None = None) -> 
         result = _execute_list_project_gates(intent)
     elif route.target_action == "request_checkpoint":
         result = _execute_checkpoint(intent)
+    elif route.owner == "terminal.global_policy":
+        result = _execute_global_policy_command(intent, safe_ctx)
     else:
         result = parse_command(str(line or ""), dict(safe_ctx))
 
     ticket_id = ""
     if result.meta:
         ticket_id = str(result.meta.get("ticket_id") or result.meta.get("pending_governance_ticket_id") or "")
+        ticket_ids = result.meta.get("ticket_ids")
+        if not ticket_id and isinstance(ticket_ids, list) and ticket_ids:
+            ticket_id = str(ticket_ids[0])
     status = "failed" if result.kind == "error" else "pending_human_gate" if ticket_id else "completed"
     execution = CommandExecution(
         intent=intent,
