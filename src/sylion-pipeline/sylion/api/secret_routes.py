@@ -9,8 +9,14 @@ Endpoints for the SecretProvider module:
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from sylion.security.rbac import requires_role
+from sylion.security.secret_lifecycle import (
+    SecretLifecyclePolicy,
+    SecretLifecycleService,
+)
 
 router = APIRouter(prefix="/api/v1/secrets", tags=["Secrets"])
 
@@ -308,6 +314,27 @@ class RotateSecretRequest(BaseModel):
     new_value: str
 
 
+class LifecycleSecretRequest(BaseModel):
+    name: str
+    value: str
+    backend: str = "sops"
+    scope: str = "secrets"
+    rotation_period_days: int = 90
+    metadata: dict | None = None
+
+
+class LifecycleRotateRequest(BaseModel):
+    new_value: str
+    backend: str = "sops"
+    rotation_period_days: int = 90
+
+
+class LifecycleDummyFlowRequest(BaseModel):
+    name: str = "AEIS_DUMMY_ROTATION_SECRET"
+    backend: str = "sops"
+    rotation_period_days: int = 90
+
+
 # ---------------------------------------------------------------------------
 # Store / List
 # ---------------------------------------------------------------------------
@@ -390,6 +417,76 @@ def get_secret_stats():
     """Aggregate secret statistics."""
     sp = _get_provider()
     return sp.get_secret_stats()
+
+
+# ---------------------------------------------------------------------------
+# Production lifecycle: add / validate / rotate / dummy freeze flow
+# ---------------------------------------------------------------------------
+
+def _lifecycle_service(backend: str, rotation_period_days: int) -> SecretLifecycleService:
+    policy = SecretLifecyclePolicy(
+        backend=backend,
+        rotation_period_days=rotation_period_days,
+        strict_external_backend=True,
+    )
+    return SecretLifecycleService(policy=policy)
+
+
+@router.post("/lifecycle/add", status_code=201)
+def lifecycle_add_secret(
+    body: LifecycleSecretRequest,
+    _user: str = Depends(requires_role("owner", "security")),
+):
+    service = _lifecycle_service(body.backend, body.rotation_period_days)
+    try:
+        return service.add_secret(
+            body.name,
+            body.value,
+            scope=body.scope,
+            actor=_user or "operator",
+            metadata=body.metadata,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/lifecycle/{name}/validate")
+def lifecycle_validate_secret(
+    name: str,
+    backend: str = "sops",
+    rotation_period_days: int = 90,
+    _user: str = Depends(requires_role("owner", "security", "operator")),
+):
+    service = _lifecycle_service(backend, rotation_period_days)
+    return service.validate_secret(name, actor=_user or "operator")
+
+
+@router.post("/lifecycle/{name}/rotate")
+def lifecycle_rotate_secret(
+    name: str,
+    body: LifecycleRotateRequest,
+    _user: str = Depends(requires_role("owner", "security")),
+):
+    service = _lifecycle_service(body.backend, body.rotation_period_days)
+    try:
+        result = service.rotate_secret(name, body.new_value, actor=_user or "operator")
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not result.get("rotated"):
+        raise HTTPException(status_code=404, detail=result.get("reason", "not_found"))
+    return result
+
+
+@router.post("/lifecycle/dummy-flow")
+def lifecycle_dummy_flow(
+    body: LifecycleDummyFlowRequest,
+    _user: str = Depends(requires_role("owner", "security")),
+):
+    service = _lifecycle_service(body.backend, body.rotation_period_days)
+    try:
+        return service.run_dummy_flow(name=body.name, actor=_user or "operator")
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 # ---------------------------------------------------------------------------

@@ -60,6 +60,18 @@ class TestRotate:
         ks = KeyStoreUnified(":memory:")
         assert ks.rotate("missing", "v") is None
 
+    def test_rotate_can_update_metadata_without_returning_ciphertext(self):
+        ks = KeyStoreUnified(":memory:")
+        ks.put("k1", "v1", metadata={"owner": "security"})
+        ks.rotate("k1", "v2", metadata_update={"rotated_by": "test"})
+
+        desc = ks.describe("k1")
+
+        assert desc is not None
+        assert desc["metadata"]["owner"] == "security"
+        assert desc["metadata"]["rotated_by"] == "test"
+        assert "ciphertext" not in desc
+
 
 class TestDelete:
     def test_delete_existing(self):
@@ -90,6 +102,15 @@ class TestAuditLog:
         ks.put("k2", "v2")
         assert len(ks.audit_log()) == 2
 
+    def test_record_audit_adds_safe_custom_event(self):
+        ks = KeyStoreUnified(":memory:")
+        ks.put("k1", "v1")
+        ks.record_audit("k1", "lifecycle.validate", actor="tester")
+
+        actions = {row["action"] for row in ks.audit_log("k1")}
+
+        assert "lifecycle.validate" in actions
+
 
 class TestStats:
     def test_empty_stats(self):
@@ -118,3 +139,14 @@ class TestSingleton:
         ks1.put("k1", "v1")
         ks2 = reset_key_store_unified()
         assert ks1 is not ks2
+
+
+class TestDatabasePath:
+    def test_creates_parent_directory_for_file_db(self, tmp_path):
+        target = tmp_path / "missing" / "nested" / "store.db"
+
+        ks = KeyStoreUnified(target)
+        ks.put("k1", "v1")
+
+        assert target.exists()
+        assert ks.get("k1") == "v1"

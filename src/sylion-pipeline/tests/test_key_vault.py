@@ -550,6 +550,18 @@ class TestSingleton:
         assert isinstance(v, KeyVault)
 
 
+class TestDatabasePath:
+
+    def test_creates_parent_directory_for_file_db(self, tmp_path):
+        target = tmp_path / "missing" / "nested" / "vault.db"
+
+        vault = KeyVault(db_path=target, vault_secret="test-secret-1234")
+        stored = vault.store_key("openai", "sk-test")
+
+        assert target.exists()
+        assert vault.get_decrypted_key(stored["key_id"]) == "sk-test"
+
+
 # ---------------------------------------------------------------------------
 # Thread safety
 # ---------------------------------------------------------------------------

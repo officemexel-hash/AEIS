@@ -16,6 +16,8 @@ import logging
 import os
 from dataclasses import dataclass
 
+from sylion.security.secret_lifecycle import load_secret_lifecycle_policy
+
 log = logging.getLogger("sylion.security.startup_check")
 
 # Mirror of the in-code defaults we must never ship with.
@@ -136,6 +138,10 @@ def check_secrets(env: dict[str, str] | None = None) -> StartupCheckResult:
                 "SYLION_DB_URL or DATABASE_URL: must start with "
                 f"{_POSTGRES_ASYNC_PREFIX} in staging/production"
             )
+
+        secret_policy = load_secret_lifecycle_policy(e)
+        for failure in secret_policy.validate():
+            failures.append(f"SYLION_SECRETS_BACKEND: {failure}")
 
     return StartupCheckResult(env=current_env, failures=failures)
 

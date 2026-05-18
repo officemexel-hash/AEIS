@@ -90,6 +90,8 @@ class KeyStoreUnified:
         self._db_path = str(db_path) if db_path else ":memory:"
         self._event_bus = event_bus
         self._lock = threading.RLock()
+        if self._db_path != ":memory:":
+            Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         if self._db_path != ":memory:":
@@ -212,28 +214,49 @@ class KeyStoreUnified:
         self._emit("keystore.get", {"key_id": key_id})
         return plaintext
 
-    def rotate(self, key_id: str, new_value: str, actor: str = "") -> dict | None:
+    def rotate(
+        self,
+        key_id: str,
+        new_value: str,
+        actor: str = "",
+        metadata_update: dict | None = None,
+    ) -> dict | None:
         """Rotate a key to a new value. Returns entry dict or None."""
         now = time.time()
         ciphertext = self._encryptor.encrypt(new_value)
 
         with self._lock:
             existing = self._conn.execute(
-                "SELECT version FROM keystore_entries WHERE key_id = ?",
+                "SELECT version, metadata FROM keystore_entries WHERE key_id = ?",
                 (key_id,),
             ).fetchone()
             if not existing:
                 self._add_audit(key_id, "rotate_miss", actor=actor)
                 return None
             version = existing["version"] + 1
+            metadata = self._parse_metadata(existing["metadata"])
+            if metadata_update:
+                metadata.update(metadata_update)
             self._conn.execute(
-                "UPDATE keystore_entries SET ciphertext = ?, version = ?, "
-                "updated_at = ?, rotated_at = ? WHERE key_id = ?",
-                (ciphertext, version, now, now, key_id),
+                "UPDATE keystore_entries SET ciphertext = ?, metadata = ?, "
+                "version = ?, updated_at = ?, rotated_at = ? WHERE key_id = ?",
+                (
+                    ciphertext,
+                    json.dumps(metadata, sort_keys=True, default=str),
+                    version,
+                    now,
+                    now,
+                    key_id,
+                ),
             )
             self._conn.commit()
 
-        self._add_audit(key_id, "rotate", actor=actor, details={"version": version})
+        self._add_audit(
+            key_id,
+            "rotate",
+            actor=actor,
+            details={"version": version, "metadata_updated": bool(metadata_update)},
+        )
         self._emit("keystore.rotate", {"key_id": key_id, "version": version})
         log.info("keystore rotate %s version=%d", key_id, version)
         return {"key_id": key_id, "version": version, "rotated_at": now}
@@ -269,6 +292,40 @@ class KeyStoreUnified:
                     "FROM keystore_entries ORDER BY updated_at DESC",
                 ).fetchall()
         return [dict(r) for r in rows]
+
+    @staticmethod
+    def _parse_metadata(raw: str | None) -> dict:
+        if not raw:
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    def describe(self, key_id: str) -> dict | None:
+        """Return metadata for a key without exposing ciphertext or plaintext."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT key_id, scope, metadata, version, created_at, "
+                "updated_at, rotated_at FROM keystore_entries WHERE key_id = ?",
+                (key_id,),
+            ).fetchone()
+        if not row:
+            return None
+        result = dict(row)
+        result["metadata"] = self._parse_metadata(result.get("metadata"))
+        return result
+
+    def record_audit(
+        self,
+        key_id: str,
+        action: str,
+        actor: str = "",
+        details: dict | None = None,
+    ) -> None:
+        """Record a safe audit event for higher-level secret workflows."""
+        self._add_audit(key_id, action, actor=actor, details=details)
 
     def audit_log(self, key_id: str | None = None, limit: int = 100) -> list[dict]:
         """Return audit log entries, optionally filtered by key_id."""

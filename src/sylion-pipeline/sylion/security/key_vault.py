@@ -112,6 +112,8 @@ class KeyVault:
         self._db_path = str(db_path) if db_path else ":memory:"
         self._event_bus = event_bus
         self._lock = threading.RLock()
+        if self._db_path != ":memory:":
+            Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False, timeout=30.0)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA busy_timeout = 30000")
