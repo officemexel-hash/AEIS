@@ -13,6 +13,7 @@ from sylion.aeis.advisor.events.lifecycle import publish_lifecycle_event
 from sylion.skills.catalog import get_skills_catalog
 from sylion.skills.demand_signal import get_demand_signal_analyzer
 from sylion.skills.executor import get_skills_executor
+from sylion.skills.integration import get_skill_integration_layer
 from sylion.skills.registry import get_skills_registry
 
 try:
@@ -74,6 +75,25 @@ class SkillLifecycleLongRunRequest(BaseModel):
     skill_id: str | None = None
     cycles: int = Field(default=1, ge=1, le=5)
     include_retirement: bool = False
+
+
+class SkillIntegrationExecuteRequest(BaseModel):
+    skill_id: str
+    inputs: dict = Field(default_factory=dict)
+    project_id: str = ""
+    pipeline_id: str = ""
+    step_id: str = ""
+    dispatch_source: str = "J5"
+    actor_id: str = ""
+    retention_policy: str = "production-freeze"
+
+
+class SkillIntegrationDemandRequest(BaseModel):
+    signal_type: str
+    source: str = "skills.integration"
+    skill_id: str = ""
+    confidence: float = 0.5
+    details: dict = Field(default_factory=dict)
 
 
 def _publish_skill_semantic_event(topic: str, payload: dict, primary_key: str) -> None:
@@ -374,6 +394,57 @@ def demand_stats():
     """Get demand signal statistics."""
     analyzer = get_demand_signal_analyzer()
     return analyzer.get_stats()
+
+
+# ---------------------------------------------------------------------------
+# Skills Integration Layer
+# ---------------------------------------------------------------------------
+
+@router.post("/integration/pipeline-step", status_code=201)
+def execute_pipeline_skill_step(body: SkillIntegrationExecuteRequest):
+    """Execute a skill as a pipeline step and register Evidence Spine output."""
+    layer = get_skill_integration_layer()
+    result = layer.execute_pipeline_step(
+        body.skill_id,
+        body.inputs,
+        pipeline_id=body.pipeline_id,
+        step_id=body.step_id,
+        project_id=body.project_id,
+        actor_id=body.actor_id,
+        retention_policy=body.retention_policy,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail=result)
+    return result
+
+
+@router.post("/integration/dispatch", status_code=201)
+def dispatch_skill(body: SkillIntegrationExecuteRequest):
+    """Execute a skill through the dispatch adapter and register evidence."""
+    layer = get_skill_integration_layer()
+    result = layer.dispatch(
+        body.skill_id,
+        body.inputs,
+        dispatch_source=body.dispatch_source,
+        project_id=body.project_id,
+        actor_id=body.actor_id,
+        retention_policy=body.retention_policy,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail=result)
+    return result
+
+
+@router.post("/integration/demand", status_code=201)
+def consume_skill_demand_signal(body: SkillIntegrationDemandRequest):
+    """Record a demand signal and immediately refresh demand analysis."""
+    return get_skill_integration_layer().record_demand_and_analyze(
+        signal_type=body.signal_type,
+        source=body.source,
+        skill_id=body.skill_id,
+        confidence=body.confidence,
+        details=body.details,
+    )
 
 
 # ---------------------------------------------------------------------------

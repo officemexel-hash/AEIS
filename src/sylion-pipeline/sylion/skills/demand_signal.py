@@ -390,4 +390,15 @@ def get_demand_signal_analyzer(db_path: str | Path | None = None,
     global _analyzer
     if _analyzer is None:
         _analyzer = DemandSignalAnalyzer(db_path, event_bus)
+    elif db_path is not None and str(db_path) != _analyzer._db_path:
+        _analyzer = DemandSignalAnalyzer(db_path, event_bus)
+    return _analyzer
+
+
+def reset_demand_signal_analyzer(db_path: str | Path | None = None,
+                                 event_bus: EventBus | None = None) -> DemandSignalAnalyzer | None:
+    global _analyzer
+    _analyzer = None
+    if db_path is not None or event_bus is not None:
+        _analyzer = DemandSignalAnalyzer(db_path, event_bus)
     return _analyzer

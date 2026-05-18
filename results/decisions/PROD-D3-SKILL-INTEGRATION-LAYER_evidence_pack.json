@@ -1,0 +1,54 @@
+{
+  "decision_id": "PROD-D3-SKILL-INTEGRATION-LAYER",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires skills to be callable from pipeline and dispatch paths with evidence, provenance and demand signals. This change introduces a SkillIntegrationLayer, public API routes and tests proving pipeline-step execution, J5-style dispatch execution and demand-signal consumption. It is D3 because it adds a public orchestration contract that future W10, W16 and J5 runtime paths can call.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove sylion.skills.integration and the public export in skills/__init__.py.",
+      "Remove /api/v1/skills/integration/* routes and request models.",
+      "Revert the demand_signal singleton reset helper if no longer used by tests.",
+      "Remove SkillIntegrationLayer-specific tests.",
+      "Run skills, runtime, registry, executor and demand-signal suites twice.",
+      "Leave already-recorded Evidence Spine skill_execution artifacts intact as immutable audit artifacts."
+    ],
+    "estimated_time": "20 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that a published skill can be executed through pipeline-step and dispatch adapters, that both executions create Evidence Spine artifacts with the correct source and metadata, and that demand signals can be recorded and immediately analyzed through the integration layer.",
+    "pre_conditions": [
+      "Skills registry, runtime, executor, demand analyzer and integration singleton are reset.",
+      "A published echo skill exists with runtime entry point sylion.skills.catalog:seed_echo_handler.",
+      "Evidence Spine is available to capture JSON artifacts.",
+      "FastAPI skills routes are available through the test client."
+    ],
+    "steps": [
+      "Execute the published skill through SkillIntegrationLayer.execute_pipeline_step with project_id, pipeline_id and step_id.",
+      "Verify the runtime execution completes and returns the expected output.",
+      "Verify the Evidence Spine artifact has source skills.pipeline, type skill_execution and pipeline metadata.",
+      "Execute the same skill through SkillIntegrationLayer.dispatch with dispatch_source=J5.",
+      "Verify the Evidence Spine artifact has source skills.dispatch and dispatch metadata.",
+      "Record a demand signal through SkillIntegrationLayer.record_demand_and_analyze and verify the report includes the skill demand.",
+      "Exercise /api/v1/skills/integration/pipeline-step, /dispatch and /demand routes.",
+      "Run the skills/runtime/registry/executor/demand suite twice."
+    ],
+    "expected_outcome": "Integrated skill executions complete successfully, produce immutable evidence artifacts with source and checksum, propagate pipeline or dispatch metadata, and demand signals are available to demand analysis.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:35:59Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "skills",
+    "pipeline",
+    "dispatch",
+    "demand-signal",
+    "evidence-spine",
+    "orchestration"
+  ]
+}

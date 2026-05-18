@@ -1,6 +1,7 @@
 """SYLION skills public hooks."""
 
 from .catalog import get_seed_skill_manifests, seed_catalog_entries
+from .integration import get_skill_integration_layer
 from .registry import get_skills_registry
 from .runtime import (
     bootstrap_from,
@@ -14,6 +15,7 @@ __all__ = [
     "bootstrap_from",
     "execute",
     "get_seed_skill_manifests",
+    "get_skill_integration_layer",
     "get_skills_registry",
     "get_skills_runtime",
     "list_loaded",
