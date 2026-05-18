@@ -34,6 +34,8 @@ class _StubAuth(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         user = request.headers.get("x-test-user")
         request.state.user = user if user else None
+        roles = request.headers.get("x-test-roles")
+        request.state.roles = roles if roles else None
         return await call_next(request)
 
 
@@ -140,6 +142,7 @@ class TestAuthenticatedTier:
         r = client.get("/api/v1/projects", headers={"X-Test-User": "alice"})
         assert r.status_code == 200
         assert r.headers["X-RateLimit-Limit"] == "600"
+        assert r.headers["X-RateLimit-Tier"] == "authenticated"
 
     def test_users_have_separate_buckets(self, client):
         # Alice burns through 5 hits — Bob's first hit must show fresh budget.
@@ -147,6 +150,43 @@ class TestAuthenticatedTier:
             client.get("/api/v1/projects", headers={"X-Test-User": "alice"})
         r = client.get("/api/v1/projects", headers={"X-Test-User": "bob"})
         assert int(r.headers["X-RateLimit-Remaining"]) == 599
+
+
+# ---------------------------------------------------------------------------
+# Role tiers — production policy can tune budgets per operator role
+# ---------------------------------------------------------------------------
+
+
+class TestRoleTier:
+    @pytest.mark.parametrize(("role", "limit"), [
+        ("owner", "1200"),
+        ("security", "900"),
+        ("operator", "600"),
+        ("auditor", "300"),
+        ("viewer", "120"),
+    ])
+    def test_role_gets_own_budget(self, client, role, limit):
+        r = client.get(
+            "/api/v1/projects",
+            headers={"X-Test-User": "alice", "X-Test-Roles": role},
+        )
+
+        assert r.status_code == 200
+        assert r.headers["X-RateLimit-Limit"] == limit
+        assert r.headers["X-RateLimit-Tier"] == f"role:{role}"
+
+    def test_highest_role_wins_for_multi_role_user(self, client):
+        r = client.get(
+            "/api/v1/projects",
+            headers={
+                "X-Test-User": "alice",
+                "X-Test-Roles": "viewer,operator,security",
+            },
+        )
+
+        assert r.status_code == 200
+        assert r.headers["X-RateLimit-Limit"] == "900"
+        assert r.headers["X-RateLimit-Tier"] == "role:security"
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +204,7 @@ class TestHeavyTier:
         r = client.get(path, headers={"X-Test-User": "alice"})
         assert r.status_code == 200
         assert r.headers["X-RateLimit-Limit"] == "30"
+        assert r.headers["X-RateLimit-Tier"] == "heavy"
 
     def test_heavy_429_after_30(self, client):
         for _ in range(30):

@@ -1,0 +1,47 @@
+{
+  "decision_id": "PROD-D3-RATE-LIMIT-REDIS-ROLE",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires a Redis-backed global rate limiter with per-role limits before AEIS can be production-ready. This change makes rate-limit counters atomic through the cache facade, adds role-aware API tiers, exposes the effective tier in response headers, and fails fast when staging/production use memory or non-Redis cache backends. It is D3 because it changes cross-cutting API behavior and production startup policy.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Revert role-tier classification in sylion.api.rate_limit.",
+      "Revert Cache.incr and strict Redis fail-fast behavior if deployment bootstrap cannot provide Redis yet.",
+      "Remove SYLION_CACHE_URL validation from startup_check.py.",
+      "Run rate_limit, cache and startup_check test groups.",
+      "Keep SYLION_RATE_LIMIT_DISABLED blocked in production even if this change is reverted."
+    ],
+    "estimated_time": "20 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify role-tier rate limits, atomic counter increments, strict Redis production policy and existing cache integrations.",
+    "pre_conditions": [
+      "No live Redis service is required for unit tests.",
+      "Redis production policy is validated by startup/cache fail-fast tests.",
+      "Rate limit route tests use isolated Starlette apps and in-memory cache."
+    ],
+    "steps": [
+      "Run tests/api/test_rate_limit.py twice.",
+      "Run tests/infra/test_cache.py twice.",
+      "Run tests/security/test_startup_check.py twice.",
+      "Run tests/infra/test_cache_integration.py twice."
+    ],
+    "expected_outcome": "Role headers expose owner/security/operator/auditor/viewer budgets, heavy endpoints stay capped, Cache.incr is repeatable, and strict environments reject memory/non-Redis cache configuration.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:37:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "rate-limit",
+    "redis",
+    "roles",
+    "startup-policy",
+    "api"
+  ]
+}

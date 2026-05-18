@@ -46,6 +46,14 @@ _TIER_PUBLIC = Tier("public", requests_per_minute=0)        # 0 = no limit
 _TIER_ANONYMOUS = Tier("anonymous", requests_per_minute=60)
 _TIER_AUTHED = Tier("authenticated", requests_per_minute=600)
 _TIER_HEAVY = Tier("heavy", requests_per_minute=30)
+_ROLE_TIERS: dict[str, Tier] = {
+    "owner": Tier("role:owner", requests_per_minute=1200),
+    "security": Tier("role:security", requests_per_minute=900),
+    "operator": Tier("role:operator", requests_per_minute=600),
+    "auditor": Tier("role:auditor", requests_per_minute=300),
+    "viewer": Tier("role:viewer", requests_per_minute=120),
+}
+_ROLE_PRIORITY: tuple[str, ...] = ("owner", "security", "operator", "auditor", "viewer")
 
 
 # Endpoint patterns that count as "heavy" — apply the 30 rpm tier even if
@@ -87,13 +95,60 @@ def _classify(request: Request) -> Tier:
     for pat in _HEAVY_PATTERNS:
         if pat.match(path):
             return _TIER_HEAVY
+    role_tier = _role_tier(request)
+    if role_tier:
+        return role_tier
     return _TIER_AUTHED
+
+
+def _normalize_roles(raw: object) -> set[str]:
+    roles: set[str] = set()
+    if raw is None:
+        return roles
+    if isinstance(raw, str):
+        raw = [part.strip() for part in raw.split(",")]
+    items = raw if isinstance(raw, (list, tuple, set)) else [raw]
+    for item in items:
+        if isinstance(item, str):
+            name = item
+        elif isinstance(item, dict):
+            name = str(item.get("name") or item.get("role") or "")
+        else:
+            name = str(getattr(item, "name", "") or getattr(item, "role", ""))
+        name = name.strip().lower()
+        if name:
+            roles.add(name)
+    return roles
+
+
+def _request_roles(request: Request) -> set[str]:
+    roles = _normalize_roles(getattr(request.state, "roles", None))
+    if roles:
+        return roles
+    user = getattr(request.state, "user", None)
+    if not user:
+        return set()
+    try:
+        from sylion.governance.roles import get_roles_manager
+
+        return _normalize_roles(get_roles_manager().get_user_roles(user))
+    except Exception:  # noqa: BLE001
+        log.debug("rate_limit: role lookup failed for user=%s", user, exc_info=True)
+        return set()
+
+
+def _role_tier(request: Request) -> Tier | None:
+    roles = _request_roles(request)
+    for role in _ROLE_PRIORITY:
+        if role in roles:
+            return _ROLE_TIERS[role]
+    return None
 
 
 def _identity(request: Request, tier: Tier) -> str:
     """Bucket identity. Authenticated tiers key by user id; anon keys by IP."""
     user = getattr(request.state, "user", None)
-    if user and tier.name in ("authenticated", "heavy"):
+    if user and (tier.name in ("authenticated", "heavy") or tier.name.startswith("role:")):
         return f"user:{user}"
     # X-Forwarded-For trust: only when SYLION_TRUST_PROXY=1, else use peer.
     if os.environ.get("SYLION_TRUST_PROXY", "0").strip() == "1":
@@ -127,23 +182,13 @@ def _hit(identity: str, tier: Tier) -> tuple[int, int]:
     now = int(time.time())
     window_start = now - (now % 60)
     key = _window_key(identity, _path_bucket(tier), window_start)
-    # Cache backend doesn't expose atomic INCR uniformly (in-memory has no
-    # native atomic). We approximate: get-modify-set guarded by GIL for
-    # in-memory and trusting Redis SETNX semantics in prod. A thundering
-    # herd can briefly over-count by N concurrent requests; acceptable
-    # for traffic shaping (we'd prefer an under-count anyway).
     try:
-        current = cache.get(key) or 0
+        count = cache.incr(key, ttl=90)
     except Exception:
-        current = 0
-    new = int(current) + 1
-    try:
-        # TTL = 90s so the window naturally expires before we'd reuse the key.
-        cache.set(key, new, ttl=90)
-    except Exception:
-        log.warning("rate_limit set failed for %s", key, exc_info=True)
+        log.warning("rate_limit incr failed for %s", key, exc_info=True)
+        count = 1
     ttl_remaining = max(1, 60 - (now - window_start))
-    return new, ttl_remaining
+    return count, ttl_remaining
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +231,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "X-RateLimit-Limit": str(limit),
                     "X-RateLimit-Remaining": "0",
                     "X-RateLimit-Reset": str(int(time.time()) + ttl),
+                    "X-RateLimit-Tier": tier.name,
                 },
             )
 
@@ -194,4 +240,5 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Limit"] = str(limit)
         response.headers["X-RateLimit-Remaining"] = str(max(0, limit - count))
         response.headers["X-RateLimit-Reset"] = str(int(time.time()) + ttl)
+        response.headers["X-RateLimit-Tier"] = tier.name
         return response

@@ -48,6 +48,10 @@ from typing import Any, TypeVar
 
 log = logging.getLogger("sylion.infra.cache")
 
+
+class CacheBackendUnavailable(RuntimeError):
+    """Raised when strict environments cannot use the configured cache."""
+
 # ----- public typing ------------------------------------------------------- #
 
 T = TypeVar("T")
@@ -111,6 +115,23 @@ class _InMemoryLRU:
             while len(self._store) > self._max:
                 self._store.popitem(last=False)
                 self.evictions += 1
+
+    def incr(self, key: str, ttl: int) -> int:
+        now = time.time()
+        expires_at = now + ttl if ttl > 0 else 0.0
+        with self._lock:
+            entry = self._store.get(key)
+            if entry is None or (entry[0] and entry[0] < now):
+                current = 0
+            else:
+                current = int(entry[1])
+            value = current + 1
+            self._store[key] = (expires_at, value)
+            self._store.move_to_end(key)
+            while len(self._store) > self._max:
+                self._store.popitem(last=False)
+                self.evictions += 1
+            return value
 
     def delete(self, key: str) -> bool:
         with self._lock:
@@ -177,6 +198,14 @@ class _RedisBackend:
         else:
             self._client.set(key, payload)
 
+    def incr(self, key: str, ttl: int) -> int:
+        pipe = self._client.pipeline()
+        pipe.incr(key)
+        if ttl > 0:
+            pipe.expire(key, ttl)
+        result = pipe.execute()
+        return int(result[0])
+
     def delete(self, key: str) -> bool:
         return bool(self._client.delete(key))
 
@@ -216,6 +245,12 @@ class Cache:
         if ttl is None:
             ttl = default_ttl(namespace) if namespace else 60
         self._backend.set(key, value, ttl)
+
+    def incr(self, key: str, ttl: int | None = None,
+             namespace: str | None = None) -> int:
+        if ttl is None:
+            ttl = default_ttl(namespace) if namespace else 60
+        return self._backend.incr(key, ttl)
 
     def delete(self, key: str) -> bool:
         return self._backend.delete(key)
@@ -322,14 +357,32 @@ _cache: Cache | None = None
 
 def _build_backend() -> _InMemoryLRU | _RedisBackend:
     url = os.environ.get("SYLION_CACHE_URL", "").strip()
+    strict_env = os.environ.get("SYLION_AEIS_ENV", "").strip().lower() in {
+        "staging",
+        "production",
+    }
     if not url or url.lower() == "memory":
+        if strict_env:
+            raise CacheBackendUnavailable(
+                "SYLION_CACHE_URL must point to redis:// or rediss:// "
+                "in staging/production"
+            )
         log.info("cache: using in-memory LRU (SYLION_CACHE_URL unset)")
         return _InMemoryLRU()
+    if strict_env and not url.lower().startswith(("redis://", "rediss://")):
+        raise CacheBackendUnavailable(
+            "SYLION_CACHE_URL must point to redis:// or rediss:// "
+            "in staging/production"
+        )
     try:
         backend = _RedisBackend(url)
         log.info("cache: connected to Redis at %s", _redact(url))
         return backend
     except Exception:                            # noqa: BLE001
+        if strict_env:
+            raise CacheBackendUnavailable(
+                f"Redis cache unavailable at {_redact(url)}"
+            )
         log.warning("cache: Redis at %s unreachable — falling back to in-memory",
                     _redact(url), exc_info=True)
         return _InMemoryLRU()
@@ -364,6 +417,7 @@ def reset_cache() -> None:
 
 __all__ = [
     "Cache",
+    "CacheBackendUnavailable",
     "cached",
     "default_ttl",
     "get_cache",

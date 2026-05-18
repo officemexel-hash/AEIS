@@ -90,6 +90,10 @@ def _configured_db_mode(e: dict[str, str]) -> str:
     return "sqlite"
 
 
+def _configured_cache_url(e: dict[str, str]) -> str:
+    return (e.get("SYLION_CACHE_URL") or "").strip()
+
+
 def check_secrets(env: dict[str, str] | None = None) -> StartupCheckResult:
     """Run the prod-mode default-secret audit.
 
@@ -142,6 +146,18 @@ def check_secrets(env: dict[str, str] | None = None) -> StartupCheckResult:
         secret_policy = load_secret_lifecycle_policy(e)
         for failure in secret_policy.validate():
             failures.append(f"SYLION_SECRETS_BACKEND: {failure}")
+
+        cache_url = _configured_cache_url(e)
+        if not cache_url or cache_url.lower() == "memory":
+            failures.append(
+                "SYLION_CACHE_URL: staging/production require Redis cache "
+                "for global rate limiting"
+            )
+        elif not cache_url.lower().startswith(("redis://", "rediss://")):
+            failures.append(
+                "SYLION_CACHE_URL: must start with redis:// or rediss:// "
+                "in staging/production"
+            )
 
     return StartupCheckResult(env=current_env, failures=failures)
 

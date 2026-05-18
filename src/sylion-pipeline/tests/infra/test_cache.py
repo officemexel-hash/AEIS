@@ -8,6 +8,7 @@ import pytest
 
 from sylion.infra.cache import (
     Cache,
+    CacheBackendUnavailable,
     cached,
     default_ttl,
     get_cache,
@@ -72,6 +73,14 @@ def test_lru_invalidate_prefix():
     assert lru.get("other.gamma") == 3
 
 
+def test_lru_incr_is_atomic_under_lock():
+    lru = _InMemoryLRU()
+
+    assert lru.incr("counter", ttl=60) == 1
+    assert lru.incr("counter", ttl=60) == 2
+    assert lru.get("counter") == 2
+
+
 # -------------------------------------------------------------------- Cache facade
 
 def test_singleton_idempotent():
@@ -84,6 +93,13 @@ def test_cache_uses_namespace_default_ttl(monkeypatch):
     cache = get_cache()
     cache.set("sylion:memory.search:abc", {"x": 1}, namespace="memory.search")
     assert cache.get("sylion:memory.search:abc") == {"x": 1}
+
+
+def test_cache_incr_via_facade():
+    cache = get_cache()
+
+    assert cache.incr("counter", ttl=60) == 1
+    assert cache.incr("counter", ttl=60) == 2
 
 
 def test_default_ttl_known_namespace():
@@ -169,6 +185,24 @@ def test_cached_swallows_backend_exceptions(monkeypatch):
 
     # must not raise; must return the function value
     assert search("ok") == "value:ok"
+
+
+def test_production_rejects_memory_cache_backend(monkeypatch):
+    monkeypatch.setenv("SYLION_AEIS_ENV", "production")
+    monkeypatch.setenv("SYLION_CACHE_URL", "memory")
+    reset_cache()
+
+    with pytest.raises(CacheBackendUnavailable):
+        get_cache()
+
+
+def test_production_rejects_non_redis_cache_url(monkeypatch):
+    monkeypatch.setenv("SYLION_AEIS_ENV", "production")
+    monkeypatch.setenv("SYLION_CACHE_URL", "http://cache")
+    reset_cache()
+
+    with pytest.raises(CacheBackendUnavailable):
+        get_cache()
 
 
 # --------------------------------------------------------------- isolation contract

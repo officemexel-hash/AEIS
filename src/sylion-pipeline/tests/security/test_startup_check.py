@@ -59,6 +59,7 @@ _GOOD_VAULT = "ab" * 32           # any non-default, non-empty value
 _GOOD_MOBILE = "real-mobile-secret-1234"
 _GOOD_PG_URL = "postgresql+asyncpg://aeis:secret@db/aeis"
 _GOOD_SECRET_BACKEND = "sops"
+_GOOD_REDIS_URL = "redis://cache:6379/0"
 _BAD_VAULT_DEFAULTS = (
     "sylion-vault-default-secret-key-change-me",
     "sylion-default-secret",
@@ -97,6 +98,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is True
         assert result.env == "production"
@@ -109,6 +111,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_VAULT_SECRET" in f for f in result.failures)
@@ -120,6 +123,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_MOBILE_SIGNING_SECRET" in f for f in result.failures)
@@ -132,6 +136,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert len(result.failures) == 2
@@ -145,6 +150,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("forbidden dev default" in f for f in result.failures)
@@ -158,6 +164,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_MOBILE_SIGNING_SECRET" in f for f in result.failures)
@@ -171,6 +178,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert len(result.failures) == 2
@@ -187,6 +195,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_RBAC_DISABLED" in f for f in result.failures)
@@ -203,6 +212,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_RBAC_DISABLED" in f for f in result.failures)
@@ -216,6 +226,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_RATE_LIMIT_DISABLED" in f for f in result.failures)
@@ -230,6 +241,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is True
 
@@ -242,6 +254,7 @@ class TestCheckSecretsProductionMode:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is True
 
@@ -281,6 +294,7 @@ class TestCheckDatabasePolicy:
             "SYLION_AEIS_ENV": "staging",
             "DATABASE_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is True
         assert result.env == "staging"
@@ -316,6 +330,7 @@ class TestAssertSafeToServe:
         monkeypatch.setenv("SYLION_DB_MODE", "postgres")
         monkeypatch.setenv("SYLION_DB_URL", _GOOD_PG_URL)
         monkeypatch.setenv("SYLION_SECRETS_BACKEND", _GOOD_SECRET_BACKEND)
+        monkeypatch.setenv("SYLION_CACHE_URL", _GOOD_REDIS_URL)
         # tests/conftest.py sets SYLION_RBAC_DISABLED=1 globally so legacy
         # anonymous-client tests don't 401. The new prod-rbac guard would
         # then fire here — clear it for this test.
@@ -348,6 +363,7 @@ class TestAssertSafeToServe:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": "file",
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
         })
         assert result.ok is False
         assert any("SYLION_SECRETS_BACKEND" in f for f in result.failures)
@@ -361,7 +377,35 @@ class TestAssertSafeToServe:
             "SYLION_DB_MODE": "postgres",
             "SYLION_DB_URL": _GOOD_PG_URL,
             "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": _GOOD_REDIS_URL,
             "SYLION_SECRETS_ROTATION_DAYS": "120",
         })
         assert result.ok is False
         assert any("<= 90 days" in f for f in result.failures)
+
+    def test_production_requires_redis_cache_for_rate_limit(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "production",
+            "SYLION_VAULT_SECRET": _GOOD_VAULT,
+            "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
+            "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": "memory",
+        })
+        assert result.ok is False
+        assert any("SYLION_CACHE_URL" in f for f in result.failures)
+        assert any("Redis cache" in f for f in result.failures)
+
+    def test_production_rejects_non_redis_cache_url(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "production",
+            "SYLION_VAULT_SECRET": _GOOD_VAULT,
+            "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
+            "SYLION_SECRETS_BACKEND": _GOOD_SECRET_BACKEND,
+            "SYLION_CACHE_URL": "http://cache",
+        })
+        assert result.ok is False
+        assert any("redis:// or rediss://" in f for f in result.failures)
