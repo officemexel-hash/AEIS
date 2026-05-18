@@ -1,0 +1,51 @@
+{
+  "decision_id": "PROD-D4-PRODUCTION-DEPLOY-PIPELINE",
+  "decision_class": "D4",
+  "rationale": "AEIS could not claim production readiness while production deploy was only a rehearsal/probe surface. This change adds a production deploy pipeline contract with explicit build, container scan, staging deploy, smoke, canary, production deploy, post-deploy verification and rollback drill stages. It is D4 because it changes public deployment API behavior and introduces a production Human Gate controlled operational path.",
+  "rollback_plan": {
+    "strategy": "ROLLBACK",
+    "steps": [
+      "Remove production_deploy_router from sylion.api.router.",
+      "Remove sylion.api.production_deploy_routes.",
+      "Remove sylion.ops.production_deploy_pipeline exports and implementation.",
+      "Revert deployment_gate project_id/run_id ticket matching if it causes compatibility issues.",
+      "Remove production deploy pipeline tests.",
+      "Run deployment, deploy route, rollback manager and production deploy route tests twice."
+    ],
+    "estimated_time": "20 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that a production deploy requires Human Gate approval, records every pipeline stage with evidence, blocks on scan/canary failures, runs a rollback drill and can restore the previous artifact on an operator-approved rollback.",
+    "pre_conditions": [
+      "FastAPI router is mounted.",
+      "ProductionDeployPipeline can write SQLite records.",
+      "EvidenceSpine can register inline JSON artifacts.",
+      "Governance ticket store can create and resolve D4 production tickets."
+    ],
+    "steps": [
+      "Run compileall for the production deploy service, API route, router and deployment gate.",
+      "Run unit tests for ProductionDeployPipeline success, approval guard, canary failure, post-deploy rollback and container scan failure.",
+      "Run API tests proving production deploy and actual rollback require Human Gate approval.",
+      "Run existing deployment orchestrator, deploy routes and rollback manager regression tests.",
+      "Run no-mock scan and git diff whitespace check.",
+      "Repeat the same verification scope as PASS2."
+    ],
+    "expected_outcome": "The pipeline reaches completed only after all stages pass, records rollback drill evidence, blocks false production progression on failures and restores the previous artifact when rollback is approved.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T05:22:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "production-deploy",
+    "canary",
+    "rollback",
+    "human-gate",
+    "evidence-spine"
+  ]
+}

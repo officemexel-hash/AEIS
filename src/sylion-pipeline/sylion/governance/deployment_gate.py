@@ -53,7 +53,7 @@ def _ticket_matches_deployment(
     if _norm(ticket_target) != _norm(target):
         return False, "target_mismatch"
 
-    for identity_key in ("module_id", "bundle_id"):
+    for identity_key in ("module_id", "bundle_id", "project_id", "run_id"):
         expected = payload.get(identity_key)
         if expected in (None, ""):
             continue
