@@ -1,5 +1,7 @@
 """SYLION API -- Budget monitoring routes."""
 
+import math
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -59,6 +61,16 @@ def _existing_budget_limit(tracker, model_id: str) -> float | None:
     if "monthly_limit" in existing:
         return float(existing["monthly_limit"])
     return None
+
+
+def _json_safe(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +162,7 @@ def check_budget(model_id: str):
         raise HTTPException(status_code=404, detail=f"Model {model_id} not tracked")
     if budget:
         result = {**budget, **result}
-    return result
+    return _json_safe(result)
 
 
 @router.post("/budget/{model_id}/resolve")

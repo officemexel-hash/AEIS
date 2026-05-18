@@ -1,0 +1,57 @@
+{
+  "decision_id": "PROD-D3-MODEL-CONTROL-PLANE",
+  "decision_class": "D3",
+  "rationale": "The production roadmap requires provider registry, model registry, council settings, routing and budget enforcement to stop behaving as independent planes. This change introduces a ModelControlPlane facade that registers provider models into ModelRegistry and ModelRouter, validates routing and council assignments against ModelRegistry.model_id, and enforces ModelBudgetManager before selecting a routed model. It is D3 because it adds a public orchestration contract for model selection and governance that future J-flow and council runtime paths must call.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove sylion.cognitive.model_control_plane and public export from cognitive/__init__.py.",
+      "Remove /api/v1/model-control-plane routes and router registration.",
+      "Remove ModelControlPlane tests.",
+      "Keep the ModelBudgetManager unlimited remaining fix and JSON-safe API serialization unless a separate rollback proves the old None contract is required.",
+      "Run model_control_plane, model_registry, model_router, model_budget, model_runtime_policy, council_model_policy and provider_catalog route tests twice.",
+      "Leave model_control_* SQLite rows inert; do not delete production model governance data during rollback."
+    ],
+    "estimated_time": "25 minutes",
+    "data_loss_risk": "LOW",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that provider registration creates ModelRegistry and ModelRouter entries, routing and council config cannot reference unknown models, budget enforcement runs before model selection, and a budget-blocked primary model falls back to the next registered model.",
+    "pre_conditions": [
+      "ModelControlPlane uses an isolated SQLite database.",
+      "Provider definitions include primary and fallback models.",
+      "Budgets are configured for both models.",
+      "FastAPI ModelControlPlane routes are available through the test client."
+    ],
+    "steps": [
+      "Register a provider with two models and a keys_ref.",
+      "Verify provider state, ModelRegistry entries, capabilities and ModelRouter selection.",
+      "Configure budgets for primary and fallback models.",
+      "Configure J1/J2 routing with primary and fallback chain.",
+      "Resolve the route and verify the primary model is selected when budget permits.",
+      "Record usage that exhausts the primary budget.",
+      "Resolve the route again and verify fallback selection with budget_blocked attempt metadata.",
+      "Verify routing and council config reject unregistered models.",
+      "Verify monitoring budget API remains JSON compliant after internal unlimited budgets return infinity.",
+      "Exercise provider, budget, routing, routing resolve, council config and snapshot API routes.",
+      "Run the full related model/provider/council test suite twice."
+    ],
+    "expected_outcome": "Every routed model and council assignment references ModelRegistry.model_id, model selection is budget-gated, fallback works after budget exhaustion, and API snapshot exposes one composed control-plane view.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T04:42:23Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "model-control-plane",
+    "model-registry",
+    "provider-registry",
+    "routing",
+    "budget-enforcement",
+    "council"
+  ]
+}

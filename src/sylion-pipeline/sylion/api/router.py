@@ -58,6 +58,7 @@ from sylion.api.evaluator_routes import router as evaluator_router
 from sylion.api.integration_routes import router as integration_router
 from sylion.api.healing_engine_routes import router as healing_engine_router
 from sylion.api.model_budget_routes import router as model_budget_router
+from sylion.api.model_control_plane_routes import router as model_control_plane_router
 from sylion.api.audit_sink_routes import router as audit_sink_router
 from sylion.api.audit_query_routes import router as audit_query_router
 from sylion.api.connector_routes import router as connector_router
@@ -172,6 +173,7 @@ router.include_router(evaluator_router)
 router.include_router(integration_router)
 router.include_router(healing_engine_router)
 router.include_router(model_budget_router)
+router.include_router(model_control_plane_router)
 router.include_router(audit_sink_router)
 router.include_router(audit_query_router)
 router.include_router(connector_router)

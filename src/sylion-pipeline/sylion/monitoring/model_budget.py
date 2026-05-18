@@ -476,8 +476,8 @@ class ModelBudgetManager:
             return {
                 "model_id": model_id,
                 "allowed": True,
-                "remaining_daily": None,
-                "remaining_monthly": None,
+                "remaining_daily": float("inf"),
+                "remaining_monthly": float("inf"),
                 "spent_today": 0,
                 "spent_this_month": 0,
                 "daily_limit": 0,
@@ -491,9 +491,9 @@ class ModelBudgetManager:
         spent_monthly = row["spent_this_month"]
 
         remaining_daily = (daily_limit - spent_today
-                           if daily_limit > 0 else None)
+                           if daily_limit > 0 else float("inf"))
         remaining_monthly = (monthly_limit - spent_monthly
-                             if monthly_limit > 0 else None)
+                             if monthly_limit > 0 else float("inf"))
 
         allowed = True
         if daily_limit > 0 and spent_today >= daily_limit:

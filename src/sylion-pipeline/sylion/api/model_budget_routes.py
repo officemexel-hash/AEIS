@@ -6,6 +6,8 @@ Endpoints for the ModelBudgetManager module:
   check_budget, list_alerts, acknowledge_alert, get_budget_summary.
 """
 
+import math
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -26,6 +28,16 @@ def _get_model_budget():
     from sylion.monitoring.model_budget import get_model_budget
     _model_budget = get_model_budget()
     return _model_budget
+
+
+def _json_safe(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +102,7 @@ def get_budget(model_id: str):
 def check_budget(model_id: str):
     """Check if a model is within its budget."""
     mgr = _get_model_budget()
-    return mgr.check_budget(model_id)
+    return _json_safe(mgr.check_budget(model_id))
 
 
 # ---------------------------------------------------------------------------
