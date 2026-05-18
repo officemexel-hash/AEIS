@@ -4,13 +4,42 @@ SYLION API -- Quality routes.
 Endpoints for: golden_set_registry, regression_detector, test_runner.
 """
 
-from fastapi import APIRouter, HTTPException
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from sylion.quality.golden_set_registry import get_golden_set_registry
 from sylion.quality.regression_detector import get_regression_detector
 from sylion.quality.test_runner import get_test_runner
+from sylion.security.rbac import requires_role
 
 router = APIRouter(prefix="/api/v1/quality", tags=["quality"])
+
+
+class LoadTestProfileRequest(BaseModel):
+    name: str = "aeis_10x_peak"
+    expected_peak_operations: int = Field(default=25, ge=1, le=500)
+    peak_multiplier: int = Field(default=10, ge=10, le=100)
+    target_p99_ms: float = Field(default=500.0, gt=0)
+    max_db_connections: int = Field(default=5, ge=1, le=100)
+    max_memory_growth_bytes: int = Field(default=8 * 1024 * 1024, ge=1)
+    worker_count: int = Field(default=4, ge=1, le=100)
+    dispatch_target_p99_ms: float = Field(default=500.0, gt=0)
+    metadata: dict[str, object] = Field(default_factory=dict)
+
+
+def _model_dump(model: BaseModel) -> dict:
+    if hasattr(model, "model_dump"):
+        return model.model_dump()
+    return model.dict()
+
+
+def _load_test_runner():
+    from sylion.quality.load_test import get_load_test_runner
+
+    db_path = os.environ.get("SYLION_LOAD_TEST_DB_PATH") or os.environ.get("SYLION_DB_PATH")
+    return get_load_test_runner(db_path=db_path)
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +164,43 @@ def regression_stats():
     """Get regression detector statistics."""
     det = get_regression_detector()
     return det.get_stats()
+
+
+# ---------------------------------------------------------------------------
+# Production Load Test
+# ---------------------------------------------------------------------------
+
+@router.post("/load-tests/10x", status_code=201)
+def run_load_test_10x(
+    body: LoadTestProfileRequest,
+    _user: str = Depends(requires_role("operator")),
+):
+    """Run the production-readiness 10x peak load test."""
+    from sylion.quality.load_test import LoadTestProfile
+
+    try:
+        return _load_test_runner().run_10x(LoadTestProfile(**_model_dump(body)))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/load-tests")
+def list_load_tests(
+    limit: int = Query(default=100, ge=1, le=500),
+    _user: str = Depends(requires_role("operator")),
+):
+    return {"runs": _load_test_runner().list_runs(limit=limit)}
+
+
+@router.get("/load-tests/{run_id}")
+def get_load_test(
+    run_id: str,
+    _user: str = Depends(requires_role("operator")),
+):
+    run = _load_test_runner().get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Load test run {run_id} not found")
+    return run
 
 
 # ---------------------------------------------------------------------------

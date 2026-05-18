@@ -1,0 +1,50 @@
+{
+  "decision_id": "PROD-D3-LOAD-TEST-10X",
+  "decision_class": "D3",
+  "rationale": "AEIS needed a production-readiness load test that verifies 10x expected peak, p99 latency, DB connection count, memory growth and worker dispatch latency instead of relying on a roadmap note. This change adds a LoadTestRunner and quality API endpoints that execute and persist the load test with Evidence Spine artifacts.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove load test routes from sylion.api.quality_routes.",
+      "Remove sylion.quality.load_test and its export from sylion.quality.__init__.",
+      "Remove load test runner and quality load route tests.",
+      "Run runtime_perf, memory_footprint and worker lifecycle regression tests twice."
+    ],
+    "estimated_time": "10 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that AEIS can run a configurable 10x load profile, records p99, DB connection, memory and worker dispatch metrics, fails closed when thresholds are breached and exposes results through the quality API.",
+    "pre_conditions": [
+      "SQLite runtime is available for in-process load events.",
+      "WorkerRegistry can create assignments.",
+      "RuntimePerfTracker and MemoryFootprintTracker can record measurements.",
+      "EvidenceSpine can register inline JSON artifacts.",
+      "Quality API is mounted."
+    ],
+    "steps": [
+      "Run compileall for load_test, quality __init__ and quality_routes.",
+      "Run unit tests for passing 10x profile, fail-closed p99 threshold and 10x multiplier validation.",
+      "Run API tests for run/list/get load test endpoints.",
+      "Run runtime_perf, memory_footprint and worker lifecycle regressions.",
+      "Run no-mock scan and git diff whitespace check.",
+      "Repeat the same verification scope as PASS2."
+    ],
+    "expected_outcome": "The 10x load test returns pass only when p99, DB connection count, memory growth and worker dispatch latency are within thresholds, and every run has evidence.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T05:55:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "load-test",
+    "p99",
+    "memory",
+    "worker-dispatch",
+    "evidence-spine"
+  ]
+}
