@@ -1,0 +1,48 @@
+{
+  "decision_id": "PROD-D3-AUTOSCALER-SIMULATION",
+  "decision_class": "D3",
+  "rationale": "AEIS needed a frozen autoscaler simulation that verifies CPU, queue depth and error-rate reactions, scale-up/down paths and anti-flapping cooldown behavior. Existing autoscaler routes exposed evaluation/execution but did not prove the full production-readiness scenario.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove AutoscalerSignal, AutoscalerSimulationProfile and AutoscalerSimulationRunner from sylion.worker.autoscaler.",
+      "Remove /api/v1/workers/autoscaler/simulate route.",
+      "Remove autoscaler simulation tests.",
+      "Run autoscaler, worker routes and worker lifecycle tests twice."
+    ],
+    "estimated_time": "10 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that autoscaler simulation observes scale-up and scale-down decisions, blocks rapid opposite actions during cooldown and records Evidence Spine output.",
+    "pre_conditions": [
+      "Autoscaler simulation runner is importable.",
+      "EvidenceSpine can register inline JSON artifacts.",
+      "Autoscaler API route is mounted."
+    ],
+    "steps": [
+      "Run compileall for autoscaler and autoscaler routes.",
+      "Run simulation unit tests for default profile and cooldown/no-flapping profile.",
+      "Run API tests for /api/v1/workers/autoscaler/simulate.",
+      "Run worker route and worker lifecycle regressions.",
+      "Run no-mock scan and git diff whitespace check.",
+      "Repeat the same verification scope as PASS2."
+    ],
+    "expected_outcome": "Autoscaler simulation passes only when scale-up, scale-down, cooldown and no-flapping checks all pass and evidence is recorded.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T06:10:00Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "autoscaler",
+    "cpu",
+    "queue-depth",
+    "error-rate",
+    "no-flapping"
+  ]
+}
