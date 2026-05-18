@@ -57,6 +57,7 @@ class TestIsProduction:
 
 _GOOD_VAULT = "ab" * 32           # any non-default, non-empty value
 _GOOD_MOBILE = "real-mobile-secret-1234"
+_GOOD_PG_URL = "postgresql+asyncpg://aeis:secret@db/aeis"
 _BAD_VAULT_DEFAULTS = (
     "sylion-vault-default-secret-key-change-me",
     "sylion-default-secret",
@@ -92,6 +93,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is True
         assert result.env == "production"
@@ -101,6 +104,8 @@ class TestCheckSecretsProductionMode:
         result = check_secrets({
             "SYLION_AEIS_ENV": "production",
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert any("SYLION_VAULT_SECRET" in f for f in result.failures)
@@ -109,6 +114,8 @@ class TestCheckSecretsProductionMode:
         result = check_secrets({
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert any("SYLION_MOBILE_SIGNING_SECRET" in f for f in result.failures)
@@ -118,6 +125,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": "",
             "SYLION_MOBILE_SIGNING_SECRET": "   ",   # whitespace-only also empty
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert len(result.failures) == 2
@@ -128,6 +137,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": bad_value,
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert any("forbidden dev default" in f for f in result.failures)
@@ -138,6 +149,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
             "SYLION_MOBILE_SIGNING_SECRET": _BAD_MOBILE_DEFAULT,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert any("SYLION_MOBILE_SIGNING_SECRET" in f for f in result.failures)
@@ -148,6 +161,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": _BAD_VAULT_DEFAULTS[0],
             "SYLION_MOBILE_SIGNING_SECRET": _BAD_MOBILE_DEFAULT,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert len(result.failures) == 2
@@ -161,6 +176,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
             "SYLION_RBAC_DISABLED": "1",
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert any("SYLION_RBAC_DISABLED" in f for f in result.failures)
@@ -174,9 +191,23 @@ class TestCheckSecretsProductionMode:
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
             "SYLION_RBAC_DISABLED": " 1 ",
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is False
         assert any("SYLION_RBAC_DISABLED" in f for f in result.failures)
+
+    def test_production_rejects_rate_limit_disabled(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "production",
+            "SYLION_VAULT_SECRET": _GOOD_VAULT,
+            "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_RATE_LIMIT_DISABLED": "1",
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
+        })
+        assert result.ok is False
+        assert any("SYLION_RATE_LIMIT_DISABLED" in f for f in result.failures)
 
     def test_production_accepts_rbac_disabled_zero(self):
         # "0" is the explicit "RBAC enabled" value — must not trigger.
@@ -185,6 +216,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
             "SYLION_RBAC_DISABLED": "0",
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is True
 
@@ -194,6 +227,8 @@ class TestCheckSecretsProductionMode:
             "SYLION_AEIS_ENV": "production",
             "SYLION_VAULT_SECRET": _GOOD_VAULT,
             "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": _GOOD_PG_URL,
         })
         assert result.ok is True
 
@@ -205,6 +240,45 @@ class TestCheckSecretsProductionMode:
             "SYLION_RBAC_DISABLED": "1",
         })
         assert result.ok is True
+
+
+class TestCheckDatabasePolicy:
+    def test_production_rejects_default_sqlite(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "production",
+            "SYLION_VAULT_SECRET": _GOOD_VAULT,
+            "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+        })
+        assert result.ok is False
+        assert any("SYLION_DB_MODE" in f for f in result.failures)
+        assert any("SYLION_DB_URL or DATABASE_URL" in f for f in result.failures)
+
+    def test_staging_rejects_sqlite_even_without_production_secrets(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "staging",
+            "SYLION_DB_MODE": "sqlite",
+        })
+        assert result.ok is False
+        assert any("staging/production require postgres" in f for f in result.failures)
+
+    def test_staging_accepts_database_url_alias(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "staging",
+            "DATABASE_URL": _GOOD_PG_URL,
+        })
+        assert result.ok is True
+        assert result.env == "staging"
+
+    def test_production_rejects_sync_postgres_url(self):
+        result = check_secrets({
+            "SYLION_AEIS_ENV": "production",
+            "SYLION_VAULT_SECRET": _GOOD_VAULT,
+            "SYLION_MOBILE_SIGNING_SECRET": _GOOD_MOBILE,
+            "SYLION_DB_MODE": "postgres",
+            "SYLION_DB_URL": "postgresql://aeis:secret@db/aeis",
+        })
+        assert result.ok is False
+        assert any("postgresql+asyncpg://" in f for f in result.failures)
 
 
 # ---------------------------------------------------------------------------
@@ -222,10 +296,13 @@ class TestAssertSafeToServe:
         monkeypatch.setenv("SYLION_AEIS_ENV", "production")
         monkeypatch.setenv("SYLION_VAULT_SECRET", _GOOD_VAULT)
         monkeypatch.setenv("SYLION_MOBILE_SIGNING_SECRET", _GOOD_MOBILE)
+        monkeypatch.setenv("SYLION_DB_MODE", "postgres")
+        monkeypatch.setenv("SYLION_DB_URL", _GOOD_PG_URL)
         # tests/conftest.py sets SYLION_RBAC_DISABLED=1 globally so legacy
         # anonymous-client tests don't 401. The new prod-rbac guard would
         # then fire here — clear it for this test.
         monkeypatch.delenv("SYLION_RBAC_DISABLED", raising=False)
+        monkeypatch.delenv("SYLION_RATE_LIMIT_DISABLED", raising=False)
         assert_safe_to_serve()
 
     def test_production_with_default_raises(self):

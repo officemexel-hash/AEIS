@@ -1,0 +1,45 @@
+{
+  "decision_id": "PROD-D4-DB-POLICY",
+  "decision_class": "D4",
+  "rationale": "Roadmapa produkcyjna AEIS wymaga, aby SQLite byl dozwolony tylko w development, a staging i production startowaly wyłącznie z PostgreSQL przez postgresql+asyncpg. Zmiana dotyka startup safety checks, wyboru trybu bazy danych i migracji PostgreSQL, wiec jest architektonicznym hardeningiem storage.",
+  "rollback_plan": {
+    "strategy": "ROLLBACK",
+    "steps": [
+      "Revert zmian w sylion.security.startup_check, sylion.db.__init__, sylion.db.pg_migration i sylion.api.app.",
+      "Usun testy dodane dla production DB policy albo przywroc poprzednie asercje.",
+      "Uruchom test_startup_check.py oraz test_server_integration.py, aby potwierdzic poprzednie zachowanie dev SQLite.",
+      "Zweryfikuj lokalny dev start na SQLite przez /health."
+    ],
+    "estimated_time": "15 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify that development keeps SQLite support while staging and production refuse to start unless PostgreSQL async URL is configured.",
+    "pre_conditions": [
+      "No real credentials are used.",
+      "Tests pass synthetic env dictionaries into startup checks."
+    ],
+    "steps": [
+      "Run startup safety unit tests for development, staging and production env combinations.",
+      "Assert production with SQLite/default DB mode fails.",
+      "Assert staging with SQLite/default DB mode fails.",
+      "Assert production with SYLION_DB_MODE=postgres and postgresql+asyncpg URL passes.",
+      "Assert DATABASE_URL with postgresql+asyncpg is accepted as an alias."
+    ],
+    "expected_outcome": "SQLite remains valid only outside staging/production; production-like envs require PostgreSQL async configuration.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:00:02.4742564Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "storage",
+    "postgresql",
+    "startup-check",
+    "sqlite-block"
+  ]
+}

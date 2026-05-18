@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -16,12 +17,27 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 
+def _normalize_advisor_layer_sql(sql: str) -> str:
+    """Make legacy advisor-layer table/index DDL idempotent for the runner."""
+    sql = re.sub(
+        r"(?m)^CREATE TABLE (?!IF NOT EXISTS)(.+)$",
+        r"CREATE TABLE IF NOT EXISTS \1",
+        sql,
+    )
+    sql = re.sub(
+        r"(?m)^CREATE INDEX (?!IF NOT EXISTS)(.+)$",
+        r"CREATE INDEX IF NOT EXISTS \1",
+        sql,
+    )
+    return sql
+
+
 def _load_advisor_layer_sql() -> str:
     """Load the advisor-layer schema shipped alongside this module."""
     sql_path = Path(__file__).with_name("advisor_layer.sql")
     if not sql_path.exists():
         return ""
-    return sql_path.read_text(encoding="utf-8")
+    return _normalize_advisor_layer_sql(sql_path.read_text(encoding="utf-8"))
 
 
 _ADVISOR_LAYER_SQL = _load_advisor_layer_sql()
@@ -209,7 +225,11 @@ def create_pg_engine(db_url: Optional[str] = None) -> AsyncEngine:
     AsyncEngine
         SQLAlchemy async engine configured for asyncpg.
     """
-    url = db_url or os.environ.get("SYLION_DB_URL", "")
+    url = (
+        db_url
+        or os.environ.get("SYLION_DB_URL")
+        or os.environ.get("DATABASE_URL", "")
+    )
     if not url:
         raise ValueError(
             "PostgreSQL URL required: pass db_url or set SYLION_DB_URL"

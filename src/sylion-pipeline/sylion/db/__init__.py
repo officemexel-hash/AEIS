@@ -7,6 +7,7 @@ Supports two modes, selected via environment variables:
 
 - **PostgreSQL** (opt-in): async via asyncpg + SQLAlchemy.
   Activate with ``SYLION_DB_MODE=postgres`` and ``SYLION_DB_URL=postgresql+asyncpg://...``.
+  ``DATABASE_URL`` is accepted as a deployment-friendly alias.
   Tables are created by ``sylion.db.pg_migration.run_pg_migration``.
 """
 import os
@@ -14,9 +15,23 @@ import os
 from sylion.db.migration import run_migration
 
 
+def get_db_url() -> str:
+    """Return the configured PostgreSQL URL, accepting DATABASE_URL as alias."""
+    return (
+        os.environ.get("SYLION_DB_URL")
+        or os.environ.get("DATABASE_URL")
+        or ""
+    ).strip()
+
+
 def get_db_mode() -> str:
     """Return the active database mode: 'sqlite' or 'postgres'."""
-    return os.environ.get("SYLION_DB_MODE", "sqlite")
+    explicit = os.environ.get("SYLION_DB_MODE", "").strip().lower()
+    if explicit:
+        return explicit
+    if get_db_url().startswith("postgresql+asyncpg://"):
+        return "postgres"
+    return "sqlite"
 
 
 def is_postgres() -> bool:
@@ -37,4 +52,4 @@ async def init_database():
         run_migration()
 
 
-__all__ = ["run_migration", "get_db_mode", "is_postgres", "init_database"]
+__all__ = ["run_migration", "get_db_mode", "get_db_url", "is_postgres", "init_database"]

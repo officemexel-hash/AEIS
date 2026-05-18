@@ -1,12 +1,13 @@
-"""Phase 3 W2.2 — production-mode secret-default fail-fast checks.
+"""Phase 3 W2.2 - production-mode fail-fast startup checks.
 
 Runs at FastAPI startup (lifespan). When ``SYLION_AEIS_ENV=production``,
 asserts that none of the well-known dev defaults survived into the
-environment. Dev / test continue to work without any env vars set —
-this guard only fires in prod mode.
+environment. When ``SYLION_AEIS_ENV`` is ``staging`` or ``production``,
+asserts that the runtime is configured for PostgreSQL via asyncpg.
+Dev / test continue to work without any env vars set.
 
 Fail-fast philosophy: a dev default in prod is a *configuration*
-incident, not a runtime defect — refuse to boot rather than serve
+incident, not a runtime defect - refuse to boot rather than serve
 forgeable signatures or unencrypted vault data.
 """
 from __future__ import annotations
@@ -47,7 +48,12 @@ _REQUIRED_IN_PRODUCTION: tuple[str, ...] = (
 _FORBIDDEN_IN_PRODUCTION: dict[str, tuple[str, ...]] = {
     # rbac.py / rbac_enforcement.py both check `strip() == "1"` only.
     "SYLION_RBAC_DISABLED": ("1",),
+    # rate_limit.py checks this flag before all accounting.
+    "SYLION_RATE_LIMIT_DISABLED": ("1",),
 }
+
+_STRICT_DB_ENVS: frozenset[str] = frozenset({"staging", "production"})
+_POSTGRES_ASYNC_PREFIX = "postgresql+asyncpg://"
 
 
 @dataclass
@@ -65,6 +71,23 @@ def is_production() -> bool:
     return os.environ.get("SYLION_AEIS_ENV", "").strip().lower() == "production"
 
 
+def _runtime_env(e: dict[str, str]) -> str:
+    return (e.get("SYLION_AEIS_ENV", "") or "").strip().lower() or "dev"
+
+
+def _configured_db_url(e: dict[str, str]) -> str:
+    return (e.get("SYLION_DB_URL") or e.get("DATABASE_URL") or "").strip()
+
+
+def _configured_db_mode(e: dict[str, str]) -> str:
+    explicit = (e.get("SYLION_DB_MODE", "") or "").strip().lower()
+    if explicit:
+        return explicit
+    if _configured_db_url(e).startswith(_POSTGRES_ASYNC_PREFIX):
+        return "postgres"
+    return "sqlite"
+
+
 def check_secrets(env: dict[str, str] | None = None) -> StartupCheckResult:
     """Run the prod-mode default-secret audit.
 
@@ -73,31 +96,48 @@ def check_secrets(env: dict[str, str] | None = None) -> StartupCheckResult:
     whether to raise.
     """
     e = env if env is not None else dict(os.environ)
-    current_env = (e.get("SYLION_AEIS_ENV", "") or "").strip().lower()
-    if current_env != "production":
-        return StartupCheckResult(env=current_env or "dev", failures=[])
+    current_env = _runtime_env(e)
 
     failures: list[str] = []
-    for var in _REQUIRED_IN_PRODUCTION:
-        raw = (e.get(var, "") or "").strip()
-        if not raw:
-            failures.append(f"{var}: required in production but unset/empty")
-            continue
-        forbidden = _FORBIDDEN_DEFAULTS.get(var, ())
-        if raw in forbidden:
+    if current_env == "production":
+        for var in _REQUIRED_IN_PRODUCTION:
+            raw = (e.get(var, "") or "").strip()
+            if not raw:
+                failures.append(f"{var}: required in production but unset/empty")
+                continue
+            forbidden = _FORBIDDEN_DEFAULTS.get(var, ())
+            if raw in forbidden:
+                failures.append(
+                    f"{var}: matches forbidden dev default - rotate before deploying"
+                )
+
+        for var, forbidden_values in _FORBIDDEN_IN_PRODUCTION.items():
+            raw = (e.get(var, "") or "").strip()
+            if raw in forbidden_values:
+                failures.append(
+                    f"{var}={raw} disables a security guard in production "
+                    f"- unset before deploying"
+                )
+
+    if current_env in _STRICT_DB_ENVS:
+        db_mode = _configured_db_mode(e)
+        db_url = _configured_db_url(e)
+        if db_mode != "postgres":
             failures.append(
-                f"{var}: matches forbidden dev default — rotate before deploying"
+                "SYLION_DB_MODE: staging/production require postgres; "
+                f"got {db_mode or 'unset'}"
+            )
+        if not db_url:
+            failures.append(
+                "SYLION_DB_URL or DATABASE_URL: required in staging/production"
+            )
+        elif not db_url.startswith(_POSTGRES_ASYNC_PREFIX):
+            failures.append(
+                "SYLION_DB_URL or DATABASE_URL: must start with "
+                f"{_POSTGRES_ASYNC_PREFIX} in staging/production"
             )
 
-    for var, forbidden_values in _FORBIDDEN_IN_PRODUCTION.items():
-        raw = (e.get(var, "") or "").strip()
-        if raw in forbidden_values:
-            failures.append(
-                f"{var}={raw} disables a security guard in production "
-                f"— unset before deploying"
-            )
-
-    return StartupCheckResult(env="production", failures=failures)
+    return StartupCheckResult(env=current_env, failures=failures)
 
 
 class StartupSecretsViolation(RuntimeError):
@@ -116,7 +156,7 @@ def assert_safe_to_serve(env: dict[str, str] | None = None) -> None:
         for line in result.failures:
             log.error("startup_check FAIL: %s", line)
         raise StartupSecretsViolation(
-            "production startup blocked by secret-default check; failures: "
+            "startup blocked by production safety check; failures: "
             + "; ".join(result.failures)
         )
     if result.env == "production":

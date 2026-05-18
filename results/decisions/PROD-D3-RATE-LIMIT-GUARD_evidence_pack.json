@@ -1,0 +1,41 @@
+{
+  "decision_id": "PROD-D3-RATE-LIMIT-GUARD",
+  "decision_class": "D3",
+  "rationale": "Production startup must not allow SYLION_RATE_LIMIT_DISABLED=1 because that environment flag bypasses the global RateLimitMiddleware before request accounting. The change is a cross-cutting security startup guard and supports roadmap item PROD-P1-006 / A.5.",
+  "rollback_plan": {
+    "strategy": "MITIGATE",
+    "steps": [
+      "Remove SYLION_RATE_LIMIT_DISABLED from the production forbidden-value map in sylion.security.startup_check.",
+      "Remove or update the focused startup-check regression for rate-limit disabled production mode.",
+      "Run src/sylion-pipeline/tests/security/test_startup_check.py to confirm startup checks return to the previous behavior."
+    ],
+    "estimated_time": "10 minutes",
+    "data_loss_risk": "NONE",
+    "tested": false
+  },
+  "fidelity_test": {
+    "description": "Verify production startup fails when the global rate limiter bypass flag is enabled.",
+    "pre_conditions": [
+      "No real credentials are used.",
+      "Production-like environment values are synthetic."
+    ],
+    "steps": [
+      "Run the startup-check unit suite.",
+      "Assert production with SYLION_RATE_LIMIT_DISABLED=1 returns a StartupCheckResult failure.",
+      "Assert clean production with PostgreSQL URL and no disabled guards passes."
+    ],
+    "expected_outcome": "Production refuses to start with rate limiting disabled and continues to allow dev/test bypasses outside production.",
+    "automated": true
+  },
+  "timestamp": "2026-05-18T03:00:02.4742564Z",
+  "author": "codex",
+  "status": "DRAFT",
+  "council_required": true,
+  "council_votes": [],
+  "tags": [
+    "production-roadmap",
+    "rate-limit",
+    "startup-check",
+    "security"
+  ]
+}

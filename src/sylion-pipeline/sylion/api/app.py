@@ -6,7 +6,6 @@ import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.openapi.utils import get_openapi
@@ -671,10 +670,6 @@ def _seed_demo_data(db_path: str, event_bus) -> None:
 # Otherwise                                      ->  SQLite (default)
 # ---------------------------------------------------------------------------
 
-_DB_MODE: str = os.environ.get("SYLION_DB_MODE", "sqlite").lower()
-_DB_URL: Optional[str] = os.environ.get("SYLION_DB_URL")
-_EVENT_MODE: str = os.environ.get("SYLION_EVENT_MODE", "sqlite").lower()
-_NATS_URL: str = os.environ.get("NATS_URL", "nats://localhost:4222")
 _PG_ENGINE = None  # lazily initialised async engine
 
 # Bootstrap flow instance (lives across the app lifecycle)
@@ -682,7 +677,23 @@ _bootstrap_flow: BootstrapFlow | None = None
 
 
 def _is_pg_mode() -> bool:
-    return _DB_MODE == "postgres" and bool(_DB_URL)
+    from sylion.db import get_db_mode, get_db_url
+
+    return get_db_mode() == "postgres" and bool(get_db_url())
+
+
+def _db_url() -> str:
+    from sylion.db import get_db_url
+
+    return get_db_url()
+
+
+def _event_mode() -> str:
+    return os.environ.get("SYLION_EVENT_MODE", "sqlite").strip().lower()
+
+
+def _nats_url() -> str:
+    return os.environ.get("NATS_URL", "nats://localhost:4222")
 
 
 def get_bootstrap_flow() -> BootstrapFlow | None:
@@ -735,7 +746,7 @@ async def lifespan(app: FastAPI):
 
     if _is_pg_mode():
         from sylion.db.pg_migration import create_pg_engine, run_pg_migration
-        _PG_ENGINE = create_pg_engine(_DB_URL)
+        _PG_ENGINE = create_pg_engine(_db_url())
         await run_pg_migration(_PG_ENGINE)
         db_path = ":memory:"
     else:
@@ -1116,7 +1127,7 @@ async def health():
         "modules": module_count,
         "endpoints": endpoint_count,
         "db_mode": "postgres" if _is_pg_mode() else "sqlite",
-        "event_mode": _EVENT_MODE,
+        "event_mode": _event_mode(),
     }
 
     if _is_pg_mode() and _PG_ENGINE is not None:
@@ -1124,9 +1135,9 @@ async def health():
         pg_info = await check_pg_health(_PG_ENGINE)
         info["db_health"] = pg_info
 
-    if _EVENT_MODE == "nats":
+    if _event_mode() == "nats":
         from sylion.core.nats_health import check_nats_health
-        nats_info = check_nats_health(_NATS_URL)
+        nats_info = check_nats_health(_nats_url())
         info["nats_health"] = nats_info
 
     return info

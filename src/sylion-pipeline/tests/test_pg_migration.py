@@ -35,13 +35,18 @@ def _run(coro):
 
 @pytest.fixture(autouse=True)
 def _clean_env():
-    """Remove SYLION_DB_URL from environment before each test."""
+    """Remove PostgreSQL URL env vars before each test."""
     original = os.environ.pop("SYLION_DB_URL", None)
+    original_database_url = os.environ.pop("DATABASE_URL", None)
     yield
     if original is not None:
         os.environ["SYLION_DB_URL"] = original
     else:
         os.environ.pop("SYLION_DB_URL", None)
+    if original_database_url is not None:
+        os.environ["DATABASE_URL"] = original_database_url
+    else:
+        os.environ.pop("DATABASE_URL", None)
 
 
 def _make_mock_engine():
@@ -100,6 +105,20 @@ class TestCreatePgEngine:
 
         mock_create.assert_called_once_with(
             "postgresql+asyncpg://env:pw@dbhost/mydb",
+            echo=False,
+            pool_pre_ping=True,
+        )
+        assert engine is mock_create.return_value
+
+    @patch("sylion.db.pg_migration.create_async_engine")
+    def test_uses_database_url_alias_when_no_sylion_url(self, mock_create):
+        """Falls back to DATABASE_URL when SYLION_DB_URL is not set."""
+        os.environ["DATABASE_URL"] = "postgresql+asyncpg://alias:pw@dbhost/mydb"
+        mock_create.return_value = MagicMock(name="engine")
+        engine = create_pg_engine()
+
+        mock_create.assert_called_once_with(
+            "postgresql+asyncpg://alias:pw@dbhost/mydb",
             echo=False,
             pool_pre_ping=True,
         )
@@ -193,7 +212,7 @@ class TestRunPgMigration:
 
     @patch("sylion.db.pg_migration.create_pg_engine")
     def test_schema_sql_contains_all_tables(self, mock_create_engine):
-        """The embedded schema contains all 13 expected tables."""
+        """The embedded schema contains the 13 core expected tables."""
         expected_tables = [
             "modules", "module_events", "evidence_entries", "decisions",
             "council_sessions", "council_votes", "evidence_packs",
@@ -220,9 +239,13 @@ class TestRunPgMigration:
     @patch("sylion.db.pg_migration.create_pg_engine")
     def test_schema_uses_if_not_exists(self, mock_create_engine):
         """All CREATE TABLE statements use IF NOT EXISTS for idempotency."""
-        # Count CREATE TABLE statements
-        create_count = _PG_SCHEMA_SQL.count("CREATE TABLE IF NOT EXISTS")
-        assert create_count == 13
+        create_lines = [
+            line.strip()
+            for line in _PG_SCHEMA_SQL.splitlines()
+            if line.strip().startswith("CREATE TABLE")
+        ]
+        assert len(create_lines) >= 13
+        assert all(line.startswith("CREATE TABLE IF NOT EXISTS") for line in create_lines)
 
     @patch("sylion.db.pg_migration.create_pg_engine")
     def test_schema_has_indexes(self, mock_create_engine):

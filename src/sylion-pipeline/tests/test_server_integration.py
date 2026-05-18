@@ -29,6 +29,18 @@ class TestServerModule:
         assert get_db_mode() in ("sqlite", "postgres")
         assert isinstance(is_postgres(), bool)
 
+    def test_database_url_alias_selects_postgres(self, monkeypatch):
+        """DATABASE_URL is accepted as the deployment alias for PostgreSQL."""
+        monkeypatch.delenv("SYLION_DB_MODE", raising=False)
+        monkeypatch.delenv("SYLION_DB_URL", raising=False)
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://aeis:secret@db/aeis")
+
+        from sylion.db import get_db_mode, get_db_url, is_postgres
+
+        assert get_db_url() == "postgresql+asyncpg://aeis:secret@db/aeis"
+        assert get_db_mode() == "postgres"
+        assert is_postgres() is True
+
     def test_health_database_endpoint_exists(self):
         """Health database endpoint should be registered."""
         from sylion.api.health_routes import router
